@@ -2,8 +2,6 @@
 
 ## From Server to Cluster 🚀
 
-![Kubernetes for Sysadmins](./Student/resources/images/k8s-sysadmin.png)
-
 ## Introduction
 
 This is a hands-on learning resource designed for **Linux professionals** who want to master Kubernetes. If you already understand processes, networking, storage, and security in Linux — you're ready to orchestrate all of that at scale.
