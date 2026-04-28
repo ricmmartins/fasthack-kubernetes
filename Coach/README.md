@@ -29,6 +29,9 @@ This directory contains solutions and guidance for coaches running the Kubernete
 - [Solution 15: Pod Scheduling & Resource Management](Solution-15.md)
 - [Solution 16: Container Image Engineering](Solution-16.md)
 - [Solution 17: Advanced Deployment Strategies](Solution-17.md)
+- [Solution 18: kubeadm Cluster Administration](Solution-18.md)
+- [Solution 19: Cluster Security & Hardening](Solution-19.md)
+- [Solution 20: Supply Chain & Runtime Security](Solution-20.md)
 
 ## Timing Recommendations
 
@@ -51,5 +54,8 @@ This directory contains solutions and guidance for coaches running the Kubernete
 | 15 | 90 min | Many scheduling concepts; 3-node cluster needed |
 | 16 | 60 min | Docker/Podman familiarity helps |
 | 17 | 75 min | Multiple deployment patterns to practice |
+| 18 | 120 min | VM setup adds overhead; kubeadm is complex |
+| 19 | 90–120 min | CKS-level; some tasks need node access |
+| 20 | 90–120 min | Many tools to install (Trivy, Falco, cosign) |
 
-**Total: ~14-16 hours** (ideal for a 2.5-day hackathon)
+**Total: ~18-22 hours** (ideal for a 3-day hackathon or self-paced over 1-2 weeks)

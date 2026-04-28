@@ -1,6 +1,6 @@
 # Solution 15 — Pod Scheduling & Resource Management
 
-[< Back to Challenge](../Student/Challenge-15.md) | **[Home](README.md)**
+[< Previous Solution](Solution-14.md) - **[Home](README.md)** - [Next Solution >](Solution-16.md)
 
 ---
 

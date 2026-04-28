@@ -508,11 +508,11 @@ Some people alias `alias docker=podman` and never notice the difference.
 - [Multi-stage builds — Docker docs](https://docs.docker.com/build/building/multi-stage/)
 - [Best practices for writing Dockerfiles — Docker docs](https://docs.docker.com/build/building/best-practices/)
 - [.dockerignore file — Docker docs](https://docs.docker.com/build/concepts/context/#dockerignore-files)
-- [Deploy a registry server — Docker docs](https://docs.docker.com/registry/deploying/)
+- [Deploy a registry server — Distribution docs](https://distribution.github.io/distribution/about/deploying/)
 - [Podman — Getting Started](https://podman.io/get-started)
 - [Distroless container images — GitHub](https://github.com/GoogleContainerTools/distroless)
 - [Kind — Loading an image into your cluster](https://kind.sigs.k8s.io/docs/user/quick-start/#loading-an-image-into-your-cluster)
-- [CKAD curriculum — Application Design and Build](https://github.com/cncf/curriculum/blob/master/CKAD_Curriculum_v1.31.pdf)
+- [CKAD curriculum — Application Design and Build](https://github.com/cncf/curriculum)
 
 ---
 

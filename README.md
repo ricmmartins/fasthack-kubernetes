@@ -97,6 +97,27 @@ Each challenge builds on the previous one, but can also be done independently af
 - Challenge 17: **[Advanced Deployment Strategies](Student/Challenge-17.md)**
   - Implement blue/green, canary, and recreate deployments. Handle API deprecations.
 
+- Challenge 18: **[kubeadm Cluster Administration](Student/Challenge-18.md)** ⚠️ *Requires VMs*
+  - Bootstrap clusters with kubeadm, perform upgrades, backup/restore etcd, explore CRDs and Operators.
+
+- Challenge 19: **[Cluster Security & Hardening](Student/Challenge-19.md)** ⚠️ *Requires VMs*
+  - CIS benchmarks, audit logging, TLS Ingress, ServiceAccount hardening, Secrets encryption at rest.
+
+- Challenge 20: **[Supply Chain & Runtime Security](Student/Challenge-20.md)** ⚠️ *Mixed (Kind + VMs)*
+  - Image scanning (Trivy), SBOM, cosign, AppArmor, seccomp, Falco, static analysis, container immutability.
+
+## Certification Coverage
+
+This hackathon covers **100% of CKA, CKAD, and CKS exam domains**:
+
+| Certification | Challenges | Lab Environment |
+|---|---|---|
+| **CKA** (Certified Kubernetes Administrator) | 01–15, 18 | Kind + VMs |
+| **CKAD** (Certified Kubernetes Application Developer) | 01–12, 16–17 | Kind |
+| **CKS** (Certified Kubernetes Security Specialist) | 09, 18–20 | Kind + VMs |
+
+> 📝 See the [CNCF Curriculum](https://github.com/cncf/curriculum) for official exam domains. Practice exams available at [Killer.sh](https://killer.sh/).
+
 ## Linux ↔ Kubernetes Quick Reference
 
 | Linux Concept | Kubernetes Equivalent | Description |
@@ -122,7 +143,7 @@ Each challenge builds on the previous one, but can also be done independently af
 - **Helm** installed ([install guide](https://helm.sh/docs/intro/install/))
 - A terminal with bash or zsh (Linux, macOS, or Windows with WSL2)
 - 4 GB of free RAM (recommended)
-- No cloud account required for Challenges 01–13 and 15–17 (Challenge 14 requires a cloud provider)
+- No cloud account required for Challenges 01–13 and 15–17 (Challenge 14 requires a cloud provider; Challenges 18–20 require VMs)
 
 ### Tested Versions
 

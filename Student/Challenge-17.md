@@ -474,7 +474,8 @@ kubectl apply -f rolling-deep.yaml
 kubectl rollout status deployment rolling-app
 
 # Update the image to trigger a rollout
-kubectl set image deployment/rolling-app app=nginx:1.28 --record
+kubectl set image deployment/rolling-app app=nginx:1.28
+kubectl annotate deployment rolling-app kubernetes.io/change-cause="update to nginx:1.28" --overwrite
 ```
 
 **Step 3:** Watch the rollout in real time — observe surge and availability:
@@ -845,7 +846,7 @@ If you can't install it, manually convert manifests by referencing the [Kubernet
 - [Gateway API — HTTPRoute reference](https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.HTTPRoute)
 - [Kubernetes Deprecated API Migration Guide](https://kubernetes.io/docs/reference/using-api/deprecation-guide/)
 - [kubectl-convert plugin](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-kubectl-convert-plugin)
-- [CKAD Curriculum — Deployment strategies](https://github.com/cncf/curriculum/blob/master/CKAD_Curriculum_v1.31.pdf)
+- [CKAD Curriculum — Deployment strategies](https://github.com/cncf/curriculum)
 
 ## Break & Fix 🔧
 
