@@ -198,15 +198,17 @@ jobs:
           errors=0
           echo "=== Scanning for deprecated Kubernetes patterns ==="
 
-          # Deprecated in-tree provisioners
-          if grep -rn "kubernetes.io/azure-disk\|kubernetes.io/aws-ebs\|kubernetes.io/gce-pd" Student/ Coach/ --include="*.md"; then
-            echo "❌ Found deprecated in-tree storage provisioner references"
+          # Deprecated in-tree provisioners (skip lines that warn about deprecation)
+          if grep -rn "kubernetes.io/azure-disk\|kubernetes.io/aws-ebs\|kubernetes.io/gce-pd" Student/ Coach/ --include="*.md" \
+            | grep -iv "deprecated\|do not use\|replaced by\|instead.*use\|old in-tree\|legacy\|removed\|migrate\|CSI"; then
+            echo "❌ Found deprecated in-tree storage provisioner used without deprecation context"
             errors=$((errors + 1))
           fi
 
-          # Removed PodSecurityPolicy
-          if grep -rn "PodSecurityPolicy\|kind: PSP" Student/ Coach/ --include="*.md" | grep -v "was removed\|was deprecated\|removed in\|no longer\|replaced by\|instead of"; then
-            echo "❌ Found PodSecurityPolicy references (removed from K8s)"
+          # Removed PodSecurityPolicy (skip educational/warning mentions)
+          if grep -rn "PodSecurityPolicy\|kind: PSP" Student/ Coach/ --include="*.md" \
+            | grep -iv "was removed\|was deprecated\|removed in\|no longer\|replaced by\|instead of\|redirect\|removed from\|do not use\|legacy"; then
+            echo "❌ Found PodSecurityPolicy references used without removal context"
             errors=$((errors + 1))
           fi
 
