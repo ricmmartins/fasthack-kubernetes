@@ -55,7 +55,7 @@ This directory contains solutions and guidance for coaches running the Kubernete
 | 16 | 60 min | Docker/Podman familiarity helps |
 | 17 | 75 min | Multiple deployment patterns to practice |
 | 18 | 120 min | VM setup adds overhead; kubeadm is complex |
-| 19 | 90–120 min | CKS-level; some tasks need node access |
+| 19 | 120–150 min | CKS-level; some tasks need node access + gVisor/Cilium setup |
 | 20 | 90–120 min | Many tools to install (Trivy, Falco, cosign) |
 
 **Total: ~18-22 hours** (ideal for a 3-day hackathon or self-paced over 1-2 weeks)

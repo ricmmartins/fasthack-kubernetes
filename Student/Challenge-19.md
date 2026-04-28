@@ -791,12 +791,172 @@ kubectl exec -n egress-lab test-pod -- wget -qO- --timeout=5 http://kubernetes.d
 
 **Step 3:** For extra security, combine metadata blocking with the restrictive egress policy from Task 3 by adding the `except` clause to specific egress rules.
 
+### Task 9 — Sandboxed Containers with RuntimeClass
+
+On Linux, you'd use `chroot` or `unshare` to isolate a process — but these share the host kernel and a single exploit can escape the sandbox. **Sandboxed container runtimes** like [gVisor](https://gvisor.dev/) (runsc) intercept all system calls via a user-space kernel, providing an additional isolation layer beyond standard containers. Kubernetes uses the **RuntimeClass** resource to direct specific Pods to a sandboxed runtime.
+
+> **CKS Domain:** Minimize Microservice Vulnerabilities → Understand and implement isolation techniques (multi-tenancy, sandboxed containers, etc.)
+
+**Step 1:** Configure containerd to support the gVisor runtime handler. On each node, install gVisor's `runsc` binary:
+
+```bash
+# Add the gVisor repo
+curl -fsSL https://gvisor.dev/archive.key | sudo gpg --dearmor -o /usr/share/keyrings/gvisor-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release main" | sudo tee /etc/apt/sources.list.d/gvisor.list > /dev/null
+sudo apt-get update && sudo apt-get install -y runsc
+```
+
+**Step 2:** Add the `runsc` handler to containerd's configuration (`/etc/containerd/config.toml`):
+
+```toml
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]
+  runtime_type = "io.containerd.runsc.v1"
+```
+
+Then restart containerd:
+
+```bash
+sudo systemctl restart containerd
+```
+
+**Step 3:** Create a RuntimeClass resource that references the `runsc` handler:
+
+```yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: gvisor
+handler: runsc
+```
+
+```bash
+kubectl apply -f gvisor-runtimeclass.yaml
+```
+
+**Step 4:** Deploy a Pod that uses the sandboxed runtime:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sandboxed-pod
+  namespace: sandbox-lab
+spec:
+  runtimeClassName: gvisor
+  containers:
+    - name: app
+      image: nginx:1.27
+      ports:
+        - containerPort: 80
+```
+
+```bash
+kubectl create namespace sandbox-lab
+kubectl apply -f sandboxed-pod.yaml
+```
+
+**Step 5:** Verify the Pod is running inside gVisor by checking the kernel:
+
+```bash
+kubectl exec -n sandbox-lab sandboxed-pod -- dmesg | head -5
+kubectl exec -n sandbox-lab sandboxed-pod -- uname -r
+```
+
+> In gVisor, `dmesg` output shows "Starting gVisor..." and `uname -r` returns a gVisor-specific kernel version string (e.g., `4.4.0`), not the host kernel.
+
+**Step 6:** Compare with a standard Pod to see the isolation difference:
+
+```bash
+kubectl run standard-pod -n sandbox-lab --image=nginx:1.27 --restart=Never
+kubectl exec -n sandbox-lab standard-pod -- uname -r
+```
+
+> The standard Pod returns the actual host kernel version. The gVisor Pod returns a synthetic version — proof of sandboxing.
+
+### Task 10 — Pod-to-Pod Encryption with Cilium WireGuard
+
+On Linux, you'd configure WireGuard or IPsec tunnels between hosts to encrypt traffic. In Kubernetes, **Cilium** can transparently encrypt all pod-to-pod traffic across nodes using WireGuard — no application changes, no sidecar proxies, no code modifications. Each node creates a WireGuard keypair and distributes public keys via CiliumNode CRDs.
+
+> **CKS Domain:** Minimize Microservice Vulnerabilities → Implement Pod-to-Pod encryption (Cilium, Istio)
+
+**Step 1:** Install Cilium CLI (if not already installed):
+
+```bash
+CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+CLI_ARCH=amd64
+curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz
+sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
+rm cilium-linux-${CLI_ARCH}.tar.gz
+```
+
+**Step 2:** Install Cilium as the CNI with WireGuard encryption enabled:
+
+> ⚠️ **Important:** Cilium replaces the existing CNI (e.g., Calico). You must remove the current CNI first. Only do this on a dedicated test cluster.
+
+```bash
+# Remove existing CNI (e.g., Calico)
+kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/calico.yaml 2>/dev/null
+
+# Install Cilium with WireGuard encryption
+cilium install --version 1.17.3 \
+  --set encryption.enabled=true \
+  --set encryption.type=wireguard
+```
+
+**Step 3:** Wait for Cilium to become ready and verify encryption status:
+
+```bash
+cilium status --wait
+
+# Check encryption is active
+cilium status | grep Encryption
+```
+
+Expected output:
+
+```
+Encryption:   Wireguard [cilium_wg0 (Pubkey: <key>, Port: 51871, Peers: N)]
+```
+
+**Step 4:** Deploy a test workload across nodes and verify traffic is encrypted:
+
+```bash
+kubectl create namespace encryption-test
+kubectl run client -n encryption-test --image=busybox:1.36 --restart=Never -- sleep 3600
+kubectl run server -n encryption-test --image=nginx:1.27 --restart=Never --labels="app=server"
+kubectl expose pod server -n encryption-test --port=80
+```
+
+**Step 5:** Verify traffic flows through the WireGuard tunnel:
+
+```bash
+# From inside a Cilium agent pod, capture traffic on the WireGuard interface
+kubectl -n kube-system exec -ti ds/cilium -- bash -c "apt-get update -qq && apt-get install -y -qq tcpdump > /dev/null 2>&1 && tcpdump -c 10 -n -i cilium_wg0"
+```
+
+In a second terminal, generate traffic:
+
+```bash
+kubectl exec -n encryption-test client -- wget -qO- http://server.encryption-test.svc.cluster.local
+```
+
+> If packets appear on `cilium_wg0`, traffic is encrypted via WireGuard. Packets on `eth0` between nodes are encrypted WireGuard UDP packets on port 51871.
+
+**Step 6:** Run Cilium's built-in connectivity test to validate end-to-end encryption:
+
+```bash
+cilium connectivity test
+```
+
 ### Clean Up
 
 ```bash
 kubectl delete namespace egress-lab 2>/dev/null
 kubectl delete namespace sa-lab 2>/dev/null
 kubectl delete namespace encryption-test 2>/dev/null
+kubectl delete namespace sandbox-lab 2>/dev/null
+kubectl delete namespace encryption-test 2>/dev/null
+kubectl delete runtimeclass gvisor 2>/dev/null
 kubectl delete -f tls-demo-app.yaml 2>/dev/null
 kubectl delete -f tls-demo-ingress.yaml 2>/dev/null
 kubectl delete -f tls-demo-cert.yaml 2>/dev/null
@@ -823,6 +983,11 @@ kubectl delete job kube-bench 2>/dev/null
 - [ ] Raw etcd reads show the `k8s:enc:aescbc:v1:key1:` prefix, confirming encryption.
 - [ ] You re-encrypted all existing Secrets with `kubectl get secrets --all-namespaces -o json | kubectl replace -f -`.
 - [ ] A NetworkPolicy blocks egress to `169.254.169.254/32` (cloud metadata endpoint).
+- [ ] You created a RuntimeClass for gVisor (`runsc` handler) and deployed a Pod using `runtimeClassName: gvisor`.
+- [ ] Inside the gVisor Pod, `dmesg` or `uname -r` confirms the sandboxed kernel (not the host kernel).
+- [ ] You installed Cilium with WireGuard encryption enabled (`encryption.enabled=true`, `encryption.type=wireguard`).
+- [ ] `cilium status | grep Encryption` shows WireGuard active with peers.
+- [ ] Pod-to-pod traffic between nodes flows through the `cilium_wg0` tunnel device (verified via tcpdump).
 
 ## Linux ↔ Kubernetes Reference
 
@@ -842,6 +1007,8 @@ kubectl delete job kube-bench 2>/dev/null
 | `auditctl -w /etc/shadow -p rwa` | Audit policy rule: `level: Metadata` for Secrets | Monitor sensitive resource access |
 | LUKS / dm-crypt disk encryption | EncryptionConfiguration with `aescbc` provider | Secrets encrypted before writing to etcd |
 | `cryptsetup luksFormat /dev/sda1` | `--encryption-provider-config` on API server | Enable encryption at rest |
+| `chroot` / `unshare --mount --pid` | RuntimeClass + gVisor (`runsc`) | Sandboxed process isolation at kernel level |
+| WireGuard / IPsec tunnels between hosts | Cilium WireGuard transparent encryption | Pod-to-pod traffic encrypted without app changes |
 
 ## Hints
 
@@ -1014,6 +1181,44 @@ Also, test from a Pod **inside** the cluster, not from the node itself. The Netw
 
 </details>
 
+<details>
+<summary>Hint 9: gVisor Pod stuck in ContainerCreating or CrashLoopBackOff</summary>
+
+Common causes:
+- **runsc not installed on the node** — Verify with `which runsc` on the node
+- **containerd not restarted** — After editing `/etc/containerd/config.toml`, you must `sudo systemctl restart containerd`
+- **Handler name mismatch** — The RuntimeClass `handler` field must exactly match the `[runtimes.NAME]` key in containerd config
+- **Multi-node clusters** — runsc and the containerd config must be set up on **every node** that might schedule gVisor Pods
+
+Check the events for the stuck Pod:
+
+```bash
+kubectl describe pod sandboxed-pod -n sandbox-lab
+sudo journalctl -u containerd --since "5 minutes ago" | grep runsc
+```
+
+If only some nodes have gVisor, add `scheduling.nodeSelector` to the RuntimeClass to constrain Pods to those nodes.
+
+</details>
+
+<details>
+<summary>Hint 10: Cilium WireGuard shows 0 peers or encryption not active</summary>
+
+Common causes:
+- **WireGuard kernel module not loaded** — Check: `lsmod | grep wireguard`. On Ubuntu 20.04+, WireGuard is built into the kernel (5.6+). On older kernels: `sudo apt install wireguard`
+- **Single-node cluster** — WireGuard only encrypts cross-node traffic. You need at least 2 worker nodes
+- **Cilium not fully ready** — Run `cilium status --wait` and check all components are OK
+- **Firewall blocking UDP 51871** — WireGuard uses UDP port 51871 between nodes
+
+Debug commands:
+
+```bash
+cilium status | grep Encryption
+kubectl -n kube-system exec ds/cilium -- cilium-dbg debuginfo --output json | jq .encryption
+```
+
+</details>
+
 ## Learning Resources
 
 - [CIS Kubernetes Benchmark (kube-bench)](https://github.com/aquasecurity/kube-bench)
@@ -1026,6 +1231,10 @@ Also, test from a Pod **inside** the cluster, not from the node itself. The Netw
 - [Kubernetes — Verify Signed Kubernetes Artifacts](https://kubernetes.io/docs/tasks/administer-cluster/verify-signed-artifacts/)
 - [CKS Curriculum](https://github.com/cncf/curriculum)
 - [Kubernetes — Restrict Access to Kubernetes API](https://kubernetes.io/docs/concepts/security/controlling-access/)
+- [Kubernetes — RuntimeClass](https://kubernetes.io/docs/concepts/containers/runtime-class/)
+- [gVisor — Kubernetes Quick Start](https://gvisor.dev/docs/user_guide/quick_start/kubernetes/)
+- [Cilium — Transparent Encryption](https://docs.cilium.io/en/stable/security/network/encryption/)
+- [Cilium — WireGuard Encryption](https://docs.cilium.io/en/stable/security/network/encryption-wireguard/)
 
 ## Break & Fix 🔧
 
