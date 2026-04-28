@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K8s Hackathon — Kubernetes for Linux Sysadmins</title>
+  <meta name="description" content="From Server to Cluster — 14 hands-on challenges to master Kubernetes using what you already know from Linux.">
+  <meta property="og:title" content="K8s Hackathon — Kubernetes for Linux Sysadmins">
+  <meta property="og:description" content="14 hands-on challenges. Cloud-agnostic. Built for Linux professionals.">
+  <meta property="og:url" content="https://k8shackathon.com">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☸️</text></svg>">
+  <style>
+    :root {
+      --k8s-blue: #326CE5;
+      --k8s-blue-dark: #1a3a6e;
+      --k8s-blue-light: #4a8af4;
+      --accent: #00d4aa;
+      --bg-dark: #0a0e1a;
+      --bg-card: #111827;
+      --bg-card-hover: #1a2332;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --border: #1e293b;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* Hero */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 2rem;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(50, 108, 229, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(0, 212, 170, 0.1) 0%, transparent 50%),
+        var(--bg-dark);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image:
+        radial-gradient(circle at 25% 25%, rgba(50, 108, 229, 0.03) 2px, transparent 2px),
+        radial-gradient(circle at 75% 75%, rgba(0, 212, 170, 0.03) 2px, transparent 2px);
+      background-size: 60px 60px;
+    }
+
+    .hero-content { position: relative; z-index: 1; max-width: 800px; }
+
+    .helm-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      display: inline-block;
+      animation: spin 20s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #fff 0%, var(--k8s-blue-light) 50%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero .subtitle {
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      font-weight: 300;
+    }
+
+    .hero .tagline {
+      font-size: 1.1rem;
+      color: var(--accent);
+      font-weight: 500;
+      margin-bottom: 2.5rem;
+      font-style: italic;
+    }
+
+    .cta-group { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 2rem;
+      border-radius: 8px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--k8s-blue);
+      color: #fff;
+      border: 2px solid var(--k8s-blue);
+    }
+    .btn-primary:hover {
+      background: var(--k8s-blue-light);
+      border-color: var(--k8s-blue-light);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(50, 108, 229, 0.3);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 2px solid var(--border);
+    }
+    .btn-outline:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    /* Stats strip */
+    .stats {
+      display: flex;
+      gap: 3rem;
+      justify-content: center;
+      padding: 2rem;
+      margin-top: 3rem;
+      flex-wrap: wrap;
+    }
+
+    .stat { text-align: center; }
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    /* Sections */
+    section { padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; }
+
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .section-desc {
+      text-align: center;
+      color: var(--text-muted);
+      max-width: 650px;
+      margin: 0 auto 3rem;
+      font-size: 1.1rem;
+    }
+
+    /* Challenges grid */
+    .challenges-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .challenge-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      transition: all 0.2s;
+      text-decoration: none;
+      color: var(--text);
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .challenge-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--k8s-blue);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(50, 108, 229, 0.15);
+    }
+
+    .challenge-num {
+      background: var(--k8s-blue);
+      color: #fff;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .challenge-info h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .challenge-info p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; }
+
+    /* Learning path */
+    .path {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+
+    .path-item {
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      text-align: center;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.2s;
+      min-width: 200px;
+    }
+    .path-item:hover {
+      border-color: var(--k8s-blue);
+      transform: translateY(-2px);
+    }
+    .path-item.active { border-color: var(--accent); }
+    .path-item .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .path-item h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+    .path-item p { font-size: 0.8rem; color: var(--text-muted); }
+
+    .path-arrow {
+      font-size: 1.5rem;
+      color: var(--text-muted);
+    }
+
+    /* Features */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 2rem;
+      margin-top: 3rem;
+    }
+
+    .feature {
+      text-align: center;
+      padding: 2rem 1.5rem;
+    }
+    .feature .icon { font-size: 2.5rem; margin-bottom: 1rem; }
+    .feature h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .feature p { font-size: 0.9rem; color: var(--text-muted); }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 3rem 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    footer a { color: var(--k8s-blue-light); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .stats { gap: 1.5rem; }
+      .path { flex-direction: column; }
+      .path-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-content">
+      <div class="helm-icon">☸️</div>
+      <h1>K8s Hackathon</h1>
+      <p class="subtitle">Kubernetes for Linux Sysadmins — From Server to Cluster</p>
+      <p class="tagline">"You don't need to start from zero. You need to evolve."</p>
+      <div class="cta-group">
+        <a href="https://github.com/ricmmartins/fasthack-kubernetes" class="btn btn-primary">
+          ⚡ Start the Hackathon
+        </a>
+        <a href="https://github.com/ricmmartins/fasthack-kubernetes/tree/main/Student" class="btn btn-outline">
+          📖 Browse Challenges
+        </a>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-number">14</div>
+          <div class="stat-label">Challenges</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">10-12h</div>
+          <div class="stat-label">Duration</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">3</div>
+          <div class="stat-label">Cloud Providers</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">v1.36</div>
+          <div class="stat-label">Kubernetes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Why this hackathon -->
+  <section>
+    <h2 class="section-title">Built for Linux Professionals</h2>
+    <p class="section-desc">Every Kubernetes concept is taught through the lens of what you already know from Linux. No fluff — just hands-on labs.</p>
+    <div class="features">
+      <div class="feature">
+        <div class="icon">🐧</div>
+        <h3>Linux-First Approach</h3>
+        <p>iptables → Services, systemd → Pods, /etc/fstab → PersistentVolumes. Your Linux knowledge is your superpower.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">☁️</div>
+        <h3>Cloud-Agnostic</h3>
+        <p>All core labs run locally with Kind — no cloud account needed. Challenge 14 covers AKS, EKS, and GKE.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🔧</div>
+        <h3>Break & Fix Labs</h3>
+        <p>Learn by breaking things. Every challenge includes troubleshooting scenarios with deliberate bugs to diagnose and fix.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">✅</div>
+        <h3>Validated Content</h3>
+        <p>Every command and YAML manifest verified against official Kubernetes v1.36 documentation. CI validates on every commit.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Challenges -->
+  <section>
+    <h2 class="section-title">14 Challenges</h2>
+    <p class="section-desc">Progressive difficulty — from your first container to deploying on production cloud Kubernetes.</p>
+    <div class="challenges-grid">
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-01.md">
+        <div class="challenge-num">01</div>
+        <div class="challenge-info">
+          <h3>Your First Container</h3>
+          <p>Build, run, and inspect containers — the foundation Kubernetes orchestrates.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-02.md">
+        <div class="challenge-num">02</div>
+        <div class="challenge-info">
+          <h3>From Container to Pod</h3>
+          <p>Hand your containers to Kubernetes with YAML manifests and kubectl.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-03.md">
+        <div class="challenge-num">03</div>
+        <div class="challenge-info">
+          <h3>Creating a Local Cluster</h3>
+          <p>Build your own multi-node Kubernetes cluster with Kind.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-04.md">
+        <div class="challenge-num">04</div>
+        <div class="challenge-info">
+          <h3>Deployments & Rolling Updates</h3>
+          <p>Scale, update, and rollback applications with zero downtime.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-05.md">
+        <div class="challenge-num">05</div>
+        <div class="challenge-info">
+          <h3>Services & Networking</h3>
+          <p>ClusterIP, NodePort, DNS discovery, and NetworkPolicy.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-06.md">
+        <div class="challenge-num">06</div>
+        <div class="challenge-info">
+          <h3>Ingress & Gateway API</h3>
+          <p>Route external traffic with Ingress and the modern Gateway API.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-07.md">
+        <div class="challenge-num">07</div>
+        <div class="challenge-info">
+          <h3>Volumes & Persistence</h3>
+          <p>PVs, PVCs, StorageClasses, StatefulSets, and the sidecar pattern.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-08.md">
+        <div class="challenge-num">08</div>
+        <div class="challenge-info">
+          <h3>ConfigMaps & Secrets</h3>
+          <p>Externalize configuration and manage sensitive data securely.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-09.md">
+        <div class="challenge-num">09</div>
+        <div class="challenge-info">
+          <h3>RBAC & Security</h3>
+          <p>ServiceAccounts, Roles, Pod Security Admission, and SecurityContext.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-10.md">
+        <div class="challenge-num">10</div>
+        <div class="challenge-info">
+          <h3>Autoscaling</h3>
+          <p>HPA, VPA, KEDA — scale your workloads automatically.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-11.md">
+        <div class="challenge-num">11</div>
+        <div class="challenge-info">
+          <h3>Helm & Kustomize</h3>
+          <p>Package management and environment overlays for Kubernetes.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-12.md">
+        <div class="challenge-num">12</div>
+        <div class="challenge-info">
+          <h3>Observability</h3>
+          <p>Prometheus, Grafana, probes — the three pillars of observability.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-13.md">
+        <div class="challenge-num">13</div>
+        <div class="challenge-info">
+          <h3>Troubleshooting</h3>
+          <p>8 broken deployments to diagnose and fix. The ultimate test.</p>
+        </div>
+      </a>
+      <a class="challenge-card" href="https://github.com/ricmmartins/fasthack-kubernetes/blob/main/Student/Challenge-14.md">
+        <div class="challenge-num">14</div>
+        <div class="challenge-info">
+          <h3>Deploy to Cloud</h3>
+          <p>Graduation day — deploy on AKS, EKS, or GKE. 🎓</p>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- Learning path -->
+  <section>
+    <h2 class="section-title">Learning Path</h2>
+    <p class="section-desc">This hackathon is part of a complete learning ecosystem.</p>
+    <div class="path">
+      <a class="path-item" href="https://linuxhackathon.com">
+        <div class="icon">🐧</div>
+        <h3>Linux FUNdamentals</h3>
+        <p>Master Linux basics</p>
+      </a>
+      <span class="path-arrow">→</span>
+      <a class="path-item active" href="https://github.com/ricmmartins/fasthack-kubernetes">
+        <div class="icon">☸️</div>
+        <h3>K8s Hackathon</h3>
+        <p>Linux to Kubernetes</p>
+      </a>
+      <span class="path-arrow">→</span>
+      <a class="path-item" href="https://ai4infra.com">
+        <div class="icon">🤖</div>
+        <h3>AI for Infra Pros</h3>
+        <p>AI/ML on your infra</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>
+      Created by <a href="https://rmmartins.com">Ricardo Martins</a> — Principal Solutions Engineer @ Microsoft
+    </p>
+    <p style="margin-top: 0.5rem;">
+      <a href="https://github.com/ricmmartins/fasthack-kubernetes">GitHub</a> ·
+      <a href="https://ricardomartins.com.br">Blog (PT-BR)</a> ·
+      <a href="https://linuxhackathon.com">Linux Hackathon</a> ·
+      <a href="https://ai4infra.com">AI for Infra</a>
+    </p>
+    <p style="margin-top: 1rem; font-size: 0.8rem; color: #64748b;">
+      This is an independent, personal project — not an official Microsoft publication.
+    </p>
+  </footer>
+
+</body>
+</html>
