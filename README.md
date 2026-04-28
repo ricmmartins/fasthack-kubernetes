@@ -1,6 +1,12 @@
-# Hackathon — Kubernetes for Linux Sysadmins
+# 🚀 FastHack Kubernetes
 
-## From Server to Cluster 🚀
+### From Server to Cluster — A Hands-on Hackathon for Linux Professionals
+
+[![Validate Content](https://github.com/ricmmartins/fasthack-kubernetes/actions/workflows/validate.yml/badge.svg)](https://github.com/ricmmartins/fasthack-kubernetes/actions/workflows/validate.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.36-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![Kind](https://img.shields.io/badge/Kind-local%20cluster-00ADD8?logo=docker&logoColor=white)](https://kind.sigs.k8s.io/)
+[![Cloud Agnostic](https://img.shields.io/badge/Cloud-Agnostic-FF6F00)]()
 
 ## Introduction
 
