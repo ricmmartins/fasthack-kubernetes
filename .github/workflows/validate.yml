@@ -131,6 +131,10 @@ jobs:
                       re.sub(r"^>\s?", "", line) for line in block.splitlines()
                   )
 
+                  # Dedent: remove common leading whitespace (handles indented YAML in markdown lists)
+                  import textwrap
+                  cleaned = textwrap.dedent(cleaned)
+
                   # Skip partial snippets (no apiVersion/kind and starts indented or with a bare key)
                   stripped = cleaned.strip()
                   if stripped and stripped[0] in (' ', '-') and "apiVersion" not in cleaned and "kind:" not in cleaned:
