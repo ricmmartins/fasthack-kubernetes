@@ -296,7 +296,7 @@ networking:
 EOF
 
 # Install Calico
-kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.3/manifests/calico.yaml
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/calico.yaml
 
 # Wait for Calico Pods to be ready
 kubectl -n kube-system get pods -l k8s-app=calico-node --watch
@@ -305,7 +305,7 @@ kubectl -n kube-system get pods -l k8s-app=calico-node --watch
 **Option B — If you want to keep your cluster, install Calico alongside kindnet** (not recommended for production but works for learning):
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.3/manifests/calico.yaml
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/calico.yaml
 kubectl -n kube-system get pods -l k8s-app=calico-node --watch
 ```
 

@@ -386,7 +386,7 @@ EOF
 
 ```bash
 # Install Calico
-kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.3/manifests/calico.yaml
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/calico.yaml
 
 # Wait for Calico to be ready (takes 1-2 minutes)
 kubectl -n kube-system wait --for=condition=ready pod -l k8s-app=calico-node --timeout=120s
@@ -409,7 +409,7 @@ kubectl apply -f multi-tier.yaml
 **Option B — Install Calico on existing cluster (faster but less clean):**
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.3/manifests/calico.yaml
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/calico.yaml
 kubectl -n kube-system wait --for=condition=ready pod -l k8s-app=calico-node --timeout=120s
 ```
 
