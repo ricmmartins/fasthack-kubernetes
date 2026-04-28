@@ -179,6 +179,10 @@ Contributions in the form of bug reports, feature requests, and PRs are always w
 - 🤖 [AI for Infrastructure Professionals](https://ai4infra.com/) — AI workloads on infrastructure you build
 - ☁️ [Azure Governance Made Simple](https://book.azgovernance.com/) — Cloud governance handbook
 
+## 🌐 Portuguese Content
+
+Looking for content in Portuguese? Visit **[ricardomartins.com.br](https://ricardomartins.com.br)** for articles, tutorials, and resources on Linux, Kubernetes, and Cloud Infrastructure.
+
 ## Show Your Support
 
 Give a ⭐️ if this content helped you!
