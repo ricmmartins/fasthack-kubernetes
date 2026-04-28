@@ -26,6 +26,9 @@ This directory contains solutions and guidance for coaches running the Kubernete
 - [Solution 12: Observability: Prometheus and Grafana](Solution-12.md)
 - [Solution 13: Troubleshooting: Break and Fix](Solution-13.md)
 - [Solution 14: Deploy to the Cloud](Solution-14.md)
+- [Solution 15: Pod Scheduling & Resource Management](Solution-15.md)
+- [Solution 16: Container Image Engineering](Solution-16.md)
+- [Solution 17: Advanced Deployment Strategies](Solution-17.md)
 
 ## Timing Recommendations
 
@@ -45,5 +48,8 @@ This directory contains solutions and guidance for coaches running the Kubernete
 | 12 | 60 min | Stack installation takes time |
 | 13 | 90 min | Most valuable challenge |
 | 14 | 60+ min | Depends on cloud access |
+| 15 | 90 min | Many scheduling concepts; 3-node cluster needed |
+| 16 | 60 min | Docker/Podman familiarity helps |
+| 17 | 75 min | Multiple deployment patterns to practice |
 
-**Total: ~10-12 hours** (ideal for a 2-day hackathon)
+**Total: ~14-16 hours** (ideal for a 2.5-day hackathon)

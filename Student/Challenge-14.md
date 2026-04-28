@@ -1,6 +1,6 @@
 # Challenge 14 — Deploying to the Cloud
 
-[< Previous Challenge](Challenge-13.md) | **[Home](../README.md)**
+[< Previous Challenge](Challenge-13.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-15.md)
 
 ## Introduction
 

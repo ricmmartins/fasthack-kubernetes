@@ -88,6 +88,15 @@ Each challenge builds on the previous one, but can also be done independently af
 - Challenge 14: **[Deploy to the Cloud](Student/Challenge-14.md)**
   - Deploy your application to a managed Kubernetes service. Compare AKS (Azure), EKS (AWS), and GKE (Google Cloud).
 
+- Challenge 15: **[Pod Scheduling & Resource Management](Student/Challenge-15.md)**
+  - Master taints, tolerations, node/pod affinity, topology spread, static Pods, ResourceQuotas, LimitRanges, and PodDisruptionBudgets.
+
+- Challenge 16: **[Container Image Engineering](Student/Challenge-16.md)**
+  - Build optimized container images with Dockerfiles, multi-stage builds, registries, and Podman.
+
+- Challenge 17: **[Advanced Deployment Strategies](Student/Challenge-17.md)**
+  - Implement blue/green, canary, and recreate deployments. Handle API deprecations.
+
 ## Linux ↔ Kubernetes Quick Reference
 
 | Linux Concept | Kubernetes Equivalent | Description |
@@ -113,7 +122,7 @@ Each challenge builds on the previous one, but can also be done independently af
 - **Helm** installed ([install guide](https://helm.sh/docs/intro/install/))
 - A terminal with bash or zsh (Linux, macOS, or Windows with WSL2)
 - 4 GB of free RAM (recommended)
-- No cloud account required for Challenges 01–13 (Challenge 14 requires a cloud provider)
+- No cloud account required for Challenges 01–13 and 15–17 (Challenge 14 requires a cloud provider)
 
 ### Tested Versions
 
