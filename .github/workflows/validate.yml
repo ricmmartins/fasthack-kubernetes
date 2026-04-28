@@ -1,0 +1,237 @@
+name: Validate Content
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-structure:
+    name: Validate repo structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required files exist
+        run: |
+          echo "=== Checking Student Challenges ==="
+          for i in $(seq -w 1 14); do
+            file="Student/Challenge-${i}.md"
+            if [ ! -f "$file" ]; then
+              echo "❌ MISSING: $file"
+              exit 1
+            fi
+            echo "✅ $file"
+          done
+
+          echo ""
+          echo "=== Checking Coach Solutions ==="
+          for i in $(seq -w 1 14); do
+            file="Coach/Solution-${i}.md"
+            if [ ! -f "$file" ]; then
+              echo "❌ MISSING: $file"
+              exit 1
+            fi
+            echo "✅ $file"
+          done
+
+          echo ""
+          echo "=== Checking Core Files ==="
+          for file in README.md Coach/README.md Student/resources/concepts.md; do
+            if [ ! -f "$file" ]; then
+              echo "❌ MISSING: $file"
+              exit 1
+            fi
+            echo "✅ $file"
+          done
+
+          echo ""
+          echo "✅ All required files present"
+
+  validate-markdown:
+    name: Validate Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for broken internal links
+        run: |
+          errors=0
+          echo "=== Checking internal markdown links ==="
+
+          for md in $(find . -name '*.md' -not -path './.github/*'); do
+            dir=$(dirname "$md")
+            # Extract markdown links [text](path) — skip URLs and anchors
+            grep -oP '\[.*?\]\(\K[^)]+' "$md" 2>/dev/null | \
+              grep -v '^http' | \
+              grep -v '^#' | \
+              sed 's/#.*//' | \
+              while read -r link; do
+                target="$dir/$link"
+                target=$(realpath --relative-to=. "$target" 2>/dev/null || echo "$target")
+                if [ ! -e "$target" ]; then
+                  echo "❌ $md -> $link (target not found)"
+                  errors=$((errors + 1))
+                fi
+              done
+          done
+
+          if [ "$errors" -gt 0 ]; then
+            echo ""
+            echo "❌ Found $errors broken links"
+            exit 1
+          fi
+
+          echo "✅ All internal links valid"
+
+  validate-yaml:
+    name: Validate embedded YAML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Extract and validate YAML blocks from markdown
+        run: |
+          python3 << 'SCRIPT'
+          import yaml
+          import sys
+          import re
+          from pathlib import Path
+
+          errors = []
+          checked = 0
+
+          for md_file in sorted(Path(".").rglob("*.md")):
+              if ".github" in str(md_file):
+                  continue
+
+              content = md_file.read_text(encoding="utf-8", errors="replace")
+
+              # Find ```yaml ... ``` blocks
+              pattern = re.compile(r"```ya?ml\s*\n(.*?)```", re.DOTALL)
+              blocks = pattern.findall(content)
+
+              for i, block in enumerate(blocks):
+                  checked += 1
+                  # Skip blocks with template placeholders
+                  if "{{" in block or "<your-" in block or "..." in block.strip():
+                      continue
+                  try:
+                      list(yaml.safe_load_all(block))
+                  except yaml.YAMLError as e:
+                      errors.append(f"  ❌ {md_file} block {i+1}: {e}")
+
+          print(f"Checked {checked} YAML blocks across all markdown files")
+          if errors:
+              print(f"\n❌ {len(errors)} invalid YAML block(s):")
+              for err in errors:
+                  print(err)
+              sys.exit(1)
+          else:
+              print("✅ All YAML blocks are valid")
+          SCRIPT
+
+  validate-nav:
+    name: Validate challenge navigation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check challenge navigation links are sequential
+        run: |
+          echo "=== Checking navigation links ==="
+          errors=0
+
+          for i in $(seq 1 14); do
+            num=$(printf "%02d" $i)
+            file="Student/Challenge-${num}.md"
+
+            # Check it links to Home
+            if ! grep -q '\[Home\](../README.md)' "$file"; then
+              echo "❌ $file: missing Home link"
+              errors=$((errors + 1))
+            fi
+
+            # Check Previous link (except Challenge 01)
+            if [ "$i" -gt 1 ]; then
+              prev=$(printf "%02d" $((i - 1)))
+              if ! grep -q "Challenge-${prev}.md" "$file"; then
+                echo "❌ $file: missing link to Challenge-${prev}"
+                errors=$((errors + 1))
+              fi
+            fi
+
+            # Check Next link (except Challenge 14)
+            if [ "$i" -lt 14 ]; then
+              next=$(printf "%02d" $((i + 1)))
+              if ! grep -q "Challenge-${next}.md" "$file"; then
+                echo "❌ $file: missing link to Challenge-${next}"
+                errors=$((errors + 1))
+              fi
+            fi
+          done
+
+          if [ "$errors" -gt 0 ]; then
+            echo "❌ Found $errors navigation issues"
+            exit 1
+          fi
+
+          echo "✅ All navigation links correct"
+
+  validate-no-deprecated:
+    name: Check for deprecated K8s references
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan for deprecated APIs and patterns
+        run: |
+          errors=0
+          echo "=== Scanning for deprecated Kubernetes patterns ==="
+
+          # Deprecated in-tree provisioners
+          if grep -rn "kubernetes.io/azure-disk\|kubernetes.io/aws-ebs\|kubernetes.io/gce-pd" Student/ Coach/ --include="*.md"; then
+            echo "❌ Found deprecated in-tree storage provisioner references"
+            errors=$((errors + 1))
+          fi
+
+          # Removed PodSecurityPolicy
+          if grep -rn "PodSecurityPolicy\|kind: PSP" Student/ Coach/ --include="*.md" | grep -v "was removed\|was deprecated\|removed in\|no longer\|replaced by\|instead of"; then
+            echo "❌ Found PodSecurityPolicy references (removed from K8s)"
+            errors=$((errors + 1))
+          fi
+
+          # Deprecated kubectl install URL
+          if grep -rn "storage.googleapis.com/kubernetes-release" Student/ Coach/ --include="*.md"; then
+            echo "❌ Found deprecated kubectl download URL (use dl.k8s.io)"
+            errors=$((errors + 1))
+          fi
+
+          # Dead Katacoda links
+          if grep -rn "katacoda.com" Student/ Coach/ --include="*.md"; then
+            echo "❌ Found dead Katacoda links (service discontinued)"
+            errors=$((errors + 1))
+          fi
+
+          # extensions/v1beta1 (long deprecated)
+          if grep -rn "extensions/v1beta1" Student/ Coach/ --include="*.md"; then
+            echo "❌ Found deprecated extensions/v1beta1 API"
+            errors=$((errors + 1))
+          fi
+
+          if [ "$errors" -gt 0 ]; then
+            echo ""
+            echo "❌ Found deprecated references"
+            exit 1
+          fi
+
+          echo "✅ No deprecated Kubernetes patterns found"
