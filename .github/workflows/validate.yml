@@ -116,7 +116,7 @@ jobs:
 
               content = md_file.read_text(encoding="utf-8", errors="replace")
 
-              # Find ```yaml ... ``` blocks
+              # Find ```yaml ... ``` blocks (including those inside blockquotes)
               pattern = re.compile(r"```ya?ml\s*\n(.*?)```", re.DOTALL)
               blocks = pattern.findall(content)
 
@@ -125,8 +125,19 @@ jobs:
                   # Skip blocks with template placeholders
                   if "{{" in block or "<your-" in block or "..." in block.strip():
                       continue
+
+                  # Strip markdown blockquote prefixes ("> " or ">")
+                  cleaned = "\n".join(
+                      re.sub(r"^>\s?", "", line) for line in block.splitlines()
+                  )
+
+                  # Skip partial snippets (no apiVersion/kind and starts indented or with a bare key)
+                  stripped = cleaned.strip()
+                  if stripped and stripped[0] in (' ', '-') and "apiVersion" not in cleaned and "kind:" not in cleaned:
+                      continue
+
                   try:
-                      list(yaml.safe_load_all(block))
+                      list(yaml.safe_load_all(cleaned))
                   except yaml.YAMLError as e:
                       errors.append(f"  ❌ {md_file} block {i+1}: {e}")
 
