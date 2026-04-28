@@ -1316,9 +1316,10 @@ Expected: Returns the actual host kernel (e.g., `6.8.0-xxx`). The difference pro
 ```bash
 CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
 CLI_ARCH=amd64
-curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz
+curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
 sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
-rm cilium-linux-${CLI_ARCH}.tar.gz
+rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
 ```
 
 **Remove existing CNI and install Cilium with WireGuard:**
@@ -1331,7 +1332,7 @@ kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.0
 kubectl -n kube-system wait --for=delete pod -l k8s-app=calico-node --timeout=60s 2>/dev/null
 
 # Install Cilium with WireGuard encryption
-cilium install --version 1.17.3 \
+cilium install --version 1.19.3 \
   --set encryption.enabled=true \
   --set encryption.type=wireguard
 ```
