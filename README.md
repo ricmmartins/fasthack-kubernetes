@@ -7,6 +7,9 @@
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.36-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![Kind](https://img.shields.io/badge/Kind-local%20cluster-00ADD8?logo=docker&logoColor=white)](https://kind.sigs.k8s.io/)
 [![Cloud Agnostic](https://img.shields.io/badge/Cloud-Agnostic-FF6F00)]()
+[![CKA](https://img.shields.io/badge/CKA-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
+[![CKAD](https://img.shields.io/badge/CKAD-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
+[![CKS](https://img.shields.io/badge/CKS-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
 
 ## Introduction
 
