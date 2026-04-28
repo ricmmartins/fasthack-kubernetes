@@ -16,7 +16,9 @@ jobs:
       - name: Check required files exist
         run: |
           echo "=== Checking Student Challenges ==="
-          for i in $(seq -w 1 14); do
+          TOTAL=$(ls Student/Challenge-*.md 2>/dev/null | wc -l)
+          echo "Found $TOTAL challenges"
+          for i in $(seq -w 1 $TOTAL); do
             file="Student/Challenge-${i}.md"
             if [ ! -f "$file" ]; then
               echo "❌ MISSING: $file"
@@ -27,7 +29,7 @@ jobs:
 
           echo ""
           echo "=== Checking Coach Solutions ==="
-          for i in $(seq -w 1 14); do
+          for i in $(seq -w 1 $TOTAL); do
             file="Coach/Solution-${i}.md"
             if [ ! -f "$file" ]; then
               echo "❌ MISSING: $file"
@@ -165,8 +167,10 @@ jobs:
         run: |
           echo "=== Checking navigation links ==="
           errors=0
+          TOTAL=$(ls Student/Challenge-*.md 2>/dev/null | wc -l)
+          echo "Checking navigation for $TOTAL challenges"
 
-          for i in $(seq 1 14); do
+          for i in $(seq 1 $TOTAL); do
             num=$(printf "%02d" $i)
             file="Student/Challenge-${num}.md"
 
@@ -185,8 +189,8 @@ jobs:
               fi
             fi
 
-            # Check Next link (except Challenge 14)
-            if [ "$i" -lt 14 ]; then
+            # Check Next link (except last challenge)
+            if [ "$i" -lt "$TOTAL" ]; then
               next=$(printf "%02d" $((i + 1)))
               if ! grep -q "Challenge-${next}.md" "$file"; then
                 echo "❌ $file: missing link to Challenge-${next}"
@@ -239,9 +243,10 @@ jobs:
             errors=$((errors + 1))
           fi
 
-          # extensions/v1beta1 (long deprecated)
-          if grep -rn "extensions/v1beta1" Student/ Coach/ --include="*.md"; then
-            echo "❌ Found deprecated extensions/v1beta1 API"
+          # extensions/v1beta1 (long deprecated) - skip educational/migration context
+          if grep -rn "extensions/v1beta1" Student/ Coach/ --include="*.md" \
+            | grep -iv "deprecated\|removed\|old.*api\|legacy\|migrate\|migration\|convert\|no longer\|was removed\|no matches\|error:"; then
+            echo "❌ Found deprecated extensions/v1beta1 API used without deprecation context"
             errors=$((errors + 1))
           fi
 
