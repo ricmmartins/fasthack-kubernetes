@@ -13,7 +13,7 @@ Kubernetes has direct analogs for every one of these practices. The **Certified 
 | Lynis / OpenSCAP CIS audit | **kube-bench** — CIS Kubernetes Benchmark |
 | Nginx + Let's Encrypt TLS certs | **cert-manager** + Ingress TLS termination |
 | `iptables -A OUTPUT -d 169.254.169.254 -j DROP` | **NetworkPolicy** blocking cloud metadata endpoint |
-| `sha256sum` / `gpg --verify` on downloaded packages | SHA512 checksum verification of K8s binaries |
+| `sha256sum` / `gpg --verify` on downloaded packages | SHA256 checksum verification of K8s binaries |
 | `visudo` — audit sudoers, least privilege | **RBAC** — audit ClusterRoleBindings, minimize permissions |
 | Disable root login + use service-specific users | **ServiceAccount hardening** — disable automount, dedicated SAs |
 | `iptables` / `firewalld` restricting SSH access | API server flags restricting access |
@@ -342,7 +342,7 @@ kubectl exec -n egress-lab labeled-pod -- wget -qO- --timeout=5 http://google.co
 
 ### Task 4 — Verify Kubernetes Binary Checksums
 
-On Linux, you'd run `sha256sum` after downloading a package to verify it hasn't been tampered with — like checking GPG signatures on an RPM or DEB. For Kubernetes binaries, the project publishes SHA512 checksums for every release.
+On Linux, you'd run `sha256sum` after downloading a package to verify it hasn't been tampered with — like checking GPG signatures on an RPM or DEB. For Kubernetes binaries, the project publishes SHA256 checksums for every release.
 
 **Step 1:** Find the versions of your kubectl and kubelet binaries:
 
@@ -351,7 +351,7 @@ kubectl version --client --output=yaml | grep gitVersion
 kubelet --version
 ```
 
-**Step 2:** Get the SHA512 checksum for your kubectl binary from the official release:
+**Step 2:** Get the SHA256 checksum for your kubectl binary from the official release:
 
 ```bash
 # Replace v1.32.0 with your actual version
@@ -813,7 +813,7 @@ kubectl delete job kube-bench 2>/dev/null
 - [ ] An Ingress resource references the TLS Secret and terminates TLS.
 - [ ] You created a default-deny egress NetworkPolicy and verified Pods cannot reach the internet.
 - [ ] You created a selective egress policy allowing only DNS and specific backends.
-- [ ] You verified SHA512/SHA256 checksums of kubectl, kubelet, and kubeadm against official release checksums.
+- [ ] You verified SHA256 checksums of kubectl, kubelet, and kubeadm against official release checksums.
 - [ ] You disabled automountServiceAccountToken on the default SA and confirmed Pods no longer get tokens.
 - [ ] You created a dedicated ServiceAccount with a Role limited to reading ConfigMaps and proved it cannot access Secrets or Pods.
 - [ ] You can identify overprivileged ClusterRoleBindings (e.g., bindings to `cluster-admin`).
@@ -1007,7 +1007,7 @@ kubectl get pods -n kube-system | grep -E "calico|cilium|weave"
 If you're using `flannel` or default `kubenet`, NetworkPolicies are accepted by the API but **not enforced**. Install Calico:
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.3/manifests/calico.yaml
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/calico.yaml
 ```
 
 Also, test from a Pod **inside** the cluster, not from the node itself. The NetworkPolicy only affects Pod traffic.
@@ -1024,7 +1024,7 @@ Also, test from a Pod **inside** the cluster, not from the node itself. The Netw
 - [Kubernetes — RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 - [Kubernetes — Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)
 - [Kubernetes — Verify Signed Kubernetes Artifacts](https://kubernetes.io/docs/tasks/administer-cluster/verify-signed-artifacts/)
-- [CKS Curriculum](https://github.com/cncf/curriculum/blob/master/CKS_Curriculum_%20v1.31.pdf)
+- [CKS Curriculum](https://github.com/cncf/curriculum)
 - [Kubernetes — Restrict Access to Kubernetes API](https://kubernetes.io/docs/concepts/security/controlling-access/)
 
 ## Break & Fix 🔧

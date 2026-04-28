@@ -981,12 +981,12 @@ docker exec audit-lab-control-plane ls -la /var/log/kubernetes/
 - [Kubernetes Seccomp tutorial](https://kubernetes.io/docs/tutorials/security/seccomp/)
 - [Trivy vulnerability scanner](https://aquasecurity.github.io/trivy/)
 - [Syft SBOM generator](https://github.com/anchore/syft)
-- [Sigstore Cosign documentation](https://docs.sigstore.dev/cosign/overview/)
+- [Sigstore Cosign documentation](https://docs.sigstore.dev/cosign/signing/overview/)
 - [Kubesec — security risk analysis](https://kubesec.io/)
 - [KubeLinter — static analysis](https://docs.kubelinter.io/)
 - [Falco — runtime security](https://falco.org/docs/)
 - [Kubernetes Auditing](https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/)
-- [CKS Curriculum](https://github.com/cncf/curriculum/blob/master/CKS_Curriculum_v1.31.pdf)
+- [CKS Curriculum](https://github.com/cncf/curriculum)
 - [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/)
 
 ## Break & Fix 🔧
