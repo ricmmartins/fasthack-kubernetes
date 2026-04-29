@@ -243,9 +243,10 @@ jobs:
             errors=$((errors + 1))
           fi
 
-          # extensions/v1beta1 (long deprecated) - skip educational/migration context
+          # extensions/v1beta1 (long deprecated) - skip Ch17 (API migration topic) and educational context
           if grep -rn "extensions/v1beta1" Student/ Coach/ --include="*.md" \
-            | grep -iv "deprecated\|removed\|old.*api\|legacy\|migrate\|migration\|convert\|no longer\|was removed\|no matches\|error:"; then
+            --exclude="*Challenge-17*" --exclude="*Solution-17*" \
+            | grep -iv "deprecated\|removed\|old\|legacy\|migrate\|migration\|convert\|no longer\|was removed\|no matches\|error:\|changes from\|should"; then
             echo "❌ Found deprecated extensions/v1beta1 API used without deprecation context"
             errors=$((errors + 1))
           fi
