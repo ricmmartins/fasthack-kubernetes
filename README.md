@@ -26,8 +26,8 @@ This hackathon bridges the gap between traditional Linux system administration a
 This hackathon is the natural next step after the [Linux FUNdamentals Hackathon](https://linuxhackathon.com/):
 
 ```
-Linux FUNdamentals Hackathon → Kubernetes for Linux Sysadmins → AI for Infra Pros
-(linuxhackathon.com)           (this hackathon)                  (ai4infra.com)
+Linux FUNdamentals → From Server to Cluster → Kubernetes Hackathon → AI for Infra Pros
+(linuxhackathon.com)  (fromservertocluster.com)  (this hackathon)       (ai4infra.com)
 ```
 
 ## Learning Objectives
@@ -209,6 +209,7 @@ Contributions in the form of bug reports, feature requests, and PRs are always w
 ## Related Projects
 
 - 🐧 [Linux FUNdamentals Hackathon](https://linuxhackathon.com/) — Master Linux basics first
+- 📖 [From Server to Cluster](https://fromservertocluster.com/) — Kubernetes book for Linux professionals
 - 🤖 [AI for Infrastructure Professionals](https://ai4infra.com/) — AI workloads on infrastructure you build
 - ☁️ [Azure Governance Made Simple](https://book.azgovernance.com/) — Cloud governance handbook
 
