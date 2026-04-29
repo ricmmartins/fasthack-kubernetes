@@ -27,7 +27,7 @@ Your mission is to:
      containers:
        - name: writer
          image: busybox:1.37
-         command: ["sh", "-c", "echo 'hello from ephemeral storage' > /data/message.txt && sleep 3600"]
+         command: ["sh", "-c", "mkdir -p /data && echo 'hello from ephemeral storage' > /data/message.txt && sleep 3600"]
    ```
 
    ```bash

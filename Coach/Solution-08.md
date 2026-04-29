@@ -107,7 +107,7 @@ kubectl exec nginx-configured -- cat /etc/nginx/conf.d/default.conf
 Expected: the full nginx config file is printed.
 
 ```bash
-kubectl exec nginx-configured -- curl -s http://localhost/health
+kubectl exec nginx-configured -- wget -qO- http://localhost/health
 ```
 
 Expected output:

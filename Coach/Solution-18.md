@@ -385,13 +385,13 @@ sudo apt-mark hold kubeadm
 
 # Step 3: Plan and apply
 sudo kubeadm upgrade plan
-sudo kubeadm upgrade apply v1.36.0
+sudo kubeadm upgrade apply v1.36.0  # Use the version shown by 'kubeadm upgrade plan'
 ```
 
 Expected (end of output):
 
 ```
-[upgrade/successful] SUCCESS! Your cluster was upgraded to "v1.36.0". Enjoy!
+[upgrade/successful] SUCCESS! Your cluster was upgraded to "v1.36.x". Enjoy!
 ```
 
 ```bash

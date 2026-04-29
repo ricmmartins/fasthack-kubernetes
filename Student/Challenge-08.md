@@ -87,7 +87,7 @@ Your mission is to:
    ```bash
    kubectl apply -f nginx-with-config.yaml
    kubectl exec nginx-configured -- cat /etc/nginx/conf.d/default.conf
-   kubectl exec nginx-configured -- curl -s http://localhost/health
+   kubectl exec nginx-configured -- wget -qO- http://localhost/health
    ```
 
    The config file appears inside the container exactly as if you had mounted it with `mount --bind`.

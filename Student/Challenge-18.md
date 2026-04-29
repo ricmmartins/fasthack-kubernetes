@@ -255,7 +255,7 @@ sudo apt-mark hold kubeadm
 
 # Check the plan and apply the upgrade
 sudo kubeadm upgrade plan
-sudo kubeadm upgrade apply v1.36.0
+sudo kubeadm upgrade apply v1.36.0  # Replace with the version shown by 'kubeadm upgrade plan'
 
 # Upgrade kubelet and kubectl
 sudo apt-mark unhold kubelet kubectl
