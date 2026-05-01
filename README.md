@@ -26,21 +26,29 @@ This hackathon bridges the gap between traditional Linux system administration a
 This hackathon is the natural next step after the [Linux FUNdamentals Hackathon](https://linuxhackathon.com/):
 
 ```mermaid
-flowchart TD
-    A["🐧 Linux FUNdamentals\n20 hands-on challenges\nlinuxhackathon.com"]
-    B["☸️ Kubernetes Hackathon\n20 hands-on challenges\nk8shackathon.com"]
-    C["🤖 AI for Infrastructure\nAI + Cloud\nai4infra.com"]
-    D["📖 From Server to Cluster\nThe WHY behind the WHAT\nfromservertocluster.com"]
+flowchart TB
+    subgraph journey["🚀 Progressive Learning Path"]
+        direction LR
+        A["🐧 <b>Linux FUNdamentals</b><br/>20 hands-on challenges<br/><i>linuxhackathon.com</i>"] ==> B["☸️ <b>Kubernetes Hackathon</b><br/>20 hands-on challenges<br/><i>k8shackathon.com</i>"] ==> C["🤖 <b>AI for Infrastructure</b><br/>AI + Cloud<br/><i>ai4infra.com</i>"]
+    end
 
-    A ==> B ==> C
     A -.->|companion reading| D
     B -.->|companion reading| D
     C -.->|companion reading| D
 
-    style A fill:#1565C0,stroke:#0D47A1,color:#fff
-    style B fill:#2E7D32,stroke:#1B5E20,color:#fff
-    style C fill:#1565C0,stroke:#0D47A1,color:#fff
-    style D fill:#1565C0,stroke:#0D47A1,color:#fff
+    D["📖 <b>From Server to Cluster</b><br/>The WHY behind the WHAT<br/><i>fromservertocluster.com</i>"]
+
+    classDef challenge fill:#2b5ea7,stroke:#1e4a8a,color:#fff,stroke-width:2px
+    classDef hackathon fill:#1a7f37,stroke:#116329,color:#fff,stroke-width:3px
+
+    class A,C challenge
+    class B hackathon
+    class D challenge
+
+    click A "https://linuxhackathon.com" _blank
+    click B "https://k8shackathon.com" _blank
+    click C "https://ai4infra.com" _blank
+    click D "https://fromservertocluster.com" _blank
 ```
 
 ## Learning Objectives
