@@ -1,41 +1,41 @@
-# Challenge 14 — Deploying to the Cloud
+# Desafio 14 — Deploy na Nuvem
 
-[< Previous Challenge](Challenge-13.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-15.md)
+[< Desafio Anterior](Challenge-13.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-15.md)
 
-## Introduction
+## Introdução
 
-🎓 **Congratulations — you made it to the graduation challenge!**
+🎓 **Parabéns — você chegou ao desafio de formatura!**
 
-You started this hackathon running containers as Linux processes, built local clusters with Kind, deployed multi-tier apps, wired up networking, secured workloads with RBAC and NetworkPolicies, set up monitoring with Prometheus and Grafana, and debugged real-world failures. Everything so far has run on your local machine.
+Você começou este hackathon executando containers como processos Linux, construiu clusters locais com Kind, fez deploy de aplicações multi-camadas, configurou rede, protegeu workloads com RBAC e NetworkPolicies, configurou monitoramento com Prometheus e Grafana, e depurou falhas do mundo real. Tudo até agora foi executado na sua máquina local.
 
-Now it's time to take what you've built and deploy it to the real cloud.
+Agora é hora de pegar o que você construiu e fazer deploy na nuvem real.
 
-On a Linux server, the jump from "it works on my machine" to "it works in production" means provisioning VMs, configuring load balancers, setting up monitoring agents, and managing storage drivers. Managed Kubernetes services handle all of that for you — you bring the same YAML manifests you've been writing all along, and the cloud provider takes care of the control plane, node provisioning, and integrations.
+Em um servidor Linux, o salto de "funciona na minha máquina" para "funciona em produção" significa provisionar VMs, configurar load balancers, instalar agentes de monitoramento e gerenciar drivers de armazenamento. Serviços gerenciados de Kubernetes cuidam de tudo isso para você — você traz os mesmos manifests YAML que escreveu ao longo de todo o curso, e o provedor de nuvem cuida do control plane, provisionamento de nodes e integrações.
 
-In this challenge, you will pick one of the three major cloud providers — **Azure (AKS)**, **AWS (EKS)**, or **Google Cloud (GKE)** — create a managed cluster, deploy your multi-tier application from Challenge 05, and expose it to the internet with a real LoadBalancer.
+Neste desafio, você escolherá um dos três principais provedores de nuvem — **Azure (AKS)**, **AWS (EKS)** ou **Google Cloud (GKE)** — criará um cluster gerenciado, fará deploy da sua aplicação multi-camadas do Desafio 05 e a exporá para a internet com um LoadBalancer real.
 
-> ⚠️ **This challenge is OPTIONAL.** All 13 previous challenges work entirely on Kind with no cloud account required. If you don't have a cloud account or prefer not to incur costs, you have already completed the core hackathon. Come back to this challenge whenever you're ready!
+> ⚠️ **Este desafio é OPCIONAL.** Todos os 13 desafios anteriores funcionam inteiramente no Kind sem necessidade de conta na nuvem. Se você não tem uma conta na nuvem ou prefere não incorrer em custos, você já completou o hackathon principal. Volte a este desafio quando estiver pronto!
 
-> 💰 **Cost awareness:** Each cloud provider offers free or low-cost options for learning (see the pricing notes below). However, **cloud resources cost money when left running**. Follow the cleanup instructions at the end carefully.
+> 💰 **Consciência de custos:** Cada provedor de nuvem oferece opções gratuitas ou de baixo custo para aprendizado (veja as notas de preço abaixo). No entanto, **recursos na nuvem custam dinheiro quando deixados em execução**. Siga as instruções de limpeza no final cuidadosamente.
 
-## Description
+## Descrição
 
-### Task 0 — Prerequisites
+### Tarefa 0 — Pré-requisitos
 
-Before you begin, make sure you have:
+Antes de começar, certifique-se de ter:
 
-- An active account on your chosen cloud provider (Azure, AWS, or Google Cloud)
-- The provider's CLI tool installed and authenticated:
+- Uma conta ativa no provedor de nuvem escolhido (Azure, AWS ou Google Cloud)
+- A ferramenta CLI do provedor instalada e autenticada:
 
-  | Provider | CLI Tool | Install Guide |
+  | Provedor | Ferramenta CLI | Guia de Instalação |
   |----------|----------|---------------|
-  | Azure | `az` | [Install Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) |
-  | AWS | `aws` + `eksctl` | [Install AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) + [Install eksctl](https://eksctl.io/installation/) |
-  | Google Cloud | `gcloud` | [Install gcloud CLI](https://cloud.google.com/sdk/docs/install) |
+  | Azure | `az` | [Instalar Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) |
+  | AWS | `aws` + `eksctl` | [Instalar AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) + [Instalar eksctl](https://eksctl.io/installation/) |
+  | Google Cloud | `gcloud` | [Instalar gcloud CLI](https://cloud.google.com/sdk/docs/install) |
 
-- `kubectl` installed (you already have this from previous challenges)
+- `kubectl` instalado (você já tem dos desafios anteriores)
 
-Verify your CLI is authenticated:
+Verifique se sua CLI está autenticada:
 
 ```bash
 # Azure
@@ -50,9 +50,9 @@ gcloud auth login
 gcloud config set project YOUR_PROJECT_ID
 ```
 
-### Task 1 — Create a Managed Kubernetes Cluster
+### Tarefa 1 — Criar um Cluster Kubernetes Gerenciado
 
-Create a small cluster suitable for learning. Use the minimum node count and smallest instance sizes to keep costs low.
+Crie um cluster pequeno adequado para aprendizado. Use a contagem mínima de nodes e os menores tamanhos de instância para manter os custos baixos.
 
 <details>
 <summary><strong>Azure (AKS)</strong></summary>
@@ -70,7 +70,7 @@ az aks create \
   --generate-ssh-keys
 ```
 
-> 💰 **AKS Free tier:** The control plane is free. You only pay for the worker node VMs. `Standard_B2s` is one of the cheapest VM sizes available.
+> 💰 **AKS Free tier:** O control plane é gratuito. Você paga apenas pelas VMs dos worker nodes. `Standard_B2s` é um dos tamanhos de VM mais baratos disponíveis.
 
 </details>
 
@@ -87,7 +87,7 @@ eksctl create cluster \
   --nodes 2
 ```
 
-> 💰 **EKS pricing:** The control plane costs $0.10/hour (~$73/month). Use `t3.small` instances to minimize node costs. Delete the cluster promptly after completing the challenge.
+> 💰 **Preços EKS:** O control plane custa $0.10/hora (~$73/mês). Use instâncias `t3.small` para minimizar custos dos nodes. Delete o cluster prontamente após completar o desafio.
 
 </details>
 
@@ -103,15 +103,15 @@ gcloud container clusters create fasthack-gke \
   --release-channel regular
 ```
 
-> 💰 **GKE Free tier:** One zonal or Autopilot cluster per billing account gets $74.40/month in free credits, which covers the cluster management fee. You still pay for node compute.
+> 💰 **GKE Free tier:** Um cluster zonal ou Autopilot por conta de faturamento recebe $74.40/mês em créditos gratuitos, o que cobre a taxa de gerenciamento do cluster. Você ainda paga pelo compute dos nodes.
 
 </details>
 
-Cluster creation takes 5–15 minutes depending on the provider. Wait for it to complete before proceeding.
+A criação do cluster leva 5–15 minutos dependendo do provedor. Aguarde a conclusão antes de prosseguir.
 
-### Task 2 — Connect kubectl to Your Cloud Cluster
+### Tarefa 2 — Conectar kubectl ao Seu Cluster na Nuvem
 
-Configure your local `kubectl` to talk to the new cloud cluster.
+Configure seu `kubectl` local para se comunicar com o novo cluster na nuvem.
 
 <details>
 <summary><strong>Azure (AKS)</strong></summary>
@@ -140,21 +140,21 @@ gcloud container clusters get-credentials fasthack-gke --zone us-central1-a
 
 </details>
 
-Verify the connection:
+Verifique a conexão:
 
 ```bash
-# Confirm you're connected to the cloud cluster (not your local Kind cluster)
+# Confirme que você está conectado ao cluster na nuvem (não ao seu Kind local)
 kubectl config current-context
 
-# Check the nodes — you should see cloud VMs, not Kind containers
+# Verifique os nodes — você deve ver VMs na nuvem, não containers Kind
 kubectl get nodes -o wide
 ```
 
-### Task 3 — Deploy the Multi-Tier App from Challenge 05
+### Tarefa 3 — Deploy da Aplicação Multi-Camadas do Desafio 05
 
-Take the frontend + backend application you built in Challenge 05 and deploy it to your cloud cluster. Use the same YAML manifests — they work identically on any Kubernetes cluster.
+Pegue a aplicação frontend + backend que você construiu no Desafio 05 e faça deploy no seu cluster na nuvem. Use os mesmos manifests YAML — eles funcionam de forma idêntica em qualquer cluster Kubernetes.
 
-Create a file named `cloud-app.yaml`:
+Crie um arquivo chamado `cloud-app.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -240,15 +240,15 @@ data:
 ```bash
 kubectl apply -f cloud-app.yaml
 
-# Wait for all Pods to be running
+# Aguarde todos os Pods estarem rodando
 kubectl get pods --watch
 ```
 
-### Task 4 — Expose the App with a Cloud LoadBalancer
+### Tarefa 4 — Expor a Aplicação com um Cloud LoadBalancer
 
-On Kind, you used `NodePort` to access services. In the cloud, you can use a `LoadBalancer` Service, which automatically provisions a real cloud load balancer with a public IP.
+No Kind, você usou `NodePort` para acessar services. Na nuvem, você pode usar um Service `LoadBalancer`, que provisiona automaticamente um load balancer real na nuvem com um IP público.
 
-Create a file named `frontend-lb.yaml`:
+Crie um arquivo chamado `frontend-lb.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -268,31 +268,31 @@ spec:
 ```bash
 kubectl apply -f frontend-lb.yaml
 
-# Wait for the external IP to be assigned (may take 1-3 minutes)
+# Aguarde o IP externo ser atribuído (pode levar 1-3 minutos)
 kubectl get svc frontend-lb --watch
 ```
 
-Once the `EXTERNAL-IP` column shows a real IP address (not `<pending>`), test it:
+Quando a coluna `EXTERNAL-IP` mostrar um endereço IP real (não `<pending>`), teste:
 
 ```bash
-# Replace with your actual external IP
+# Substitua pelo seu IP externo real
 curl http://<EXTERNAL-IP>
 ```
 
-You should see: `Hello from the cloud! ☁️`
+Você deve ver: `Hello from the cloud! ☁️`
 
-🎉 **Your application is now live on the internet, running on managed Kubernetes!**
+🎉 **Sua aplicação está agora ao vivo na internet, rodando em Kubernetes gerenciado!**
 
-### Task 5 — Explore Cloud-Native Storage (CSI Drivers)
+### Tarefa 5 — Explorar Armazenamento Cloud-Native (CSI Drivers)
 
-Each cloud provider has a CSI (Container Storage Interface) driver that lets Kubernetes provision cloud disks dynamically. Check which StorageClasses are available on your cluster:
+Cada provedor de nuvem tem um driver CSI (Container Storage Interface) que permite ao Kubernetes provisionar discos na nuvem dinamicamente. Verifique quais StorageClasses estão disponíveis no seu cluster:
 
 ```bash
-# List the available StorageClasses
+# Liste as StorageClasses disponíveis
 kubectl get storageclass
 ```
 
-Create a PersistentVolumeClaim to test dynamic provisioning:
+Crie um PersistentVolumeClaim para testar o provisionamento dinâmico:
 
 ```yaml
 apiVersion: v1
@@ -310,21 +310,21 @@ spec:
 ```bash
 kubectl apply -f cloud-pvc.yaml
 
-# Check the PVC status — it should become "Bound"
+# Verifique o status do PVC — deve ficar "Bound"
 kubectl get pvc cloud-pvc
 ```
 
-Compare the CSI driver in use:
+Compare o driver CSI em uso:
 
-| Provider | CSI Driver | Default StorageClass | Backend |
+| Provedor | Driver CSI | StorageClass Padrão | Backend |
 |----------|-----------|---------------------|---------|
 | AKS | `disk.csi.azure.com` | `managed-csi` | Azure Managed Disk |
 | EKS | `ebs.csi.aws.com` | `gp2` | EBS Volume |
 | GKE | `pd.csi.storage.gke.io` | `standard-rwo` | Persistent Disk |
 
-### Task 6 — Set Up Basic Monitoring
+### Tarefa 6 — Configurar Monitoramento Básico
 
-Enable the cloud-native monitoring solution for your cluster. Each provider has a built-in option that requires minimal setup.
+Habilite a solução de monitoramento cloud-native para o seu cluster. Cada provedor tem uma opção integrada que requer configuração mínima.
 
 <details>
 <summary><strong>Azure (AKS) — Azure Monitor Container Insights</strong></summary>
@@ -343,7 +343,7 @@ After a few minutes, go to the Azure Portal → your AKS cluster → **Insights*
 <details>
 <summary><strong>AWS (EKS) — CloudWatch Container Insights</strong></summary>
 
-Install the CloudWatch Observability add-on:
+Instale o add-on CloudWatch Observability:
 
 ```bash
 aws eks create-addon \
@@ -357,39 +357,39 @@ After installation, verify the agent pods are running:
 kubectl get pods -n amazon-cloudwatch
 ```
 
-View metrics in the AWS Console → CloudWatch → Container Insights.
+Veja as métricas no AWS Console → CloudWatch → Container Insights.
 
 </details>
 
 <details>
 <summary><strong>Google Cloud (GKE) — Cloud Monitoring</strong></summary>
 
-GKE clusters have Cloud Monitoring enabled by default. No extra steps needed!
+Clusters GKE têm o Cloud Monitoring habilitado por padrão. Nenhum passo extra necessário!
 
-Verify by going to Google Cloud Console → Kubernetes Engine → your cluster → **Observability** tab.
+Verifique indo ao Google Cloud Console → Kubernetes Engine → seu cluster → aba **Observability**.
 
-To check that metrics are flowing:
+Para verificar se as métricas estão fluindo:
 
 ```bash
-# Confirm monitoring pods are running in kube-system
+# Confirme que os pods de monitoramento estão rodando no kube-system
 kubectl get pods -n kube-system -l k8s-app=gke-metrics-agent
 ```
 
 </details>
 
-### Task 7 — Clean Up Cloud Resources ⚠️
+### Tarefa 7 — Limpar Recursos na Nuvem ⚠️
 
-> 🔴 **IMPORTANT: Do this step NOW. Do not leave cloud resources running — they will incur costs!**
+> 🔴 **IMPORTANTE: Faça este passo AGORA. Não deixe recursos na nuvem em execução — eles incorrerão em custos!**
 
 <details>
-<summary><strong>Azure (AKS) — Delete everything</strong></summary>
+<summary><strong>Azure (AKS) — Deletar tudo</strong></summary>
 
 ```bash
 # Delete the resource group (this removes the cluster, VMs, disks, load balancer, and all associated resources)
 az group delete --name fasthack-rg --yes --no-wait
 ```
 
-Verify deletion in the Azure Portal or with:
+Verifique a exclusão no Azure Portal ou com:
 
 ```bash
 az group show --name fasthack-rg 2>/dev/null || echo "Resource group deleted successfully"
@@ -398,66 +398,66 @@ az group show --name fasthack-rg 2>/dev/null || echo "Resource group deleted suc
 </details>
 
 <details>
-<summary><strong>AWS (EKS) — Delete everything</strong></summary>
+<summary><strong>AWS (EKS) — Deletar tudo</strong></summary>
 
 ```bash
-# Delete Kubernetes resources first (releases the cloud load balancer)
+# Delete os recursos Kubernetes primeiro (libera o cloud load balancer)
 kubectl delete svc frontend-lb
 kubectl delete pvc cloud-pvc
 
-# Delete the EKS cluster and all associated resources
+# Delete o cluster EKS e todos os recursos associados
 eksctl delete cluster --name fasthack-eks --region us-east-1
 ```
 
-Verify in the AWS Console that no EC2 instances, EBS volumes, or Elastic Load Balancers remain.
+Verifique no AWS Console que nenhuma instância EC2, volume EBS ou Elastic Load Balancer permanece.
 
 </details>
 
 <details>
-<summary><strong>Google Cloud (GKE) — Delete everything</strong></summary>
+<summary><strong>Google Cloud (GKE) — Deletar tudo</strong></summary>
 
 ```bash
 # Delete the GKE cluster
 gcloud container clusters delete fasthack-gke --zone us-central1-a --quiet
 ```
 
-Verify in the Google Cloud Console that no Compute Engine instances or Load Balancers remain.
+Verifique no Google Cloud Console que nenhuma instância Compute Engine ou Load Balancer permanece.
 
 </details>
 
-After cleanup, switch your kubectl context back to your local Kind cluster:
+Após a limpeza, mude o contexto do kubectl de volta para o seu cluster Kind local:
 
 ```bash
 kubectl config use-context kind-fasthack
 ```
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] You created a managed Kubernetes cluster on your chosen cloud provider (AKS, EKS, or GKE).
-- [ ] `kubectl get nodes` shows cloud VM nodes (not Kind containers).
-- [ ] The backend and frontend Deployments are running with all Pods in `Ready` state.
-- [ ] A `LoadBalancer` Service has been assigned a real external IP address.
-- [ ] You can `curl` the external IP and receive a response from the backend through the frontend.
-- [ ] A PersistentVolumeClaim dynamically provisioned a cloud disk and is in `Bound` state.
-- [ ] Cloud monitoring is enabled and you can see basic metrics in the provider's console.
-- [ ] **All cloud resources have been deleted** and your kubectl context is back to your local Kind cluster.
+- [ ] Você criou um cluster Kubernetes gerenciado no provedor de nuvem escolhido (AKS, EKS ou GKE).
+- [ ] `kubectl get nodes` mostra nodes de VMs na nuvem (não containers Kind).
+- [ ] Os Deployments backend e frontend estão rodando com todos os Pods em estado `Ready`.
+- [ ] Um Service `LoadBalancer` recebeu um endereço IP externo real.
+- [ ] Você pode fazer `curl` no IP externo e receber uma resposta do backend através do frontend.
+- [ ] Um PersistentVolumeClaim provisionou dinamicamente um disco na nuvem e está em estado `Bound`.
+- [ ] O monitoramento na nuvem está habilitado e você pode ver métricas básicas no console do provedor.
+- [ ] **Todos os recursos na nuvem foram deletados** e o contexto do kubectl está de volta ao seu cluster Kind local.
 
-## Cloud Provider Reference
+## Referência de Provedores de Nuvem
 
-| Operation | AKS (Azure) | EKS (AWS) | GKE (Google Cloud) |
+| Operação | AKS (Azure) | EKS (AWS) | GKE (Google Cloud) |
 |-----------|-------------|-----------|---------------------|
-| **CLI tool** | `az` | `aws` + `eksctl` | `gcloud` |
-| **Create cluster** | `az aks create` | `eksctl create cluster` | `gcloud container clusters create` |
-| **Get credentials** | `az aks get-credentials` | `aws eks update-kubeconfig` | `gcloud container clusters get-credentials` |
-| **CSI storage driver** | `disk.csi.azure.com` | `ebs.csi.aws.com` | `pd.csi.storage.gke.io` |
-| **Monitoring** | Azure Monitor + Container Insights | CloudWatch Container Insights | Cloud Monitoring (enabled by default) |
-| **Control plane cost** | Free (Free tier) | $0.10/hour (~$73/month) | Free ($74.40/mo credit for 1 zonal cluster) |
-| **Delete cluster** | `az group delete` | `eksctl delete cluster` | `gcloud container clusters delete` |
+| **Ferramenta CLI** | `az` | `aws` + `eksctl` | `gcloud` |
+| **Criar cluster** | `az aks create` | `eksctl create cluster` | `gcloud container clusters create` |
+| **Obter credenciais** | `az aks get-credentials` | `aws eks update-kubeconfig` | `gcloud container clusters get-credentials` |
+| **Driver de armazenamento CSI** | `disk.csi.azure.com` | `ebs.csi.aws.com` | `pd.csi.storage.gke.io` |
+| **Monitoramento** | Azure Monitor + Container Insights | CloudWatch Container Insights | Cloud Monitoring (habilitado por padrão) |
+| **Custo do control plane** | Gratuito (Free tier) | $0.10/hora (~$73/mês) | Gratuito ($74.40/mês crédito para 1 cluster zonal) |
+| **Deletar cluster** | `az group delete` | `eksctl delete cluster` | `gcloud container clusters delete` |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: Azure (AKS) — Step-by-step walkthrough</summary>
+<summary>Dica 1: Azure (AKS) — Passo a passo completo</summary>
 
 ```bash
 # 1. Login
@@ -493,14 +493,14 @@ curl http://<EXTERNAL-IP>
 # 9. Enable monitoring
 az aks enable-addons --resource-group fasthack-rg --name fasthack-aks --addons monitoring
 
-# 10. CLEAN UP when done!
+# 10. LIMPE quando terminar!
 az group delete --name fasthack-rg --yes --no-wait
 ```
 
 </details>
 
 <details>
-<summary>Hint 2: AWS (EKS) — Step-by-step walkthrough</summary>
+<summary>Dica 2: AWS (EKS) — Passo a passo completo</summary>
 
 ```bash
 # 1. Verify credentials
@@ -532,18 +532,18 @@ aws eks create-addon \
   --cluster-name fasthack-eks \
   --addon-name amazon-cloudwatch-observability
 
-# 8. CLEAN UP when done!
+# 8. LIMPE quando terminar!
 kubectl delete svc frontend-lb
 kubectl delete pvc cloud-pvc
 eksctl delete cluster --name fasthack-eks --region us-east-1
 ```
 
-> **Note:** On AWS, the LoadBalancer `EXTERNAL-IP` is a DNS hostname (e.g., `abc123.us-east-1.elb.amazonaws.com`), not an IP address. Use it the same way — `curl http://<hostname>`.
+> **Nota:** No AWS, o `EXTERNAL-IP` do LoadBalancer é um hostname DNS (ex: `abc123.us-east-1.elb.amazonaws.com`), não um endereço IP. Use-o da mesma forma — `curl http://<hostname>`.
 
 </details>
 
 <details>
-<summary>Hint 3: Google Cloud (GKE) — Step-by-step walkthrough</summary>
+<summary>Dica 3: Google Cloud (GKE) — Passo a passo completo</summary>
 
 ```bash
 # 1. Login and set project
@@ -575,14 +575,14 @@ curl http://<EXTERNAL-IP>
 
 # 8. Monitoring is enabled by default — check the GKE console
 
-# 9. CLEAN UP when done!
+# 9. LIMPE quando terminar!
 gcloud container clusters delete fasthack-gke --zone us-central1-a --quiet
 ```
 
 </details>
 
 <details>
-<summary>Hint 4: Switching kubectl context between Kind and cloud</summary>
+<summary>Dica 4: Alternando contexto do kubectl entre Kind e nuvem</summary>
 
 ```bash
 # List all contexts
@@ -598,37 +598,37 @@ kubectl config use-context kind-fasthack
 kubectl config rename-context <long-cloud-name> cloud
 ```
 
-Common context names:
+Nomes de contexto comuns:
 - **AKS:** `fasthack-aks`
-- **EKS:** `<arn>:cluster/fasthack-eks` (use `kubectl config get-contexts` to find the exact name)
+- **EKS:** `<arn>:cluster/fasthack-eks` (use `kubectl config get-contexts` para encontrar o nome exato)
 - **GKE:** `gke_<project>_<zone>_fasthack-gke`
 
 </details>
 
 <details>
-<summary>Hint 5: Troubleshooting — LoadBalancer stuck on "pending"</summary>
+<summary>Dica 5: Troubleshooting — LoadBalancer preso em "pending"</summary>
 
-If `EXTERNAL-IP` stays `<pending>` for more than 5 minutes:
+Se `EXTERNAL-IP` permanece `<pending>` por mais de 5 minutos:
 
 ```bash
-# Check events for issues
+# Verifique eventos para problemas
 kubectl describe svc frontend-lb
 
-# Check node status
+# Verifique o status dos nodes
 kubectl get nodes
 
-# Check if the cloud provider integration is working
+# Verifique se a integração com o provedor de nuvem está funcionando
 kubectl get events --sort-by='.lastTimestamp'
 ```
 
-Common causes:
-- **AKS:** Insufficient quota for public IPs in the region. Run `az network public-ip list --resource-group MC_fasthack-rg_fasthack-aks_eastus`.
-- **EKS:** Missing IAM permissions for the AWS Load Balancer Controller. Check `eksctl` output for warnings.
-- **GKE:** Firewall rules blocking health checks. Check `gcloud compute firewall-rules list`.
+Causas comuns:
+- **AKS:** Cota insuficiente para IPs públicos na região. Execute `az network public-ip list --resource-group MC_fasthack-rg_fasthack-aks_eastus`.
+- **EKS:** Permissões IAM ausentes para o AWS Load Balancer Controller. Verifique a saída do `eksctl` para avisos.
+- **GKE:** Regras de firewall bloqueando health checks. Verifique `gcloud compute firewall-rules list`.
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 ### Azure Kubernetes Service (AKS)
 - [AKS Documentation](https://learn.microsoft.com/azure/aks/)
@@ -648,34 +648,34 @@ Common causes:
 - [GKE Pricing](https://cloud.google.com/kubernetes-engine/pricing)
 - [GKE Observability](https://cloud.google.com/stackdriver/docs/managed-prometheus)
 
-### General
+### Geral
 - [Kubernetes Documentation — Cloud Providers](https://kubernetes.io/docs/concepts/cluster-administration/cloud-providers/)
 - [CNCF Landscape — Certified Kubernetes](https://landscape.cncf.io/)
 
-## What's Next?
+## O Que Vem Depois?
 
-🎉 **You did it!** You've completed the entire **Kubernetes for Linux Sysadmins** hackathon — from running your first container to deploying on production cloud infrastructure.
+🎉 **Você conseguiu!** Você completou todo o hackathon **Kubernetes para Sysadmins Linux** — desde executar seu primeiro container até fazer deploy em infraestrutura de nuvem em produção.
 
-Here's the learning path you've followed and where to go next:
+Aqui está o caminho de aprendizado que você seguiu e para onde ir a seguir:
 
 ```
 ┌─────────────────────────┐     ┌─────────────────────────────────┐     ┌──────────────────────────────┐
 │  🐧 Linux FUNdamentals  │ ──▶ │  ☸️ Kubernetes for Linux Sysadmins │ ──▶ │  🤖 AI for Infra Professionals │
-│  linuxhackathon.com     │     │  (You are here — COMPLETE! ✅)   │     │  ai4infra.com                │
+│  linuxhackathon.com     │     │  (Você está aqui — COMPLETO! ✅)  │     │  ai4infra.com                │
 └─────────────────────────┘     └─────────────────────────────────┘     └──────────────────────────────┘
 ```
 
-### Recommended next steps
+### Próximos passos recomendados
 
-1. **[AI for Infrastructure Professionals](https://ai4infra.com/)** — Learn how to run AI workloads on the infrastructure you just mastered.
+1. **[AI for Infrastructure Professionals](https://ai4infra.com/)** — Aprenda a executar workloads de IA na infraestrutura que você acabou de dominar.
 
-2. **Get Certified** — You're now prepared to pursue:
+2. **Obtenha Certificação** — Você agora está preparado para buscar:
    ```
    KCNA → CKA → CKAD → CKS
    ```
 
-3. **Explore more at [ricardomartins.com.br](https://ricardomartins.com.br)** — More cloud-native content and learning resources.
+3. **Explore mais em [ricardomartins.com.br](https://ricardomartins.com.br)** — Mais conteúdo cloud-native e recursos de aprendizado.
 
-4. **Give back** — Found a bug or want to improve a challenge? [Open an issue](https://github.com/ricmmartins/fasthack-kubernetes/issues) or submit a PR!
+4. **Contribua** — Encontrou um bug ou quer melhorar um desafio? [Abra uma issue](https://github.com/ricmmartins/fasthack-kubernetes/issues) ou envie um PR!
 
-> **"You started knowing Linux. Now you orchestrate it at scale."** 🚀
+> **"Você começou conhecendo Linux. Agora você o orquestra em escala."** 🚀

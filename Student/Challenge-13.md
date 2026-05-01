@@ -1,189 +1,189 @@
-# Challenge 13 — Troubleshooting
+# Desafio 13 — Troubleshooting
 
-[< Previous Challenge](Challenge-12.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-14.md)
+[< Desafio Anterior](Challenge-12.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-14.md)
 
-## Introduction
+## Introdução
 
-If you're a Linux administrator, you already have a troubleshooting playbook burned into muscle memory: something breaks, you check `dmesg` for kernel messages, `journalctl -xe` for service logs, `strace` to trace a misbehaving process, `netstat` to verify listeners, and `free -h` when you suspect memory pressure. You work systematically from symptoms to root cause.
+Se você é um administrador Linux, já tem um playbook de troubleshooting gravado na memória muscular: algo quebra, você verifica `dmesg` para mensagens do kernel, `journalctl -xe` para logs de serviço, `strace` para rastrear um processo com mau comportamento, `netstat` para verificar listeners, e `free -h` quando suspeita de pressão de memória. Você trabalha sistematicamente dos sintomas à causa raiz.
 
-Kubernetes troubleshooting follows the **exact same philosophy** — different tools, same mental model. Instead of `dmesg`, you read cluster events. Instead of `journalctl`, you `kubectl describe` a Pod. Instead of `strace`, you attach a debug container. The commands are different, but the thought process is identical: **observe symptoms → form hypothesis → verify → fix → confirm**.
+O troubleshooting no Kubernetes segue a **mesma filosofia** — ferramentas diferentes, mesmo modelo mental. Em vez de `dmesg`, você lê eventos do cluster. Em vez de `journalctl`, você faz `kubectl describe` em um Pod. Em vez de `strace`, você anexa um container de debug. Os comandos são diferentes, mas o processo de pensamento é idêntico: **observar sintomas → formar hipótese → verificar → corrigir → confirmar**.
 
-This challenge is **different from every challenge before it**. There are no new concepts to learn. Instead, you get **eight broken deployments** — each with a deliberate bug — and your job is to diagnose and fix each one. This is where everything you learned in Challenges 01–12 comes together.
+Este desafio é **diferente de todos os desafios anteriores**. Não há conceitos novos para aprender. Em vez disso, você recebe **oito deployments quebrados** — cada um com um bug deliberado — e sua tarefa é diagnosticar e corrigir cada um. É aqui que tudo que você aprendeu nos Desafios 01–12 se junta.
 
-## Description
+## Descrição
 
-This challenge is **entirely break & fix**. Apply each broken manifest below (Scenarios 1–8 in the Break & Fix section), diagnose the problem, and fix it. The scenarios are ordered from easiest to hardest.
+Este desafio é **inteiramente break & fix**. Aplique cada manifest quebrado abaixo (Cenários 1–8 na seção Break & Fix), diagnostique o problema e corrija-o. Os cenários estão ordenados do mais fácil ao mais difícil.
 
-Your mission is to:
+Sua missão é:
 
-1. **Create a namespace for this challenge**
+1. **Criar um namespace para este desafio**
 
    ```bash
    kubectl create namespace troubleshooting
    ```
 
-2. **Work through all 8 scenarios** in the [Break & Fix](#break--fix-) section below — apply each broken manifest, observe the symptoms, diagnose the root cause, and apply a fix.
+2. **Trabalhar através de todos os 8 cenários** na seção [Break & Fix](#break--fix-) abaixo — aplique cada manifest quebrado, observe os sintomas, diagnostique a causa raiz e aplique uma correção.
 
-3. **For each scenario, follow this systematic approach** (the same loop every time):
-   - Apply the broken manifest
-   - Observe: `kubectl get pods -n troubleshooting` — what status do you see?
-   - Investigate: `kubectl describe pod <name> -n troubleshooting` — read the Events section
-   - Dig deeper: `kubectl logs <name> -n troubleshooting` — check container output
-   - Broader view: `kubectl get events -n troubleshooting --sort-by='.lastTimestamp'` — cluster-level events
-   - Fix the manifest and re-apply
+3. **Para cada cenário, siga esta abordagem sistemática** (o mesmo loop toda vez):
+   - Aplique o manifest quebrado
+   - Observe: `kubectl get pods -n troubleshooting` — que status você vê?
+   - Investigue: `kubectl describe pod <name> -n troubleshooting` — leia a seção de Events
+   - Investigue mais: `kubectl logs <name> -n troubleshooting` — verifique a saída do container
+   - Visão mais ampla: `kubectl get events -n troubleshooting --sort-by='.lastTimestamp'` — eventos a nível de cluster
+   - Corrija o manifest e re-aplique
 
-4. **Keep notes** — for each scenario, write down:
-   - The symptom you observed
-   - The `kubectl` command that revealed the root cause
-   - The fix you applied
+4. **Mantenha anotações** — para cada cenário, escreva:
+   - O sintoma que você observou
+   - O comando `kubectl` que revelou a causa raiz
+   - A correção que você aplicou
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] All 8 scenarios have been diagnosed and fixed
-- [ ] Scenario 1: Pod `broken-image` is Running with the correct nginx image
-- [ ] Scenario 2: Pod `crashloop-app` is Running and not restarting
-- [ ] Scenario 3: Pod `hungry-pod` is Running (not stuck in Pending)
-- [ ] Scenario 4: Service `web-svc` has at least one Endpoint
-- [ ] Scenario 5: PVC `data-pvc` is Bound
-- [ ] Scenario 6: ServiceAccount `pod-reader` can list pods (`kubectl auth can-i list pods --as=system:serviceaccount:troubleshooting:pod-reader -n troubleshooting` returns `yes`)
-- [ ] Scenario 7: Ingress `broken-ingress` routes traffic to the backend successfully (no 503)
-- [ ] Scenario 8: Pod `leaky-app` is Running and stays Running (not OOMKilled)
-- [ ] You can explain the diagnostic command that revealed each root cause
+- [ ] Todos os 8 cenários foram diagnosticados e corrigidos
+- [ ] Cenário 1: Pod `broken-image` está Running com a imagem nginx correta
+- [ ] Cenário 2: Pod `crashloop-app` está Running e não reiniciando
+- [ ] Cenário 3: Pod `hungry-pod` está Running (não preso em Pending)
+- [ ] Cenário 4: Service `web-svc` tem pelo menos um Endpoint
+- [ ] Cenário 5: PVC `data-pvc` está Bound
+- [ ] Cenário 6: ServiceAccount `pod-reader` pode listar pods (`kubectl auth can-i list pods --as=system:serviceaccount:troubleshooting:pod-reader -n troubleshooting` retorna `yes`)
+- [ ] Cenário 7: Ingress `broken-ingress` roteia tráfego para o backend com sucesso (sem 503)
+- [ ] Cenário 8: Pod `leaky-app` está Running e permanece Running (não OOMKilled)
+- [ ] Você consegue explicar o comando de diagnóstico que revelou cada causa raiz
 
-## Linux ↔ Kubernetes Reference
+## Referência Linux ↔ Kubernetes
 
-| Linux Command | Kubernetes Equivalent | What It Tells You |
+| Comando Linux | Equivalente Kubernetes | O Que Ele Diz |
 |---|---|---|
-| `dmesg` | `kubectl get events --sort-by='.lastTimestamp'` | Cluster-wide events: scheduling failures, image pulls, OOM kills |
-| `journalctl -xe` | `kubectl describe pod <name>` | Detailed status of a single resource — conditions, events, state |
-| `strace -p <PID>` | `kubectl debug -it <pod> --image=busybox --target=<container>` | Attach a debug container to inspect a running process |
-| `systemctl status <svc>` | `kubectl get pods -o wide` | Quick status check — is it running, where, what IP? |
-| `netstat -tlnp` / `ss -tlnp` | `kubectl get svc,endpoints` | Verify listeners and backend targets |
-| `/var/log/messages` | `kubectl logs <pod> [-c container]` | Application stdout/stderr output |
-| `free -h` | `kubectl top nodes` / `kubectl top pods` | Memory and CPU consumption |
-| `lsof -i :<port>` | `kubectl exec <pod> -- netstat -tlnp` | Check which process owns a port inside a Pod |
+| `dmesg` | `kubectl get events --sort-by='.lastTimestamp'` | Eventos de todo o cluster: falhas de agendamento, pulls de imagem, OOM kills |
+| `journalctl -xe` | `kubectl describe pod <name>` | Status detalhado de um único recurso — condições, eventos, estado |
+| `strace -p <PID>` | `kubectl debug -it <pod> --image=busybox --target=<container>` | Anexar um container de debug para inspecionar um processo em execução |
+| `systemctl status <svc>` | `kubectl get pods -o wide` | Verificação rápida de status — está em execução, onde, qual IP? |
+| `netstat -tlnp` / `ss -tlnp` | `kubectl get svc,endpoints` | Verificar listeners e targets de backend |
+| `/var/log/messages` | `kubectl logs <pod> [-c container]` | Saída stdout/stderr da aplicação |
+| `free -h` | `kubectl top nodes` / `kubectl top pods` | Consumo de memória e CPU |
+| `lsof -i :<port>` | `kubectl exec <pod> -- netstat -tlnp` | Verificar qual processo é dono de uma porta dentro de um Pod |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: The universal troubleshooting loop</summary>
+<summary>Dica 1: O loop universal de troubleshooting</summary>
 
-For **every** broken Pod, start with these three commands in this order:
+Para **todo** Pod quebrado, comece com estes três comandos nesta ordem:
 
 ```bash
-# 1. What status is the Pod in?
+# 1. Em que status o Pod está?
 kubectl get pods -n troubleshooting
 
-# 2. WHY is it in that status? (read the Events at the bottom)
+# 2. POR QUE está nesse status? (leia os Events no final)
 kubectl describe pod <pod-name> -n troubleshooting
 
-# 3. What did the container print before it died?
+# 3. O que o container imprimiu antes de morrer?
 kubectl logs <pod-name> -n troubleshooting
 ```
 
-The `Events` section at the bottom of `kubectl describe` is the single most useful piece of output. Read it **every time**.
+A seção `Events` no final do `kubectl describe` é a informação mais útil. Leia-a **toda vez**.
 </details>
 
 <details>
-<summary>Hint 2: ImagePullBackOff — the image name is wrong</summary>
+<summary>Dica 2: ImagePullBackOff — o nome da imagem está errado</summary>
 
-When you see `ImagePullBackOff` or `ErrImagePull`, Kubernetes cannot download the container image. Common causes:
+Quando você vê `ImagePullBackOff` ou `ErrImagePull`, o Kubernetes não consegue baixar a imagem do container. Causas comuns:
 
-- Typo in the image name (check spelling carefully!)
-- Wrong tag (`:lastest` vs `:latest`)
-- Private registry without `imagePullSecrets`
+- Erro de digitação no nome da imagem (verifique a ortografia com cuidado!)
+- Tag errada (`:lastest` vs `:latest`)
+- Registry privado sem `imagePullSecrets`
 
-To verify: `kubectl describe pod <name> -n troubleshooting` will show the exact error message, such as `manifest unknown` or `repository does not exist`.
+Para verificar: `kubectl describe pod <name> -n troubleshooting` mostrará a mensagem de erro exata, como `manifest unknown` ou `repository does not exist`.
 
-To fix a running deployment:
+Para corrigir um deployment em execução:
 ```bash
 kubectl set image deployment/<name> <container>=<correct-image> -n troubleshooting
 ```
 </details>
 
 <details>
-<summary>Hint 3: CrashLoopBackOff — the container keeps dying</summary>
+<summary>Dica 3: CrashLoopBackOff — o container continua morrendo</summary>
 
-`CrashLoopBackOff` means the container starts, exits, and Kubernetes restarts it — over and over with exponential backoff.
+`CrashLoopBackOff` significa que o container inicia, encerra, e o Kubernetes o reinicia — repetidamente com backoff exponencial.
 
-Check **why** it exits:
+Verifique **por que** ele encerra:
 ```bash
 kubectl logs <pod-name> -n troubleshooting
-# If the container already restarted, check the PREVIOUS instance:
+# Se o container já reiniciou, verifique a instância ANTERIOR:
 kubectl logs <pod-name> -n troubleshooting --previous
 ```
 
-Common causes:
-- Bad command/entrypoint — the process exits immediately
-- Missing environment variable that the app requires
-- App crashes on startup (segfault, uncaught exception)
+Causas comuns:
+- Comando/entrypoint ruim — o processo encerra imediatamente
+- Variável de ambiente ausente que a aplicação requer
+- Aplicação crasha na inicialização (segfault, exceção não capturada)
 </details>
 
 <details>
-<summary>Hint 4: Pending Pods — scheduling failures</summary>
+<summary>Dica 4: Pods Pending — falhas de agendamento</summary>
 
-A Pod stuck in `Pending` was never scheduled to a node. Check why:
+Um Pod preso em `Pending` nunca foi agendado em um node. Verifique por quê:
 
 ```bash
 kubectl describe pod <name> -n troubleshooting
 ```
 
-Look for events like:
-- `FailedScheduling` — `Insufficient memory` or `Insufficient cpu`
+Procure por eventos como:
+- `FailedScheduling` — `Insufficient memory` ou `Insufficient cpu`
 - `0/1 nodes are available: 1 Insufficient memory`
 
-On a Kind cluster, check node capacity:
+Em um cluster Kind, verifique a capacidade do node:
 ```bash
 kubectl describe node | grep -A 5 "Allocatable"
 ```
 
-If the Pod requests more resources than any node has, reduce the request.
+Se o Pod requisita mais recursos do que qualquer node tem, reduza o request.
 </details>
 
 <details>
-<summary>Hint 5: Service not routing — selector mismatch</summary>
+<summary>Dica 5: Service não roteando — selector mismatch</summary>
 
-If a Service has no Endpoints, traffic goes nowhere. Check:
+Se um Service não tem Endpoints, o tráfego não vai a lugar nenhum. Verifique:
 
 ```bash
-# Does the service have endpoints?
+# O service tem endpoints?
 kubectl get endpoints <svc-name> -n troubleshooting
 
-# What selector is the service using?
+# Qual selector o service está usando?
 kubectl describe svc <svc-name> -n troubleshooting
 
-# What labels do the pods have?
+# Quais labels os pods têm?
 kubectl get pods -n troubleshooting --show-labels
 ```
 
-The Service selector must **exactly** match the Pod labels. Even `app: web` vs `app: Web` is a mismatch!
+O selector do Service deve corresponder **exatamente** aos labels do Pod. Até `app: web` vs `app: Web` é um mismatch!
 </details>
 
 <details>
-<summary>Hint 6: PVC Pending and RBAC Forbidden</summary>
+<summary>Dica 6: PVC Pending e RBAC Forbidden</summary>
 
 **PVC Pending:**
 ```bash
 kubectl describe pvc <name> -n troubleshooting
 ```
-Look for: `storageclass.storage.k8s.io "<name>" not found`. List available StorageClasses:
+Procure por: `storageclass.storage.k8s.io "<name>" not found`. Liste as StorageClasses disponíveis:
 ```bash
 kubectl get storageclass
 ```
-On Kind, the default StorageClass is `standard`.
+No Kind, a StorageClass padrão é `standard`.
 
 **RBAC Forbidden:**
-Test permissions explicitly:
+Teste permissões explicitamente:
 ```bash
 kubectl auth can-i list pods --as=system:serviceaccount:troubleshooting:pod-reader -n troubleshooting
 ```
-If it says `no`, you need a Role + RoleBinding. Check what exists:
+Se disser `no`, você precisa de um Role + RoleBinding. Verifique o que existe:
 ```bash
 kubectl get roles,rolebindings -n troubleshooting
 ```
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [Kubernetes — Troubleshooting Applications](https://kubernetes.io/docs/tasks/debug/debug-application/)
 - [Kubernetes — Troubleshooting Clusters](https://kubernetes.io/docs/tasks/debug/debug-cluster/)
@@ -198,13 +198,13 @@ kubectl get roles,rolebindings -n troubleshooting
 
 ## Break & Fix 🔧
 
-Work through each scenario in order. They get progressively harder.
+Trabalhe através de cada cenário em ordem. Eles ficam progressivamente mais difíceis.
 
 ---
 
-### Scenario 1: ImagePullBackOff 🖼️
+### Cenário 1: ImagePullBackOff 🖼️
 
-**Apply the broken manifest:**
+**Aplique o manifest quebrado:**
 
 ```yaml
 # scenario-1-imagepull.yaml
@@ -230,18 +230,18 @@ spec:
         - containerPort: 80
 ```
 
-**Symptoms you'll see:**
+**Sintomas que você verá:**
 ```
 NAME                            READY   STATUS             RESTARTS   AGE
 broken-image-xxxxxxxxx-xxxxx   0/1     ImagePullBackOff   0          30s
 ```
 
-**Your task:** Diagnose why the image can't be pulled and fix the Deployment.
+**Sua tarefa:** Diagnostique por que a imagem não pode ser puxada e corrija o Deployment.
 
 <details>
-<summary>💡 Solution</summary>
+<summary>💡 Solução</summary>
 
-**Diagnosis:**
+**Diagnóstico:**
 ```bash
 kubectl describe pod -l app=broken-image -n troubleshooting
 ```
@@ -250,25 +250,25 @@ In the Events section you'll see:
 Failed to pull image "ngnix:latest": ... manifest unknown
 ```
 
-**Root cause:** The image name is `ngnix` — it should be `nginx` (letters transposed).
+**Causa raiz:** O nome da imagem é `ngnix` — deveria ser `nginx` (letras transpostas).
 
-**Fix:**
+**Correção:**
 ```bash
 kubectl set image deployment/broken-image web=nginx:latest -n troubleshooting
 ```
 
-**Verify:**
+**Verificação:**
 ```bash
 kubectl get pods -n troubleshooting -l app=broken-image
-# STATUS should be Running
+# STATUS deve ser Running
 ```
 </details>
 
 ---
 
-### Scenario 2: CrashLoopBackOff 💥
+### Cenário 2: CrashLoopBackOff 💥
 
-**Apply the broken manifest:**
+**Aplique o manifest quebrado:**
 
 ```yaml
 # scenario-2-crashloop.yaml
@@ -284,18 +284,18 @@ spec:
     command: ["cat", "/config/app.conf"]
 ```
 
-**Symptoms you'll see:**
+**Sintomas que você verá:**
 ```
 NAME             READY   STATUS             RESTARTS      AGE
 crashloop-app    0/1     CrashLoopBackOff   3 (20s ago)   60s
 ```
 
-**Your task:** Figure out why the container keeps crashing and fix it so it stays running.
+**Sua tarefa:** Descubra por que o container continua crashando e corrija para que ele permaneça em execução.
 
 <details>
-<summary>💡 Solution</summary>
+<summary>💡 Solução</summary>
 
-**Diagnosis:**
+**Diagnóstico:**
 ```bash
 kubectl logs crashloop-app -n troubleshooting
 ```
@@ -304,9 +304,9 @@ Output:
 cat: can't open '/config/app.conf': No such file or directory
 ```
 
-**Root cause:** The container runs `cat /config/app.conf`, but that file doesn't exist. The command exits immediately with an error, causing the restart loop.
+**Causa raiz:** O container executa `cat /config/app.conf`, mas esse arquivo não existe. O comando encerra imediatamente com um erro, causando o loop de reinício.
 
-**Fix:** Delete the broken Pod and create one with a command that stays running:
+**Correção:** Delete o Pod quebrado e crie um com um comando que permanece em execução:
 
 ```bash
 kubectl delete pod crashloop-app -n troubleshooting
@@ -330,7 +330,7 @@ spec:
 kubectl apply -f scenario-2-fixed.yaml
 ```
 
-**Verify:**
+**Verificação:**
 ```bash
 kubectl get pod crashloop-app -n troubleshooting
 # STATUS: Running, RESTARTS: 0
@@ -339,9 +339,9 @@ kubectl get pod crashloop-app -n troubleshooting
 
 ---
 
-### Scenario 3: Pending Pod (Insufficient Resources) ⏳
+### Cenário 3: Pod Pending (Recursos Insuficientes) ⏳
 
-**Apply the broken manifest:**
+**Aplique o manifest quebrado:**
 
 ```yaml
 # scenario-3-pending.yaml
@@ -360,20 +360,20 @@ spec:
         cpu: "100m"
 ```
 
-**Symptoms you'll see:**
+**Sintomas que você verá:**
 ```
 NAME         READY   STATUS    RESTARTS   AGE
 hungry-pod   0/1     Pending   0          45s
 ```
 
-The Pod stays in `Pending` forever — it is never scheduled.
+O Pod fica em `Pending` para sempre — ele nunca é agendado.
 
-**Your task:** Diagnose why the Pod can't be scheduled and fix it.
+**Sua tarefa:** Diagnostique por que o Pod não pode ser agendado e corrija-o.
 
 <details>
-<summary>💡 Solution</summary>
+<summary>💡 Solução</summary>
 
-**Diagnosis:**
+**Diagnóstico:**
 ```bash
 kubectl describe pod hungry-pod -n troubleshooting
 ```
@@ -382,13 +382,13 @@ In the Events section:
 Warning  FailedScheduling  0/1 nodes are available: 1 Insufficient memory.
 ```
 
-Check how much memory your Kind node actually has:
+Verifique quanta memória seu node Kind realmente tem:
 ```bash
 kubectl describe node | grep -A 5 "Allocatable:"
 ```
-A typical Kind node has 8–16Gi. The Pod requests 64Gi — impossible to schedule.
+Um node Kind típico tem 8–16Gi. O Pod requisita 64Gi — impossível de agendar.
 
-**Fix:** Delete and recreate with a reasonable memory request:
+**Correção:** Delete e recrie com um request de memória razoável:
 
 ```bash
 kubectl delete pod hungry-pod -n troubleshooting
@@ -415,7 +415,7 @@ spec:
 kubectl apply -f scenario-3-fixed.yaml
 ```
 
-**Verify:**
+**Verificação:**
 ```bash
 kubectl get pod hungry-pod -n troubleshooting
 # STATUS: Running
@@ -424,9 +424,9 @@ kubectl get pod hungry-pod -n troubleshooting
 
 ---
 
-### Scenario 4: Service Not Routing (Label Mismatch) 🏷️
+### Cenário 4: Service Não Roteando (Label Mismatch) 🏷️
 
-**Apply the broken manifest:**
+**Aplique o manifest quebrado:**
 
 ```yaml
 # scenario-4-labels.yaml
@@ -464,40 +464,40 @@ spec:
     targetPort: 80
 ```
 
-**Symptoms you'll see:**
+**Sintomas que você verá:**
 
-The Pods are Running, the Service exists, but:
+Os Pods estão Running, o Service existe, mas:
 ```bash
 kubectl get endpoints web-svc -n troubleshooting
 # ENDPOINTS: <none>
 ```
-Any request to the Service times out or returns connection refused.
+Qualquer requisição ao Service expira ou retorna connection refused.
 
-**Your task:** Figure out why the Service has no endpoints and fix it.
+**Sua tarefa:** Descubra por que o Service não tem endpoints e corrija-o.
 
 <details>
-<summary>💡 Solution</summary>
+<summary>💡 Solução</summary>
 
-**Diagnosis:**
+**Diagnóstico:**
 ```bash
-# Check the service selector
+# Verifique o selector do service
 kubectl describe svc web-svc -n troubleshooting
 # Selector: app=web-backend
 
-# Check the pod labels
+# Verifique os labels dos pods
 kubectl get pods -n troubleshooting --show-labels
-# Labels include: app=web-frontend
+# Labels incluem: app=web-frontend
 ```
 
-**Root cause:** The Service selects `app: web-backend`, but the Pods are labeled `app: web-frontend`. The selector doesn't match, so the Service has zero endpoints.
+**Causa raiz:** O Service seleciona `app: web-backend`, mas os Pods estão rotulados como `app: web-frontend`. O selector não corresponde, então o Service tem zero endpoints.
 
-**Fix:** Patch the Service selector to match the Pod labels:
+**Correção:** Faça patch no selector do Service para corresponder aos labels dos Pods:
 
 ```bash
 kubectl patch svc web-svc -n troubleshooting -p '{"spec":{"selector":{"app":"web-frontend"}}}'
 ```
 
-**Verify:**
+**Verificação:**
 ```bash
 kubectl get endpoints web-svc -n troubleshooting
 # ENDPOINTS: 10.244.x.x:80,10.244.x.x:80
@@ -506,9 +506,9 @@ kubectl get endpoints web-svc -n troubleshooting
 
 ---
 
-### Scenario 5: PVC Stuck in Pending 💾
+### Cenário 5: PVC Preso em Pending 💾
 
-**Apply the broken manifest:**
+**Aplique o manifest quebrado:**
 
 ```yaml
 # scenario-5-pvc.yaml
@@ -544,7 +544,7 @@ spec:
       claimName: data-pvc
 ```
 
-**Symptoms you'll see:**
+**Sintomas que você verá:**
 ```bash
 kubectl get pvc -n troubleshooting
 # NAME       STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
@@ -555,14 +555,14 @@ kubectl get pod data-pod -n troubleshooting
 # data-pod   0/1     Pending   0          30s
 ```
 
-Both the PVC and Pod are stuck in Pending.
+Tanto o PVC quanto o Pod ficam presos em Pending.
 
-**Your task:** Diagnose why the PVC can't be bound and fix it.
+**Sua tarefa:** Diagnostique por que o PVC não pode ser vinculado e corrija-o.
 
 <details>
-<summary>💡 Solution</summary>
+<summary>💡 Solução</summary>
 
-**Diagnosis:**
+**Diagnóstico:**
 ```bash
 kubectl describe pvc data-pvc -n troubleshooting
 ```
@@ -571,25 +571,25 @@ In the Events section:
 Warning  ProvisioningFailed  storageclass.storage.k8s.io "premium-fast" not found
 ```
 
-Check what StorageClasses are available:
+Verifique quais StorageClasses estão disponíveis:
 ```bash
 kubectl get storageclass
 # NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE
 # standard (default)   rancher.io/local-path   Delete          WaitForFirstConsumer
 ```
 
-**Root cause:** The PVC references StorageClass `premium-fast`, which doesn't exist. Kind uses `standard` as its default StorageClass.
+**Causa raiz:** O PVC referencia a StorageClass `premium-fast`, que não existe. O Kind usa `standard` como sua StorageClass padrão.
 
-**Fix:** Delete and recreate with the correct StorageClass:
+**Correção:** Delete e recrie com a StorageClass correta:
 
 ```bash
 kubectl delete pod data-pod -n troubleshooting
 kubectl delete pvc data-pvc -n troubleshooting
 ```
 
-Edit the manifest to change `storageClassName: premium-fast` to `storageClassName: standard` (or remove the `storageClassName` field entirely to use the default), then re-apply.
+Edite o manifest para alterar `storageClassName: premium-fast` para `storageClassName: standard` (ou remova o campo `storageClassName` completamente para usar o padrão), e então reaplique.
 
-**Verify:**
+**Verificação:**
 ```bash
 kubectl get pvc -n troubleshooting
 # STATUS: Bound
@@ -601,9 +601,9 @@ kubectl get pod data-pod -n troubleshooting
 
 ---
 
-### Scenario 6: RBAC Forbidden 🔐
+### Cenário 6: RBAC Forbidden 🔐
 
-**Apply the broken manifest:**
+**Aplique o manifest quebrado:**
 
 ```yaml
 # scenario-6-rbac.yaml
@@ -624,36 +624,36 @@ rules:
   verbs: ["get", "list", "watch"]
 ```
 
-**Symptoms you'll see:**
+**Sintomas que você verá:**
 
-The ServiceAccount exists, the Role exists, but:
+O ServiceAccount existe, o Role existe, mas:
 
 ```bash
 kubectl auth can-i list pods --as=system:serviceaccount:troubleshooting:pod-reader -n troubleshooting
 # no
 ```
 
-The ServiceAccount is **forbidden** from listing Pods, even though a Role granting that permission exists.
+O ServiceAccount é **proibido** de listar Pods, mesmo existindo um Role que concede essa permissão.
 
-**Your task:** Diagnose why the ServiceAccount can't list Pods and fix it.
+**Sua tarefa:** Diagnostique por que o ServiceAccount não pode listar Pods e corrija-o.
 
 <details>
-<summary>💡 Solution</summary>
+<summary>💡 Solução</summary>
 
-**Diagnosis:**
+**Diagnóstico:**
 ```bash
-# The Role exists with the correct permissions:
+# O Role existe com as permissões corretas:
 kubectl describe role pod-reader-role -n troubleshooting
 # Resources: pods — Verbs: get, list, watch  ✓
 
-# But is there a RoleBinding connecting the ServiceAccount to the Role?
+# Mas existe um RoleBinding conectando o ServiceAccount ao Role?
 kubectl get rolebindings -n troubleshooting
 # No resources found
 ```
 
-**Root cause:** There is a Role, and there is a ServiceAccount, but there is **no RoleBinding** connecting them. Without the binding, the permission is never granted.
+**Causa raiz:** Existe um Role, e existe um ServiceAccount, mas **não existe um RoleBinding** conectando-os. Sem o binding, a permissão nunca é concedida.
 
-**Fix:** Create the missing RoleBinding:
+**Correção:** Crie o RoleBinding ausente:
 
 ```yaml
 # scenario-6-fix-rolebinding.yaml
@@ -676,7 +676,7 @@ roleRef:
 kubectl apply -f scenario-6-fix-rolebinding.yaml
 ```
 
-**Verify:**
+**Verificação:**
 ```bash
 kubectl auth can-i list pods --as=system:serviceaccount:troubleshooting:pod-reader -n troubleshooting
 # yes
@@ -685,15 +685,15 @@ kubectl auth can-i list pods --as=system:serviceaccount:troubleshooting:pod-read
 
 ---
 
-### Scenario 7: Ingress Returns 503 🌐
+### Cenário 7: Ingress Retorna 503 🌐
 
-> **Prerequisite:** This scenario requires the NGINX Ingress Controller from Challenge 06. If you don't have it installed, run:
+> **Pré-requisito:** Este cenário requer o NGINX Ingress Controller do Desafio 06. Se você não o tem instalado, execute:
 > ```bash
 > kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
 > kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=90s
 > ```
 
-**Apply the broken manifest:**
+**Aplique o manifest quebrado:**
 
 ```yaml
 # scenario-7-ingress.yaml
@@ -752,44 +752,44 @@ spec:
               number: 80
 ```
 
-**Symptoms you'll see:**
+**Sintomas que você verá:**
 
 ```bash
 curl http://scenario7.localhost/
 # <html><body><h1>503 Service Temporarily Unavailable</h1></body></html>
 ```
 
-The Ingress is configured, the Pod is Running, the Service has endpoints — but you get 503.
+O Ingress está configurado, o Pod está Running, o Service tem endpoints — mas você recebe 503.
 
-**Your task:** Diagnose why the Ingress returns 503 and fix it.
+**Sua tarefa:** Diagnostique por que o Ingress retorna 503 e corrija-o.
 
 <details>
-<summary>💡 Solution</summary>
+<summary>💡 Solução</summary>
 
-**Diagnosis:**
+**Diagnóstico:**
 ```bash
-# Pod is running — check
+# Pod está rodando — ok
 kubectl get pods -l app=backend -n troubleshooting
 
-# Service has endpoints — check
+# Service tem endpoints — ok
 kubectl get endpoints backend-svc -n troubleshooting
 # ENDPOINTS: 10.244.x.x:9999
 
-# Wait — the endpoint port is 9999, but the container listens on 5678!
+# Espere — a porta do endpoint é 9999, mas o container escuta na 5678!
 kubectl describe svc backend-svc -n troubleshooting
 # TargetPort: 9999
 ```
 
-The Service forwards traffic to port 9999, but `http-echo` listens on port **5678**. The connection is refused at the Pod level, and the Ingress Controller translates that to a 503.
+O Service encaminha tráfego para a porta 9999, mas o `http-echo` escuta na porta **5678**. A conexão é recusada no nível do Pod, e o Ingress Controller traduz isso para um 503.
 
-**Root cause:** The Service `targetPort` is `9999` — it should be `5678` to match the container's listening port.
+**Causa raiz:** O `targetPort` do Service é `9999` — deveria ser `5678` para corresponder à porta de escuta do container.
 
-**Fix:**
+**Correção:**
 ```bash
 kubectl patch svc backend-svc -n troubleshooting -p '{"spec":{"ports":[{"port":80,"targetPort":5678}]}}'
 ```
 
-**Verify:**
+**Verificação:**
 ```bash
 curl http://scenario7.localhost/
 # Scenario 7 works!
@@ -798,9 +798,9 @@ curl http://scenario7.localhost/
 
 ---
 
-### Scenario 8: OOMKilled 💀
+### Cenário 8: OOMKilled 💀
 
-**Apply the broken manifest:**
+**Aplique o manifest quebrado:**
 
 ```yaml
 # scenario-8-oomkilled.yaml
@@ -822,21 +822,21 @@ spec:
         memory: "32Mi"
 ```
 
-**Symptoms you'll see:**
+**Sintomas que você verá:**
 ```bash
 kubectl get pods -n troubleshooting
 # NAME        READY   STATUS      RESTARTS      AGE
 # leaky-app   0/1     OOMKilled   3 (20s ago)   60s
 ```
 
-The Pod keeps restarting with `OOMKilled` status.
+O Pod continua reiniciando com status `OOMKilled`.
 
-**Your task:** Diagnose what's happening and fix it so the Pod stays running.
+**Sua tarefa:** Diagnostique o que está acontecendo e corrija para que o Pod continue rodando.
 
 <details>
-<summary>💡 Solution</summary>
+<summary>💡 Solução</summary>
 
-**Diagnosis:**
+**Diagnóstico:**
 ```bash
 kubectl describe pod leaky-app -n troubleshooting
 ```
@@ -847,11 +847,11 @@ Last State:  Terminated
   Exit Code: 137
 ```
 
-The `stress` tool is configured to allocate 256M of memory (`--vm-bytes 256M`), but the container has a hard memory limit of 64Mi. When the process exceeds 64Mi, the Linux kernel's OOM killer terminates it (exit code 137 = SIGKILL).
+A ferramenta `stress` está configurada para alocar 256M de memória (`--vm-bytes 256M`), mas o container tem um limite de memória rígido de 64Mi. Quando o processo excede 64Mi, o OOM killer do kernel Linux o termina (exit code 137 = SIGKILL).
 
-**Root cause:** The memory limit (64Mi) is far below what the process needs (256M).
+**Causa raiz:** O limite de memória (64Mi) está muito abaixo do que o processo precisa (256M).
 
-**Fix:** Either increase the memory limit to accommodate the workload, or reduce the memory consumption. Delete and recreate:
+**Correção:** Aumente o limite de memória para acomodar a carga de trabalho, ou reduza o consumo de memória. Delete e recrie:
 
 ```bash
 kubectl delete pod leaky-app -n troubleshooting
@@ -881,37 +881,37 @@ spec:
 kubectl apply -f scenario-8-fixed.yaml
 ```
 
-**Verify:**
+**Verificação:**
 ```bash
 kubectl get pod leaky-app -n troubleshooting
 # STATUS: Running, RESTARTS: 0
 
-# Confirm it's actually using memory:
+# Confirme que está realmente usando memória:
 kubectl top pod leaky-app -n troubleshooting
 ```
 </details>
 
 ---
 
-## 🏆 Bonus: Debug Like a Pro
+## 🏆 Bônus: Debug Como um Profissional
 
-After completing all 8 scenarios, try these power moves:
+Após completar todos os 8 cenários, tente estas técnicas avançadas:
 
-**Ephemeral debug containers** — attach a troubleshooting container to a running Pod without modifying it:
+**Containers de debug efêmeros** — anexe um container de troubleshooting a um Pod em execução sem modificá-lo:
 ```bash
 kubectl debug -it <pod-name> -n troubleshooting --image=busybox:1.37 --target=<container-name>
 ```
 
-**Node-level debugging** — get a shell on the Kind node itself:
+**Debug em nível de node** — obtenha um shell no próprio node Kind:
 ```bash
 kubectl debug node/<node-name> -it --image=busybox:1.37
 ```
 
-**Rapid event monitoring** — watch events in real time as you apply broken manifests:
+**Monitoramento rápido de eventos** — observe eventos em tempo real enquanto aplica manifests quebrados:
 ```bash
 kubectl get events -n troubleshooting --watch
 ```
 
 ---
 
-> **🎉 Congratulations!** If you made it through all 8 scenarios, you've built a real troubleshooting toolkit. These are the same failure modes you'll see in production — now you know how to diagnose them systematically.
+> **🎉 Parabéns!** Se você completou todos os 8 cenários, você construiu um verdadeiro kit de ferramentas de troubleshooting. Estes são os mesmos modos de falha que você verá em produção — agora você sabe como diagnosticá-los sistematicamente.
