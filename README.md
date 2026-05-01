@@ -215,7 +215,10 @@ Contributions in the form of bug reports, feature requests, and PRs are always w
 
 ## 🌐 Portuguese Content
 
-Looking for content in Portuguese? Visit **[ricardomartins.com.br](https://ricardomartins.com.br)** for articles, tutorials, and resources on Linux, Kubernetes, and Cloud Infrastructure.
+🇧🇷 **This hackathon is also available in Brazilian Portuguese!**
+Check out the [`pt-br`](https://github.com/ricmmartins/fasthack-kubernetes/tree/pt-br) branch for the full translated version of all challenges, coach guides, and documentation.
+
+For additional articles, tutorials, and resources on Linux, Kubernetes, and Cloud Infrastructure in Portuguese, visit **[ricardomartins.com.br](https://ricardomartins.com.br)**.
 
 ## Show Your Support
 
