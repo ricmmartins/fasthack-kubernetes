@@ -1,84 +1,84 @@
-# Challenge 05 — Services and Networking
+# Desafio 05 — Services e Networking
 
-[< Previous Challenge](Challenge-04.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-06.md)
+[< Desafio Anterior](Challenge-04.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-06.md)
 
-## Introduction
+## Introdução
 
-On a Linux box, you expose a daemon to the network by binding it to a port, then manage access with `iptables` rules. If other services need to find it, you add entries to `/etc/hosts` or rely on DNS. Port forwarding with `ssh -L` lets you reach things behind a firewall. And when you want to lock down traffic, `ufw` or raw `iptables` rules act as your firewall.
+Em um servidor Linux, você expõe um daemon para a rede vinculando-o a uma porta e depois gerencia o acesso com regras `iptables`. Se outros serviços precisam encontrá-lo, você adiciona entradas no `/etc/hosts` ou depende do DNS. O port forwarding com `ssh -L` permite alcançar coisas atrás de um firewall. E quando você quer restringir o tráfego, `ufw` ou regras `iptables` puras atuam como seu firewall.
 
-Kubernetes follows the same ideas but automates them at a cluster level:
+O Kubernetes segue as mesmas ideias, mas as automatiza no nível do cluster:
 
-- **Services** replace manual `iptables` rules — they provide a stable IP and port for a set of Pods, automatically load-balancing traffic across healthy replicas.
-- **CoreDNS** replaces `/etc/hosts` — every Service gets a DNS name (`service-name.namespace.svc.cluster.local`) that any Pod in the cluster can resolve.
-- **`kubectl port-forward`** replaces `ssh -L` — it tunnels a local port to a Pod or Service inside the cluster.
-- **NetworkPolicies** replace firewall rules — they control which Pods can talk to which, using label selectors instead of IP addresses.
+- **Services** substituem regras manuais de `iptables` — eles fornecem um IP e porta estáveis para um conjunto de Pods, fazendo balanceamento de carga automático entre réplicas saudáveis.
+- **CoreDNS** substitui o `/etc/hosts` — cada Service recebe um nome DNS (`service-name.namespace.svc.cluster.local`) que qualquer Pod no cluster pode resolver.
+- **`kubectl port-forward`** substitui o `ssh -L` — ele cria um túnel de uma porta local para um Pod ou Service dentro do cluster.
+- **NetworkPolicies** substituem regras de firewall — elas controlam quais Pods podem se comunicar com quais, usando seletores de labels em vez de endereços IP.
 
-In this challenge you will expose Pods with different Service types, use DNS to wire a multi-tier app together, and lock down traffic with a NetworkPolicy — all on your local Kind cluster.
+Neste desafio você vai expor Pods com diferentes tipos de Service, usar DNS para conectar uma aplicação multi-camadas e restringir o tráfego com uma NetworkPolicy — tudo no seu cluster Kind local.
 
-> **Cluster requirement:** All exercises use a local [Kind](https://kind.sigs.k8s.io/) cluster. If you haven't created one yet:
+> **Requisito de cluster:** Todos os exercícios usam um cluster [Kind](https://kind.sigs.k8s.io/) local. Se você ainda não criou um:
 > ```bash
 > kind create cluster --name fasthack
 > ```
 
-## Description
+## Descrição
 
-1. **Create a ClusterIP Service to expose a Deployment internally**
+1. **Criar um Service ClusterIP para expor um Deployment internamente**
 
-   Create a Deployment named `web` running `nginx:stable` with **3 replicas**. Then create a ClusterIP Service named `web-svc` that routes traffic on port 80 to the Deployment's Pods. Verify the Service has Endpoints and that you can reach it from inside the cluster.
+   Crie um Deployment chamado `web` executando `nginx:stable` com **3 réplicas**. Em seguida, crie um Service ClusterIP chamado `web-svc` que roteia tráfego na porta 80 para os Pods do Deployment. Verifique se o Service tem Endpoints e se você consegue acessá-lo de dentro do cluster.
 
-2. **Create a NodePort Service to access the app from outside the cluster**
+2. **Criar um Service NodePort para acessar a aplicação de fora do cluster**
 
-   Create a second Service named `web-nodeport` of type `NodePort` that exposes the same `web` Deployment on a node port. Verify you can reach the app from your host machine by curling the node's IP and the assigned port.
+   Crie um segundo Service chamado `web-nodeport` do tipo `NodePort` que expõe o mesmo Deployment `web` em uma porta do node. Verifique se você consegue acessar a aplicação da sua máquina host fazendo curl no IP do node e na porta atribuída.
 
-3. **Use DNS resolution to discover Services by name**
+3. **Usar resolução DNS para descobrir Services pelo nome**
 
-   From a temporary Pod, use `nslookup` or `dig` to resolve `web-svc.default.svc.cluster.local`. Then verify the Pod's `/etc/resolv.conf` to see how Kubernetes auto-configures DNS. Confirm you can `curl http://web-svc` from within the same namespace, and `curl http://web-svc.default.svc.cluster.local` from a different namespace.
+   A partir de um Pod temporário, use `nslookup` ou `dig` para resolver `web-svc.default.svc.cluster.local`. Em seguida, verifique o `/etc/resolv.conf` do Pod para ver como o Kubernetes configura o DNS automaticamente. Confirme que você consegue fazer `curl http://web-svc` de dentro do mesmo namespace, e `curl http://web-svc.default.svc.cluster.local` de um namespace diferente.
 
-4. **Create a multi-tier app: frontend + backend connected via Services**
+4. **Criar uma aplicação multi-camadas: frontend + backend conectados via Services**
 
-   - Create a Deployment named `backend` running `hashicorp/http-echo` with the argument `-text=Hello from backend`.
-   - Create a ClusterIP Service named `backend-svc` exposing it on port 5678.
-   - Create a Deployment named `frontend` running `curlimages/curl` with a command that loops forever, curling `http://backend-svc:5678` every 5 seconds.
-   - Verify the frontend can reach the backend by checking the frontend Pod logs.
+   - Crie um Deployment chamado `backend` executando `hashicorp/http-echo` com o argumento `-text=Hello from backend`.
+   - Crie um Service ClusterIP chamado `backend-svc` expondo-o na porta 5678.
+   - Crie um Deployment chamado `frontend` executando `curlimages/curl` com um comando que executa em loop infinito, fazendo curl em `http://backend-svc:5678` a cada 5 segundos.
+   - Verifique se o frontend consegue alcançar o backend verificando os logs do Pod frontend.
 
-5. **Explore NetworkPolicy to restrict Pod-to-Pod communication**
+5. **Explorar NetworkPolicy para restringir comunicação Pod-a-Pod**
 
-   > **Note:** Kind's default CNI (`kindnet`) does **not** support NetworkPolicies. For this task, either recreate your cluster with Calico as the CNI, or install Calico on your existing cluster (see Hint 4 for instructions).
+   > **Nota:** O CNI padrão do Kind (`kindnet`) **não** suporta NetworkPolicies. Para esta tarefa, recrie seu cluster com Calico como CNI, ou instale o Calico no seu cluster existente (veja a Dica 4 para instruções).
 
-   - First, verify that all Pods can communicate with each other freely (the default).
-   - Create a NetworkPolicy that **denies all ingress** to the `backend` Pods.
-   - Confirm the frontend can **no longer** reach the backend.
-   - Update the NetworkPolicy to allow ingress **only** from Pods with the label `app: frontend` on port 5678.
-   - Confirm the frontend can reach the backend again, but other Pods still cannot.
+   - Primeiro, verifique que todos os Pods podem se comunicar livremente entre si (o padrão).
+   - Crie uma NetworkPolicy que **nega todo ingress** para os Pods `backend`.
+   - Confirme que o frontend **não consegue mais** alcançar o backend.
+   - Atualize a NetworkPolicy para permitir ingress **apenas** de Pods com o label `app: frontend` na porta 5678.
+   - Confirme que o frontend consegue alcançar o backend novamente, mas outros Pods ainda não conseguem.
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] The `web-svc` ClusterIP Service has 3 Endpoints matching the `web` Deployment Pods.
-- [ ] You can reach `web-svc` from inside the cluster using a temporary Pod (`kubectl run --rm -it` with `curl`).
-- [ ] The `web-nodeport` NodePort Service is accessible from your host machine.
-- [ ] DNS resolution for `web-svc.default.svc.cluster.local` returns the correct ClusterIP.
-- [ ] The `frontend` Pod logs show repeated successful responses from the `backend` Service.
-- [ ] After applying the deny-all NetworkPolicy, the frontend **cannot** reach the backend.
-- [ ] After applying the allow-frontend NetworkPolicy, the frontend **can** reach the backend, but a test Pod without the `app: frontend` label **cannot**.
+- [ ] O Service ClusterIP `web-svc` tem 3 Endpoints correspondentes aos Pods do Deployment `web`.
+- [ ] Você consegue alcançar `web-svc` de dentro do cluster usando um Pod temporário (`kubectl run --rm -it` com `curl`).
+- [ ] O Service NodePort `web-nodeport` está acessível a partir da sua máquina host.
+- [ ] A resolução DNS para `web-svc.default.svc.cluster.local` retorna o ClusterIP correto.
+- [ ] Os logs do Pod `frontend` mostram respostas bem-sucedidas repetidas do Service `backend`.
+- [ ] Após aplicar a NetworkPolicy deny-all, o frontend **não consegue** alcançar o backend.
+- [ ] Após aplicar a NetworkPolicy allow-frontend, o frontend **consegue** alcançar o backend, mas um Pod de teste sem o label `app: frontend` **não consegue**.
 
-## Linux ↔ Kubernetes Reference
+## Referência Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent | Notes |
+| Conceito Linux | Equivalente Kubernetes | Notas |
 |---|---|---|
-| `iptables` rules | Service (ClusterIP/NodePort) | kube-proxy programs iptables (or IPVS) rules to route traffic to Pod IPs. |
-| `/etc/hosts` | CoreDNS | Automatic DNS for every Service — no manual entries needed. |
-| DNS resolution (`dig`, `nslookup`) | `service.namespace.svc.cluster.local` | Every Service gets a fully qualified domain name. Within the same namespace, the short name works. |
-| Port forwarding (`ssh -L`) | `kubectl port-forward` | Tunnels a local port to a Pod or Service — useful for debugging without exposing NodePorts. |
-| Firewall rules (`ufw` / `iptables`) | NetworkPolicy | Controls ingress/egress per Pod using label selectors instead of IPs. |
-| `netstat -tlnp` / `ss -tlnp` | `kubectl get endpoints` | Shows the actual Pod IPs and ports backing a Service. |
-| `/etc/resolv.conf` | Pod's `/etc/resolv.conf` (auto-configured) | kubelet injects nameserver entries pointing to CoreDNS so Pods can resolve Services. |
+| Regras `iptables` | Service (ClusterIP/NodePort) | O kube-proxy programa regras iptables (ou IPVS) para rotear tráfego para IPs de Pods. |
+| `/etc/hosts` | CoreDNS | DNS automático para cada Service — nenhuma entrada manual necessária. |
+| Resolução DNS (`dig`, `nslookup`) | `service.namespace.svc.cluster.local` | Cada Service recebe um nome de domínio totalmente qualificado. Dentro do mesmo namespace, o nome curto funciona. |
+| Port forwarding (`ssh -L`) | `kubectl port-forward` | Cria túnel de uma porta local para um Pod ou Service — útil para debug sem expor NodePorts. |
+| Regras de firewall (`ufw` / `iptables`) | NetworkPolicy | Controla ingress/egress por Pod usando seletores de labels em vez de IPs. |
+| `netstat -tlnp` / `ss -tlnp` | `kubectl get endpoints` | Mostra os IPs e portas reais dos Pods que sustentam um Service. |
+| `/etc/resolv.conf` | `/etc/resolv.conf` do Pod (auto-configurado) | O kubelet injeta entradas de nameserver apontando para o CoreDNS para que os Pods possam resolver Services. |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: Creating the Deployment and ClusterIP Service</summary>
+<summary>Dica 1: Criando o Deployment e o Service ClusterIP</summary>
 
-Create a file named `web-deployment.yaml`:
+Crie um arquivo chamado `web-deployment.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -102,7 +102,7 @@ spec:
             - containerPort: 80
 ```
 
-Create a file named `web-svc.yaml`:
+Crie um arquivo chamado `web-svc.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -118,7 +118,7 @@ spec:
       targetPort: 80
 ```
 
-Apply both and verify:
+Aplique ambos e verifique:
 
 ```bash
 kubectl apply -f web-deployment.yaml
@@ -137,9 +137,9 @@ kubectl run tmp-curl --rm -it --restart=Never --image=curlimages/curl -- curl -s
 </details>
 
 <details>
-<summary>Hint 2: NodePort Service and DNS discovery</summary>
+<summary>Dica 2: Service NodePort e descoberta DNS</summary>
 
-Create a file named `web-nodeport.yaml`:
+Crie um arquivo chamado `web-nodeport.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -171,7 +171,7 @@ NODE_PORT=$(kubectl get svc web-nodeport -o jsonpath='{.spec.ports[0].nodePort}'
 curl -s http://${NODE_IP}:${NODE_PORT}
 ```
 
-**DNS discovery — verify resolution from inside the cluster:**
+**Descoberta DNS — verifique a resolução de dentro do cluster:**
 
 ```bash
 # Launch a temporary DNS debugging Pod
@@ -185,14 +185,14 @@ wget -qO- http://web-svc
 exit
 ```
 
-Notice that `/etc/resolv.conf` contains `search default.svc.cluster.local svc.cluster.local cluster.local` — this is how the short name `web-svc` resolves automatically within the same namespace.
+Note que `/etc/resolv.conf` contém `search default.svc.cluster.local svc.cluster.local cluster.local` — é assim que o nome curto `web-svc` resolve automaticamente dentro do mesmo namespace.
 
 </details>
 
 <details>
-<summary>Hint 3: Multi-tier app (frontend + backend)</summary>
+<summary>Dica 3: Aplicação multi-camadas (frontend + backend)</summary>
 
-Create a file named `multi-tier.yaml`:
+Crie um arquivo chamado `multi-tier.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -265,7 +265,7 @@ kubectl get pods -l 'app in (frontend,backend)' --watch
 kubectl logs -l app=frontend --follow
 ```
 
-You should see output like:
+Você deve ver uma saída como:
 ```
 Mon Jun 16 12:00:00 UTC 2025 - Hello from backend
 Mon Jun 16 12:00:05 UTC 2025 - Hello from backend
@@ -274,13 +274,13 @@ Mon Jun 16 12:00:05 UTC 2025 - Hello from backend
 </details>
 
 <details>
-<summary>Hint 4: NetworkPolicy (including Calico setup for Kind)</summary>
+<summary>Dica 4: NetworkPolicy (incluindo setup do Calico para Kind)</summary>
 
-**Step 1 — Install a CNI that supports NetworkPolicy in Kind:**
+**Passo 1 — Instale um CNI que suporte NetworkPolicy no Kind:**
 
-Kind's default CNI (`kindnet`) does not enforce NetworkPolicies. You have two options:
+O CNI padrão do Kind (`kindnet`) não aplica NetworkPolicies. Você tem duas opções:
 
-**Option A — Create a new cluster with Calico:**
+**Opção A — Criar um novo cluster com Calico:**
 
 ```bash
 # Delete existing cluster
@@ -302,16 +302,16 @@ kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/
 kubectl -n kube-system get pods -l k8s-app=calico-node --watch
 ```
 
-**Option B — If you want to keep your cluster, install Calico alongside kindnet** (not recommended for production but works for learning):
+**Opção B — Se você quiser manter seu cluster, instale o Calico junto com o kindnet** (não recomendado para produção, mas funciona para aprendizado):
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/calico.yaml
 kubectl -n kube-system get pods -l k8s-app=calico-node --watch
 ```
 
-After Calico is running, re-apply your Deployments and Services from the previous tasks if you recreated the cluster.
+Após o Calico estar rodando, reaplique seus Deployments e Services das tarefas anteriores se você recriou o cluster.
 
-**Step 2 — Verify open communication (before any policy):**
+**Passo 2 — Verificar comunicação aberta (antes de qualquer política):**
 
 ```bash
 # Test from a pod without the frontend label
@@ -319,9 +319,9 @@ kubectl run tmp-test --rm -it --restart=Never --image=curlimages/curl -- curl -s
 # Expected: "Hello from backend"
 ```
 
-**Step 3 — Deny all ingress to backend Pods:**
+**Passo 3 — Negar todo ingress para os Pods backend:**
 
-Create a file named `deny-all-backend.yaml`:
+Crie um arquivo chamado `deny-all-backend.yaml`:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -347,9 +347,9 @@ kubectl run tmp-test --rm -it --restart=Never --image=curlimages/curl -- curl -s
 kubectl logs -l app=frontend --tail=5
 ```
 
-**Step 4 — Allow ingress only from the frontend:**
+**Passo 4 — Permitir ingress apenas do frontend:**
 
-Create a file named `allow-frontend-to-backend.yaml`:
+Crie um arquivo chamado `allow-frontend-to-backend.yaml`:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -390,7 +390,7 @@ kubectl run tmp-test --rm -it --restart=Never --image=curlimages/curl -- curl -s
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [Service — Kubernetes official docs](https://kubernetes.io/docs/concepts/services-networking/service/)
 - [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
@@ -400,13 +400,13 @@ kubectl run tmp-test --rm -it --restart=Never --image=curlimages/curl -- curl -s
 - [Debugging DNS Resolution](https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/)
 - [Kind — Configuration](https://kind.sigs.k8s.io/docs/user/configuration/)
 
-## Break & Fix 🔧
+## Quebra & Conserta 🔧
 
-Try each scenario, diagnose the problem, and fix it.
+Tente cada cenário, diagnostique o problema e corrija.
 
-### Scenario 1 — Service selector doesn't match Pod labels (empty Endpoints)
+### Cenário 1 — Seletor do Service não corresponde aos labels dos Pods (Endpoints vazios)
 
-Create a Service with a mismatched selector:
+Crie um Service com um seletor incompatível:
 
 ```yaml
 apiVersion: v1
@@ -427,9 +427,9 @@ kubectl apply -f broken-svc.yaml
 kubectl get endpoints broken-svc
 ```
 
-**What you'll see:** The Endpoints list is `<none>` — no Pods match the selector `app: webapp` because the Deployment uses `app: web`.
+**O que você verá:** A lista de Endpoints é `<none>` — nenhum Pod corresponde ao seletor `app: webapp` porque o Deployment usa `app: web`.
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
 # Compare the Service selector with actual Pod labels
@@ -437,12 +437,12 @@ kubectl describe svc broken-svc | grep Selector
 kubectl get pods --show-labels
 ```
 
-**Linux analogy:** This is like writing an `iptables` DNAT rule that forwards to an IP address where nothing is listening — packets arrive but nobody answers.
+**Analogia Linux:** É como escrever uma regra `iptables` DNAT que encaminha para um endereço IP onde nada está escutando — os pacotes chegam mas ninguém responde.
 
 <details>
-<summary>Fix</summary>
+<summary>Correção</summary>
 
-Update the Service selector to match the Pod labels:
+Atualize o seletor do Service para corresponder aos labels dos Pods:
 
 ```bash
 kubectl patch svc broken-svc -p '{"spec":{"selector":{"app":"web"}}}'
@@ -450,15 +450,15 @@ kubectl patch svc broken-svc -p '{"spec":{"selector":{"app":"web"}}}'
 kubectl get endpoints broken-svc
 ```
 
-You should now see the Pod IPs listed as Endpoints.
+Agora você deve ver os IPs dos Pods listados como Endpoints.
 
 </details>
 
 ---
 
-### Scenario 2 — Wrong `targetPort` in Service (connection refused)
+### Cenário 2 — `targetPort` errado no Service (conexão recusada)
 
-Create a Service that points to the wrong port:
+Crie um Service que aponta para a porta errada:
 
 ```yaml
 apiVersion: v1
@@ -484,9 +484,9 @@ kubectl get endpoints wrong-port-svc
 kubectl run tmp-curl --rm -it --restart=Never --image=curlimages/curl -- curl -s --max-time 5 http://wrong-port-svc
 ```
 
-**What you'll see:** The Endpoints list shows Pod IPs on port 8080, but nginx listens on port 80. Connections get "connection refused."
+**O que você verá:** A lista de Endpoints mostra IPs de Pods na porta 8080, mas o nginx escuta na porta 80. Conexões recebem "connection refused."
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
 # Check what port the Endpoints are actually using
@@ -496,12 +496,12 @@ kubectl get endpoints wrong-port-svc -o yaml
 kubectl exec deploy/web -- ss -tlnp
 ```
 
-**Linux analogy:** This is like setting up a port-forward to `localhost:8080` when the daemon is actually listening on `localhost:80`.
+**Analogia Linux:** É como configurar um port-forward para `localhost:8080` quando o daemon está realmente escutando em `localhost:80`.
 
 <details>
-<summary>Fix</summary>
+<summary>Correção</summary>
 
-Change `targetPort` to match the container port:
+Altere `targetPort` para corresponder à porta do container:
 
 ```bash
 kubectl patch svc wrong-port-svc -p '{"spec":{"ports":[{"port":80,"targetPort":80,"protocol":"TCP"}]}}'
@@ -514,9 +514,9 @@ kubectl run tmp-curl --rm -it --restart=Never --image=curlimages/curl -- curl -s
 
 ---
 
-### Scenario 3 — NetworkPolicy denying all traffic (app unreachable)
+### Cenário 3 — NetworkPolicy negando todo tráfego (aplicação inacessível)
 
-Apply a NetworkPolicy that denies all ingress to all Pods in the namespace:
+Aplique uma NetworkPolicy que nega todo ingress para todos os Pods no namespace:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -539,9 +539,9 @@ kubectl run tmp-curl --rm -it --restart=Never --image=curlimages/curl -- curl -s
 kubectl logs -l app=frontend --tail=3
 ```
 
-**What you'll see:** All inter-Pod communication in the namespace is blocked. The empty `podSelector: {}` selects **every** Pod, and the `Ingress` policy type with no `ingress` rules means "deny all inbound."
+**O que você verá:** Toda comunicação entre Pods no namespace está bloqueada. O `podSelector: {}` vazio seleciona **todos** os Pods, e o tipo de política `Ingress` sem regras `ingress` significa "negar toda entrada."
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
 # List all NetworkPolicies in the namespace
@@ -551,17 +551,17 @@ kubectl get networkpolicy
 kubectl describe networkpolicy deny-all
 ```
 
-**Linux analogy:** This is like running `iptables -P INPUT DROP` without adding any ACCEPT rules — everything is blocked.
+**Analogia Linux:** É como executar `iptables -P INPUT DROP` sem adicionar nenhuma regra ACCEPT — tudo fica bloqueado.
 
 <details>
-<summary>Fix</summary>
+<summary>Correção</summary>
 
-Either delete the blanket deny policy:
+Ou delete a política de negação geral:
 
 ```bash
 kubectl delete networkpolicy deny-all
 ```
 
-Or replace it with a more targeted policy that only restricts specific Pods while allowing the traffic you need (like the `allow-frontend-to-backend` policy from Task 5).
+Ou substitua por uma política mais direcionada que restringe apenas Pods específicos enquanto permite o tráfego necessário (como a política `allow-frontend-to-backend` da Tarefa 5).
 
 </details>

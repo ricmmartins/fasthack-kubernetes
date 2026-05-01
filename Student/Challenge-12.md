@@ -1,35 +1,35 @@
-# Challenge 12 — Observability
+# Desafio 12 — Observabilidade
 
-[< Previous Challenge](Challenge-11.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-13.md)
+[< Desafio Anterior](Challenge-11.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-13.md)
 
-## Introduction
+## Introdução
 
-On a Linux server you already know the observability toolkit: `journalctl -u nginx` to read service logs, `tail -f /var/log/syslog` to follow them in real time, `top` or `htop` for CPU and memory usage, `sar` and `vmstat` for historical metrics, and Nagios or Zabbix for health-check alerts. Your application writes to stdout/stderr (or to files under `/var/log`), systemd watches your process and restarts it if it dies, and you wire up Grafana or Cacti against Prometheus or collectd to get dashboards.
+Em um servidor Linux você já conhece o kit de ferramentas de observabilidade: `journalctl -u nginx` para ler logs de serviços, `tail -f /var/log/syslog` para acompanhá-los em tempo real, `top` ou `htop` para uso de CPU e memória, `sar` e `vmstat` para métricas históricas, e Nagios ou Zabbix para alertas de health-check. Sua aplicação escreve no stdout/stderr (ou em arquivos sob `/var/log`), o systemd monitora seu processo e o reinicia se morrer, e você conecta Grafana ou Cacti contra Prometheus ou collectd para ter dashboards.
 
-Kubernetes follows the **exact same three-pillar model** — Logs, Metrics, and Traces — but replaces the Linux-specific tools with cluster-aware equivalents:
+O Kubernetes segue o **mesmo modelo de três pilares** — Logs, Métricas e Traces — mas substitui as ferramentas específicas do Linux por equivalentes que entendem o cluster:
 
-| Pillar | What it answers | Linux tool | Kubernetes tool |
+| Pilar | O que responde | Ferramenta Linux | Ferramenta Kubernetes |
 |---|---|---|---|
-| **Logs** | "What happened?" | `journalctl`, `tail -f`, `/var/log` | `kubectl logs`, container stdout/stderr |
-| **Metrics** | "How is it performing?" | `top`, `sar`, `vmstat`, Prometheus on bare-metal | `kubectl top`, Metrics Server, Prometheus |
-| **Traces** | "Where did time go across services?" | `strace`, application-level tracing | OpenTelemetry, Jaeger (concept only in this lab) |
+| **Logs** | "O que aconteceu?" | `journalctl`, `tail -f`, `/var/log` | `kubectl logs`, stdout/stderr do container |
+| **Métricas** | "Como está o desempenho?" | `top`, `sar`, `vmstat`, Prometheus em bare-metal | `kubectl top`, Metrics Server, Prometheus |
+| **Traces** | "Onde o tempo foi gasto entre serviços?" | `strace`, tracing a nível de aplicação | OpenTelemetry, Jaeger (apenas conceito neste lab) |
 
-In addition, Linux uses **systemd watchdogs** and **Nagios health checks** to know if a process is alive and healthy. Kubernetes replaces those with **Liveness, Readiness, and Startup Probes** — built-in health checks that run inside the cluster and drive automated restart and traffic decisions.
+Além disso, o Linux usa **watchdogs do systemd** e **health checks do Nagios** para saber se um processo está vivo e saudável. O Kubernetes substitui esses por **Liveness, Readiness e Startup Probes** — health checks integrados que rodam dentro do cluster e controlam decisões automatizadas de reinício e tráfego.
 
-In this challenge you will collect logs, inspect resource metrics, deploy a full monitoring stack (Prometheus + Grafana), and configure health probes — all on your local Kind cluster.
+Neste desafio, você coletará logs, inspecionará métricas de recursos, implantará uma stack completa de monitoramento (Prometheus + Grafana) e configurará health probes — tudo no seu cluster Kind local.
 
-> **Cluster requirement:** All exercises use a local [Kind](https://kind.sigs.k8s.io/) cluster — no cloud account needed. If you haven't created one yet, run:
+> **Requisito de cluster:** Todos os exercícios usam um cluster local [Kind](https://kind.sigs.k8s.io/) — nenhuma conta em nuvem necessária. Se você ainda não criou um, execute:
 > ```bash
 > kind create cluster --name fasthack
 > ```
 
-## Description
+## Descrição
 
-### Task 1 — Container logs with `kubectl logs`
+### Tarefa 1 — Logs de container com `kubectl logs`
 
-Container logs in Kubernetes are the equivalent of `journalctl` and `/var/log` on Linux. Every container's stdout and stderr are captured by the kubelet and made available through the API.
+Os logs de container no Kubernetes são o equivalente ao `journalctl` e `/var/log` no Linux. O stdout e stderr de cada container são capturados pelo kubelet e disponibilizados através da API.
 
-**1a.** Deploy a multi-container Pod to practice with:
+**1a.** Implante um Pod multi-container para praticar:
 
 ```yaml
 # Save as logging-pod.yaml
@@ -68,32 +68,32 @@ kubectl apply -f logging-pod.yaml
 kubectl wait --for=condition=Ready pod/logging-demo --timeout=60s
 ```
 
-**1b.** Practice every log retrieval pattern:
+**1b.** Pratique cada padrão de recuperação de logs:
 
 ```bash
-# Single container (when Pod has only one container, or specify -c)
+# Container único (quando o Pod tem apenas um container, ou especifique -c)
 kubectl logs pod/logging-demo -c webapp
 
-# Follow mode — like tail -f /var/log/syslog
+# Modo follow — como tail -f /var/log/syslog
 kubectl logs -f pod/logging-demo -c webapp
 
-# Press Ctrl+C to stop following
+# Pressione Ctrl+C para parar de acompanhar
 
-# All containers in a Pod
+# Todos os containers em um Pod
 kubectl logs pod/logging-demo --all-containers=true
 
-# Last 10 lines only — like tail -n 10
+# Apenas as últimas 10 linhas — como tail -n 10
 kubectl logs pod/logging-demo -c webapp --tail=10
 
-# Logs from the last 30 seconds
+# Logs dos últimos 30 segundos
 kubectl logs pod/logging-demo -c webapp --since=30s
 
-# Logs from a Deployment (picks one Pod)
+# Logs de um Deployment (escolhe um Pod)
 kubectl create deployment nginx-log-test --image=nginx:stable --replicas=2
 kubectl logs deployment/nginx-log-test
 ```
 
-**1c.** View **previous container** logs (critical for debugging crashes):
+**1c.** Veja os logs do **container anterior** (crítico para depurar crashes):
 
 ```bash
 # Force the webapp container to restart by killing the Pod
@@ -101,41 +101,41 @@ kubectl delete pod logging-demo
 kubectl apply -f logging-pod.yaml
 kubectl wait --for=condition=Ready pod/logging-demo --timeout=60s
 
-# Simulate a crash — exec into the container and exit with error
+# Simular um crash — exec no container e sair com erro
 kubectl exec logging-demo -c webapp -- /bin/sh -c "kill 1"
 
-# Wait a moment for the container to restart, then view previous logs
+# Aguarde um momento para o container reiniciar, depois veja os logs anteriores
 sleep 5
 kubectl logs pod/logging-demo -c webapp --previous
 ```
 
-The `--previous` flag retrieves logs from the **last terminated instance** of the container — like reading a rotated log file on Linux.
+A flag `--previous` recupera os logs da **última instância encerrada** do container — como ler um arquivo de log rotacionado no Linux.
 
-### Task 2 — Resource metrics with `kubectl top`
+### Tarefa 2 — Métricas de recursos com `kubectl top`
 
-The `kubectl top` command is the Kubernetes equivalent of `top` / `htop`. It requires the **Metrics Server** you installed in Challenge 10.
+O comando `kubectl top` é o equivalente Kubernetes do `top` / `htop`. Ele requer o **Metrics Server** que você instalou no Desafio 10.
 
 ```bash
-# Verify Metrics Server is running (installed in Challenge 10)
+# Verificar se o Metrics Server está em execução (instalado no Desafio 10)
 kubectl -n kube-system get pods -l k8s-app=metrics-server
 
-# Node-level metrics — like running top on each server
+# Métricas a nível de node — como executar top em cada servidor
 kubectl top nodes
 
-# Pod-level metrics — like ps aux sorted by CPU
+# Métricas a nível de Pod — como ps aux ordenado por CPU
 kubectl top pods -A
 
-# Sort by CPU usage
+# Ordenar por uso de CPU
 kubectl top pods -A --sort-by=cpu
 
-# Sort by memory
+# Ordenar por memória
 kubectl top pods -A --sort-by=memory
 
-# Specific namespace
+# Namespace específico
 kubectl top pods -n kube-system
 ```
 
-> **If `kubectl top` returns an error:** Make sure Metrics Server is installed and patched for Kind. Refer to Challenge 10, Task 1, or run:
+> **Se `kubectl top` retornar um erro:** Certifique-se de que o Metrics Server está instalado e configurado para o Kind. Consulte o Desafio 10, Tarefa 1, ou execute:
 > ```bash
 > kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 > kubectl patch -n kube-system deployment metrics-server \
@@ -144,11 +144,11 @@ kubectl top pods -n kube-system
 > kubectl -n kube-system rollout status deployment metrics-server
 > ```
 
-### Task 3 — Deploy Prometheus and Grafana with Helm
+### Tarefa 3 — Implantar Prometheus e Grafana com Helm
 
-On Linux, you might install Prometheus from a tarball and configure Grafana manually. In Kubernetes, the **kube-prometheus-stack** Helm chart bundles everything: Prometheus, Grafana, Alertmanager, node-exporter, and kube-state-metrics — with pre-built dashboards.
+No Linux, você pode instalar o Prometheus a partir de um tarball e configurar o Grafana manualmente. No Kubernetes, o chart Helm **kube-prometheus-stack** empacota tudo: Prometheus, Grafana, Alertmanager, node-exporter e kube-state-metrics — com dashboards pré-configurados.
 
-**3a.** Add the Helm repo and install:
+**3a.** Adicione o repositório Helm e instale:
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -162,91 +162,91 @@ helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --wait --timeout 5m
 ```
 
-> The two `--set` flags tell Prometheus to discover **all** ServiceMonitors and PodMonitors in the cluster, not just those with the Helm release label. This is important for Task 7 (Break & Fix Scenario 3).
+> As duas flags `--set` dizem ao Prometheus para descobrir **todos** os ServiceMonitors e PodMonitors no cluster, não apenas aqueles com o label da release Helm. Isso é importante para a Tarefa 7 (Cenário Break & Fix 3).
 
-**3b.** Verify everything is running:
+**3b.** Verifique se tudo está em execução:
 
 ```bash
 kubectl -n monitoring get pods
 ```
 
-You should see Pods for: `prometheus-kube-prometheus-stack-prometheus-0`, `kube-prometheus-stack-grafana-*`, `alertmanager-*`, `kube-prometheus-stack-kube-state-metrics-*`, `kube-prometheus-stack-prometheus-node-exporter-*`, and the `kube-prometheus-stack-operator-*`.
+Você deve ver Pods para: `prometheus-kube-prometheus-stack-prometheus-0`, `kube-prometheus-stack-grafana-*`, `alertmanager-*`, `kube-prometheus-stack-kube-state-metrics-*`, `kube-prometheus-stack-prometheus-node-exporter-*` e o `kube-prometheus-stack-operator-*`.
 
-**3c.** Retrieve the Grafana admin password:
+**3c.** Recupere a senha de admin do Grafana:
 
 ```bash
 kubectl -n monitoring get secret kube-prometheus-stack-grafana \
   -o jsonpath="{.data.admin-password}" | base64 --decode; echo
 ```
 
-The default username is `admin`.
+O nome de usuário padrão é `admin`.
 
-**3d.** Access Grafana via port-forward:
+**3d.** Acesse o Grafana via port-forward:
 
 ```bash
 kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser and log in with the credentials above.
+Abra [http://localhost:3000](http://localhost:3000) no seu navegador e faça login com as credenciais acima.
 
-### Task 4 — Explore built-in Grafana dashboards
+### Tarefa 4 — Explorar os dashboards integrados do Grafana
 
-The kube-prometheus-stack ships with dozens of pre-configured dashboards.
+O kube-prometheus-stack vem com dezenas de dashboards pré-configurados.
 
-**4a.** In Grafana, navigate to **Dashboards** (left sidebar) → **Browse**. Look for these dashboards:
+**4a.** No Grafana, navegue até **Dashboards** (barra lateral esquerda) → **Browse**. Procure estes dashboards:
 
-- **Kubernetes / Compute Resources / Cluster** — overall CPU and memory usage
-- **Kubernetes / Compute Resources / Namespace (Pods)** — per-namespace breakdown
-- **Kubernetes / Compute Resources / Pod** — drill into a specific Pod
-- **Node Exporter / Nodes** — node-level OS metrics (like `sar` on Linux)
-- **CoreDNS** — DNS query rates and latency
+- **Kubernetes / Compute Resources / Cluster** — uso geral de CPU e memória
+- **Kubernetes / Compute Resources / Namespace (Pods)** — detalhamento por namespace
+- **Kubernetes / Compute Resources / Pod** — drill into em um Pod específico
+- **Node Exporter / Nodes** — métricas de SO a nível de node (como `sar` no Linux)
+- **CoreDNS** — taxas de consulta DNS e latência
 
-**4b.** Generate some cluster activity to see the dashboards populate:
+**4b.** Gere alguma atividade no cluster para ver os dashboards se popularem:
 
 ```bash
-# In a separate terminal, create a load generator
+# Em um terminal separado, crie um gerador de carga
 kubectl run metrics-load --image=busybox:stable --restart=Never \
   -- /bin/sh -c "while true; do echo 'working'; done"
 ```
 
-Watch the **Kubernetes / Compute Resources / Cluster** dashboard — you should see CPU usage climb.
+Observe o dashboard **Kubernetes / Compute Resources / Cluster** — você deve ver o uso de CPU subir.
 
 ```bash
-# Clean up the load generator when done observing
+# Limpe o gerador de carga quando terminar de observar
 kubectl delete pod metrics-load
 ```
 
-**4c.** (Optional) Access the Prometheus UI directly:
+**4c.** (Opcional) Acesse a UI do Prometheus diretamente:
 
 ```bash
 kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090:9090
 ```
 
-Open [http://localhost:9090](http://localhost:9090), go to **Status → Targets** to see what Prometheus is scraping. This is analogous to checking that your Nagios NRPE agents are all reporting in.
+Abra [http://localhost:9090](http://localhost:9090), vá em **Status → Targets** para ver o que o Prometheus está coletando. Isso é análogo a verificar se todos os seus agentes Nagios NRPE estão reportando.
 
-### Task 5 — The three pillars: Logs, Metrics, Traces
+### Tarefa 5 — Os três pilares: Logs, Métricas, Traces
 
-Before moving on, make sure you understand the conceptual framework:
+Antes de prosseguir, certifique-se de que você entende o framework conceitual:
 
-| Pillar | Question it answers | Kubernetes tools | Linux analogy |
+| Pilar | Pergunta que responde | Ferramentas Kubernetes | Analogia Linux |
 |---|---|---|---|
-| **Logs** | What discrete events happened? | `kubectl logs`, Fluentd/Fluent Bit, Loki | `journalctl`, `/var/log`, rsyslog |
-| **Metrics** | How are numeric indicators trending over time? | Metrics Server, Prometheus, Grafana | `sar`, `vmstat`, `top`, collectd |
-| **Traces** | How does a single request flow across services? | OpenTelemetry, Jaeger, Zipkin | `strace`, application APM agents |
+| **Logs** | Quais eventos discretos aconteceram? | `kubectl logs`, Fluentd/Fluent Bit, Loki | `journalctl`, `/var/log`, rsyslog |
+| **Métricas** | Como os indicadores numéricos estão tendendo ao longo do tempo? | Metrics Server, Prometheus, Grafana | `sar`, `vmstat`, `top`, collectd |
+| **Traces** | Como uma única requisição flui entre serviços? | OpenTelemetry, Jaeger, Zipkin | `strace`, agentes APM de aplicação |
 
-> **Note:** Distributed tracing (Jaeger/OpenTelemetry) is a concept-only topic in this challenge. Setting up a full tracing pipeline is beyond the scope of this lab, but you should understand where it fits in the observability picture.
+> **Nota:** Tracing distribuído (Jaeger/OpenTelemetry) é um tópico apenas conceitual neste desafio. Configurar um pipeline completo de tracing está além do escopo deste lab, mas você deve entender onde ele se encaixa no cenário de observabilidade.
 
-### Task 6 — Liveness, Readiness, and Startup Probes
+### Tarefa 6 — Liveness, Readiness e Startup Probes
 
-On Linux, `systemd` restarts a crashed process and Nagios checks if a service is healthy. Kubernetes uses **probes** for the same purpose:
+No Linux, o `systemd` reinicia um processo que crashou e o Nagios verifica se um serviço está saudável. O Kubernetes usa **probes** para o mesmo propósito:
 
-| Probe | Purpose | Linux analogy | What happens on failure |
+| Probe | Propósito | Analogia Linux | O que acontece na falha |
 |---|---|---|---|
-| **Liveness** | Is the container process alive? | systemd `Restart=always` | Container is killed and restarted |
-| **Readiness** | Can the container serve traffic? | Nagios/Zabbix health check | Pod removed from Service endpoints (no traffic) |
-| **Startup** | Has the container finished starting? | systemd `ExecStartPre` check | Liveness/readiness probes are paused until startup succeeds |
+| **Liveness** | O processo do container está vivo? | systemd `Restart=always` | Container é morto e reiniciado |
+| **Readiness** | O container pode servir tráfego? | Nagios/Zabbix health check | Pod removido dos endpoints do Service (sem tráfego) |
+| **Startup** | O container terminou de iniciar? | systemd verificação `ExecStartPre` | Liveness/readiness probes são pausados até o startup ter sucesso |
 
-**6a.** Deploy a Pod with all three probes configured:
+**6a.** Implante um Pod com os três probes configurados:
 
 ```yaml
 # Save as probed-app.yaml
@@ -307,31 +307,31 @@ kubectl apply -f probed-app.yaml
 kubectl rollout status deployment probed-app
 ```
 
-**6b.** Verify the probes are working:
+**6b.** Verifique se os probes estão funcionando:
 
 ```bash
 kubectl describe pod -l app=probed-app | grep -A 5 "Liveness\|Readiness\|Startup"
 ```
 
-**6c.** Observe **liveness probe behavior** — simulate a stuck process:
+**6c.** Observe o **comportamento do liveness probe** — simule um processo travado:
 
 ```bash
-# Exec into the Pod and delete the default nginx page
+# Exec no Pod e delete a página padrão do nginx
 POD_NAME=$(kubectl get pods -l app=probed-app -o jsonpath='{.items[0].metadata.name}')
 kubectl exec "$POD_NAME" -- rm /usr/share/nginx/html/index.html
 
-# Watch the Pod — liveness probe will fail and restart the container
+# Observe o Pod — o liveness probe vai falhar e reiniciar o container
 kubectl get pods -l app=probed-app --watch
 ```
 
-Within 30 seconds you should see the `RESTARTS` count increase. The liveness probe returned a 404, Kubernetes killed the container, and the restart restored the default `index.html`.
+Dentro de 30 segundos você deve ver a contagem de `RESTARTS` aumentar. O liveness probe retornou um 404, o Kubernetes matou o container e o reinício restaurou o `index.html` padrão.
 
 ```bash
-# Check events for proof
+# Verificar eventos como prova
 kubectl describe pod "$POD_NAME" | grep -A 5 "Events"
 ```
 
-**6d.** Observe **readiness probe behavior** — the Pod stays running but stops receiving traffic:
+**6d.** Observe o **comportamento do readiness probe** — o Pod continua em execução mas para de receber tráfego:
 
 ```yaml
 # Save as unready-app.yaml
@@ -379,15 +379,15 @@ sleep 10
 kubectl get pods -l app=unready-app
 ```
 
-The Pod will show `0/1 READY` because `/ready` does not exist in the default nginx image (returns 404). The Pod is running but the Service has **zero endpoints**:
+O Pod vai mostrar `0/1 READY` porque `/ready` não existe na imagem padrão do nginx (retorna 404). O Pod está em execução mas o Service tem **zero endpoints**:
 
 ```bash
 kubectl get endpoints unready-app
 ```
 
-The endpoints list will be empty — no traffic reaches this Pod. This is the Kubernetes equivalent of a Nagios check marking a server as "down" so the load balancer stops routing to it.
+A lista de endpoints estará vazia — nenhum tráfego chega a este Pod. Este é o equivalente Kubernetes de um check do Nagios marcando um servidor como "down" para que o load balancer pare de rotear para ele.
 
-### Clean Up
+### Limpeza
 
 ```bash
 kubectl delete -f logging-pod.yaml 2>/dev/null
@@ -395,69 +395,69 @@ kubectl delete deployment nginx-log-test 2>/dev/null
 kubectl delete -f probed-app.yaml 2>/dev/null
 kubectl delete -f unready-app.yaml 2>/dev/null
 kubectl delete pod metrics-load 2>/dev/null
-# Keep kube-prometheus-stack installed — you'll use it in later challenges
-# To remove it later: helm uninstall kube-prometheus-stack -n monitoring
+# Mantenha o kube-prometheus-stack instalado — você o usará em desafios posteriores
+# Para removê-lo depois: helm uninstall kube-prometheus-stack -n monitoring
 ```
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] You can retrieve logs from a single container, a specific container in a multi-container Pod, and from the previous (crashed) instance.
-- [ ] You used `kubectl logs -f` to follow logs in real time (like `tail -f`).
-- [ ] `kubectl top nodes` and `kubectl top pods` display CPU and memory metrics.
-- [ ] Prometheus and Grafana are running in the `monitoring` namespace via the kube-prometheus-stack Helm chart.
-- [ ] You logged into Grafana and viewed at least two built-in dashboards showing cluster health data.
-- [ ] You can access the Prometheus UI and see healthy scrape targets under **Status → Targets**.
-- [ ] You can explain the three pillars of observability (Logs, Metrics, Traces) and name a Kubernetes tool for each.
-- [ ] You deployed a Pod with liveness, readiness, and startup probes and can explain what each one does.
-- [ ] You observed a liveness probe failure cause a container restart.
-- [ ] You observed a readiness probe failure cause a Pod to show `0/1 READY` and receive no traffic.
+- [ ] Você consegue recuperar logs de um único container, de um container específico em um Pod multi-container e da instância anterior (crasheada).
+- [ ] Você usou `kubectl logs -f` para acompanhar logs em tempo real (como `tail -f`).
+- [ ] `kubectl top nodes` e `kubectl top pods` exibem métricas de CPU e memória.
+- [ ] Prometheus e Grafana estão em execução no namespace `monitoring` via chart Helm kube-prometheus-stack.
+- [ ] Você fez login no Grafana e visualizou pelo menos dois dashboards integrados mostrando dados de saúde do cluster.
+- [ ] Você consegue acessar a UI do Prometheus e ver targets de scrape saudáveis em **Status → Targets**.
+- [ ] Você consegue explicar os três pilares da observabilidade (Logs, Métricas, Traces) e nomear uma ferramenta Kubernetes para cada.
+- [ ] Você implantou um Pod com liveness, readiness e startup probes e consegue explicar o que cada um faz.
+- [ ] Você observou uma falha de liveness probe causar um reinício de container.
+- [ ] Você observou uma falha de readiness probe causar um Pod a mostrar `0/1 READY` e não receber tráfego.
 
-## Linux ↔ Kubernetes Reference
+## Referência Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent | Notes |
+| Conceito Linux | Equivalente Kubernetes | Notas |
 |---|---|---|
-| `journalctl -u nginx` | `kubectl logs deployment/webapp` | View logs for a specific workload |
-| `tail -f /var/log/syslog` | `kubectl logs -f pod/webapp` | Follow logs in real time |
-| `top` / `htop` | `kubectl top pods` | Real-time CPU and memory per Pod |
-| `/var/log/*.log` | Container stdout/stderr | Containers should log to stdout; kubelet captures it |
-| `nagios` / `zabbix` health checks | Liveness / Readiness Probes | Built-in health checks that drive restart and traffic decisions |
-| `systemd` watchdog / `Restart=always` | Startup Probe + Liveness Probe | Startup probe gates the liveness probe during slow boots |
-| `sar` / `vmstat` | Prometheus metrics | Time-series metrics collection and storage |
-| Cacti / Grafana on Linux | Grafana dashboards in Kubernetes | Same tool, deployed as a Pod, pre-configured by Helm |
+| `journalctl -u nginx` | `kubectl logs deployment/webapp` | Ver logs de um workload específico |
+| `tail -f /var/log/syslog` | `kubectl logs -f pod/webapp` | Acompanhar logs em tempo real |
+| `top` / `htop` | `kubectl top pods` | CPU e memória em tempo real por Pod |
+| `/var/log/*.log` | stdout/stderr do container | Containers devem logar no stdout; o kubelet captura |
+| `nagios` / `zabbix` health checks | Liveness / Readiness Probes | Health checks integrados que controlam reinício e decisões de tráfego |
+| `systemd` watchdog / `Restart=always` | Startup Probe + Liveness Probe | Startup probe condiciona o liveness probe durante inicializações lentas |
+| `sar` / `vmstat` | Métricas do Prometheus | Coleta e armazenamento de métricas em séries temporais |
+| Cacti / Grafana no Linux | Dashboards Grafana no Kubernetes | Mesma ferramenta, implantada como Pod, pré-configurada pelo Helm |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: Metrics Server must be healthy before kubectl top works</summary>
+<summary>Dica 1: O Metrics Server deve estar saudável antes do kubectl top funcionar</summary>
 
-`kubectl top` depends on the Metrics Server (installed in Challenge 10). If it is not running, you'll get:
+`kubectl top` depende do Metrics Server (instalado no Desafio 10). Se ele não estiver em execução, você receberá:
 
 ```
 error: Metrics API not available
 ```
 
-Check its status:
+Verifique o status:
 
 ```bash
 kubectl -n kube-system get pods -l k8s-app=metrics-server
 kubectl -n kube-system logs deployment/metrics-server --tail=20
 ```
 
-On Kind, the most common issue is missing `--kubelet-insecure-tls`. The Metrics Server can't verify the kubelet's self-signed certificate and refuses to scrape. Re-apply the patch from Challenge 10 if needed.
+No Kind, o problema mais comum é a falta de `--kubelet-insecure-tls`. O Metrics Server não consegue verificar o certificado autoassinado do kubelet e se recusa a coletar. Reaplique o patch do Desafio 10 se necessário.
 
 </details>
 
 <details>
-<summary>Hint 2: kube-prometheus-stack Pods stuck in Pending or CrashLoopBackOff</summary>
+<summary>Dica 2: Pods do kube-prometheus-stack presos em Pending ou CrashLoopBackOff</summary>
 
-Kind clusters have limited resources. If Pods are stuck in `Pending`, check for resource pressure:
+Clusters Kind têm recursos limitados. Se Pods estiverem presos em `Pending`, verifique a pressão de recursos:
 
 ```bash
 kubectl -n monitoring describe pod <pod-name> | grep -A 5 "Events"
 kubectl top nodes
 ```
 
-If the node is at capacity, you can reduce the stack's resource requests:
+Se o node estiver no limite de capacidade, você pode reduzir as requisições de recursos da stack:
 
 ```bash
 helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
@@ -467,60 +467,60 @@ helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --reuse-values
 ```
 
-Also ensure your Kind cluster has enough memory allocated (at least 4 GB recommended for this challenge).
+Também certifique-se de que seu cluster Kind tem memória suficiente alocada (pelo menos 4 GB recomendado para este desafio).
 
 </details>
 
 <details>
-<summary>Hint 3: How to find the Grafana password</summary>
+<summary>Dica 3: Como encontrar a senha do Grafana</summary>
 
-The Grafana admin password is stored in a Kubernetes Secret:
+A senha de admin do Grafana está armazenada em um Secret do Kubernetes:
 
 ```bash
 kubectl -n monitoring get secret kube-prometheus-stack-grafana \
   -o jsonpath="{.data.admin-password}" | base64 --decode; echo
 ```
 
-Username is always `admin`. If you set a custom release name, replace `kube-prometheus-stack` with your release name.
+O nome de usuário é sempre `admin`. Se você definiu um nome de release customizado, substitua `kube-prometheus-stack` pelo nome da sua release.
 
 </details>
 
 <details>
-<summary>Hint 4: Understanding probe timing parameters</summary>
+<summary>Dica 4: Entendendo os parâmetros de tempo dos probes</summary>
 
-Each probe has four timing knobs:
+Cada probe tem quatro ajustes de tempo:
 
-| Parameter | Default | Meaning |
+| Parâmetro | Padrão | Significado |
 |---|---|---|
-| `initialDelaySeconds` | 0 | Seconds to wait after container starts before probing |
-| `periodSeconds` | 10 | How often to probe |
-| `failureThreshold` | 3 | How many consecutive failures before taking action |
-| `timeoutSeconds` | 1 | How long to wait for a probe response |
+| `initialDelaySeconds` | 0 | Segundos para aguardar após o container iniciar antes de probar |
+| `periodSeconds` | 10 | Com que frequência probar |
+| `failureThreshold` | 3 | Quantas falhas consecutivas antes de tomar ação |
+| `timeoutSeconds` | 1 | Quanto tempo esperar por uma resposta do probe |
 
-The total time before Kubernetes takes action on failure is roughly:
+O tempo total antes do Kubernetes tomar ação na falha é aproximadamente:
 
 ```
 initialDelaySeconds + (periodSeconds × failureThreshold)
 ```
 
-For the liveness probe with defaults: `0 + (10 × 3) = 30 seconds` before the container is killed.
+Para o liveness probe com padrões: `0 + (10 × 3) = 30 segundos` antes do container ser morto.
 
-**Startup probes** use `failureThreshold × periodSeconds` as the total startup budget. In Task 6a: `30 × 2 = 60 seconds` for nginx to start before Kubernetes gives up.
+**Startup probes** usam `failureThreshold × periodSeconds` como o orçamento total de inicialização. Na Tarefa 6a: `30 × 2 = 60 segundos` para o nginx iniciar antes do Kubernetes desistir.
 
 </details>
 
 <details>
-<summary>Hint 5: Why use a Startup Probe?</summary>
+<summary>Dica 5: Por que usar um Startup Probe?</summary>
 
-Without a startup probe, the liveness probe starts immediately. If your application takes 60 seconds to boot (e.g., a Java app loading a large classpath), the liveness probe will kill it before it finishes starting — creating an infinite restart loop.
+Sem um startup probe, o liveness probe começa imediatamente. Se sua aplicação leva 60 segundos para inicializar (ex: uma aplicação Java carregando um classpath grande), o liveness probe vai matá-la antes de terminar de iniciar — criando um loop infinito de reinício.
 
-The startup probe **pauses** the liveness and readiness probes until it succeeds. Once the startup probe passes, Kubernetes switches to the liveness and readiness probes for ongoing health checking.
+O startup probe **pausa** os liveness e readiness probes até ter sucesso. Uma vez que o startup probe passa, o Kubernetes muda para os liveness e readiness probes para verificação de saúde contínua.
 
-**Linux analogy:** It's like telling `systemd` to wait for `ExecStartPre` to succeed before starting the watchdog timer. You don't want the watchdog killing a process that's still initializing.
+**Analogia com Linux:** É como dizer ao `systemd` para esperar o `ExecStartPre` ter sucesso antes de iniciar o timer do watchdog. Você não quer que o watchdog mate um processo que ainda está inicializando.
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [Logging Architecture — Kubernetes official docs](https://kubernetes.io/docs/concepts/cluster-administration/logging/)
 - [kubectl logs reference](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/)
@@ -532,11 +532,11 @@ The startup probe **pauses** the liveness and readiness probes until it succeeds
 
 ## Break & Fix 🔧
 
-Try each scenario, diagnose the problem, and fix it.
+Tente cada cenário, diagnostique o problema e corrija-o.
 
-### Scenario 1 — Liveness probe wrong path → CrashLoopBackOff
+### Cenário 1 — Liveness probe com caminho errado → CrashLoopBackOff
 
-Apply this Deployment — the liveness probe points to a path that does not exist:
+Aplique este Deployment — o liveness probe aponta para um caminho que não existe:
 
 ```yaml
 # Save as broken-liveness.yaml
@@ -572,30 +572,30 @@ spec:
 kubectl apply -f broken-liveness.yaml
 ```
 
-**What you'll see:** After ~10 seconds the Pod enters a restart loop. Run:
+**O que você verá:** Após ~10 segundos o Pod entra em um loop de reinício. Execute:
 
 ```bash
 kubectl get pods -l app=broken-liveness --watch
 ```
 
-The `RESTARTS` count climbs rapidly and the status alternates between `Running` and `CrashLoopBackOff`.
+A contagem de `RESTARTS` sobe rapidamente e o status alterna entre `Running` e `CrashLoopBackOff`.
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
 kubectl describe pod -l app=broken-liveness | grep -A 10 "Events"
 ```
 
-Look for events like:
+Procure por eventos como:
 
 ```
 Unhealthy  Liveness probe failed: HTTP probe failed with statuscode: 404
 Killing    Container nginx failed liveness probe, will be restarted
 ```
 
-**Root cause:** The liveness probe path `/healthzz` does not exist. Nginx returns a 404, which is not a success (2xx). After 2 failures (`failureThreshold: 2`) every 3 seconds (`periodSeconds: 3`), Kubernetes kills the container.
+**Causa raiz:** O caminho do liveness probe `/healthzz` não existe. O Nginx retorna um 404, que não é um sucesso (2xx). Após 2 falhas (`failureThreshold: 2`) a cada 3 segundos (`periodSeconds: 3`), o Kubernetes mata o container.
 
-**Fix:** Change the probe path to `/` (or any path nginx actually serves):
+**Correção:** Altere o caminho do probe para `/` (ou qualquer caminho que o nginx realmente sirva):
 
 ```bash
 kubectl patch deployment broken-liveness --type=json \
@@ -605,11 +605,11 @@ kubectl rollout status deployment broken-liveness
 kubectl get pods -l app=broken-liveness
 ```
 
-The Pod should now be `Running` with `1/1 READY` and zero restarts.
+O Pod agora deve estar `Running` com `1/1 READY` e zero reinícios.
 
-**Linux analogy:** It's like configuring Nagios to check `http://localhost/healthzz` — if the endpoint doesn't exist, the health check always fails and Nagios marks the service as critical.
+**Analogia com Linux:** É como configurar o Nagios para verificar `http://localhost/healthzz` — se o endpoint não existe, o health check sempre falha e o Nagios marca o serviço como crítico.
 
-**Clean up:**
+**Limpeza:**
 
 ```bash
 kubectl delete -f broken-liveness.yaml
@@ -617,9 +617,9 @@ kubectl delete -f broken-liveness.yaml
 
 ---
 
-### Scenario 2 — Readiness probe failing → 0/1 READY, no traffic
+### Cenário 2 — Readiness probe falhando → 0/1 READY, sem tráfego
 
-Apply this Deployment — the readiness probe checks a port that nothing listens on:
+Aplique este Deployment — o readiness probe verifica uma porta onde nada está ouvindo:
 
 ```yaml
 # Save as broken-readiness.yaml
@@ -665,7 +665,7 @@ kubectl apply -f broken-readiness.yaml
 sleep 15
 ```
 
-**What you'll see:** Both Pods show `Running` but `0/1 READY`:
+**O que você verá:** Ambos os Pods mostram `Running` mas `0/1 READY`:
 
 ```bash
 kubectl get pods -l app=broken-readiness
@@ -677,21 +677,21 @@ broken-readiness-xxxx-aaaa          0/1     Running   0          20s
 broken-readiness-xxxx-bbbb          0/1     Running   0          20s
 ```
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
-# The Service has zero endpoints — no Pod is receiving traffic
+# O Service tem zero endpoints — nenhum Pod está recebendo tráfego
 kubectl get endpoints broken-readiness
 
-# Events show the readiness probe failing
+# Os eventos mostram o readiness probe falhando
 kubectl describe pod -l app=broken-readiness | grep -A 5 "Readiness"
 ```
 
-You'll see: `Readiness probe failed: dial tcp ...:8081: connect: connection refused`
+Você verá: `Readiness probe failed: dial tcp ...:8081: connect: connection refused`
 
-**Root cause:** Nginx listens on port 80, but the readiness probe checks port 8081. The TCP connection is refused, so the probe fails. Kubernetes removes the Pod from the Service endpoints — it's running but **not receiving any traffic**.
+**Causa raiz:** O Nginx ouve na porta 80, mas o readiness probe verifica a porta 8081. A conexão TCP é recusada, então o probe falha. O Kubernetes remove o Pod dos endpoints do Service — ele está em execução mas **não está recebendo nenhum tráfego**.
 
-**Fix:** Change the readiness probe to the correct port:
+**Correção:** Altere o readiness probe para a porta correta:
 
 ```bash
 kubectl patch deployment broken-readiness --type=json \
@@ -702,11 +702,11 @@ kubectl get pods -l app=broken-readiness
 kubectl get endpoints broken-readiness
 ```
 
-Now both Pods should show `1/1 READY` and the endpoints should list two IP addresses.
+Agora ambos os Pods devem mostrar `1/1 READY` e os endpoints devem listar dois endereços IP.
 
-**Linux analogy:** It's like configuring a load balancer health check against port 8081 when your app is on port 80 — the LB marks all backends as down and the site goes offline, even though every backend process is running fine.
+**Analogia com Linux:** É como configurar um health check de load balancer contra a porta 8081 quando sua aplicação está na porta 80 — o LB marca todos os backends como down e o site fica offline, mesmo que todos os processos de backend estejam funcionando bem.
 
-**Clean up:**
+**Limpeza:**
 
 ```bash
 kubectl delete -f broken-readiness.yaml
@@ -714,11 +714,11 @@ kubectl delete -f broken-readiness.yaml
 
 ---
 
-### Scenario 3 — Prometheus can't scrape metrics (ServiceMonitor mismatch)
+### Cenário 3 — Prometheus não consegue coletar métricas (ServiceMonitor com mismatch)
 
-In this scenario you deploy an application that exposes Prometheus metrics, create a ServiceMonitor, but Prometheus never discovers the target.
+Neste cenário, você implanta uma aplicação que expõe métricas do Prometheus, cria um ServiceMonitor, mas o Prometheus nunca descobre o target.
 
-**3a.** Deploy a simple metrics-exporting app:
+**3a.** Implante uma aplicação simples que exporta métricas:
 
 ```yaml
 # Save as metrics-app.yaml
@@ -765,7 +765,7 @@ kubectl apply -f metrics-app.yaml
 kubectl rollout status deployment metrics-app
 ```
 
-**3b.** Create a ServiceMonitor with a **wrong label selector**:
+**3b.** Crie um ServiceMonitor com um **label selector errado**:
 
 ```yaml
 # Save as broken-servicemonitor.yaml
@@ -790,34 +790,34 @@ spec:
 kubectl apply -f broken-servicemonitor.yaml
 ```
 
-**What you'll see:** In the Prometheus UI ([http://localhost:9090](http://localhost:9090) via port-forward), go to **Status → Targets**. The `metrics-app` target does **not** appear. Prometheus has no idea this Service exists.
+**O que você verá:** Na UI do Prometheus ([http://localhost:9090](http://localhost:9090) via port-forward), vá em **Status → Targets**. O target `metrics-app` **não** aparece. O Prometheus não tem ideia de que este Service existe.
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
-# Check the ServiceMonitor's selector
+# Verificar o selector do ServiceMonitor
 kubectl -n monitoring get servicemonitor metrics-app-monitor -o yaml | grep -A 3 "selector"
 
-# Compare with the Service's actual labels
+# Comparar com os labels reais do Service
 kubectl get svc metrics-app --show-labels
 ```
 
-The ServiceMonitor looks for `app: metrics-app-TYPO` but the Service has `app: metrics-app`.
+O ServiceMonitor procura por `app: metrics-app-TYPO` mas o Service tem `app: metrics-app`.
 
-**Root cause:** The ServiceMonitor `selector.matchLabels` does not match any Service labels. Prometheus Operator uses this selector to discover which Services to scrape — no match means no scrape target.
+**Causa raiz:** O `selector.matchLabels` do ServiceMonitor não corresponde a nenhum label de Service. O Prometheus Operator usa este selector para descobrir quais Services coletar — sem correspondência, não há target de coleta.
 
-**Fix:** Correct the label in the ServiceMonitor:
+**Correção:** Corrija o label no ServiceMonitor:
 
 ```bash
 kubectl -n monitoring patch servicemonitor metrics-app-monitor --type=json \
   -p '[{"op":"replace","path":"/spec/selector/matchLabels/app","value":"metrics-app"}]'
 ```
 
-Wait 30–60 seconds, then check Prometheus **Status → Targets** again. The `metrics-app` target should now appear and show as `UP`.
+Aguarde 30–60 segundos, depois verifique **Status → Targets** do Prometheus novamente. O target `metrics-app` deve agora aparecer e mostrar como `UP`.
 
-**Linux analogy:** This is like misconfiguring a Nagios host definition — if the hostname in your `check_command` doesn't match any real host, Nagios never polls it and you think everything is fine because there are no alerts. The absence of data is itself a problem.
+**Analogia com Linux:** Isso é como configurar incorretamente uma definição de host no Nagios — se o hostname no seu `check_command` não corresponde a nenhum host real, o Nagios nunca faz polling e você pensa que está tudo bem porque não há alertas. A ausência de dados é em si um problema.
 
-**Clean up:**
+**Limpeza:**
 
 ```bash
 kubectl delete -f broken-servicemonitor.yaml

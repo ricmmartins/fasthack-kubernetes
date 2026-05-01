@@ -1,16 +1,16 @@
-# Solution 04 — Deployments and Rolling Updates
+# Solução 04 — Deployments e Rolling Updates
 
-[< Back to Challenge](../Student/Challenge-04.md) | **[Home](README.md)**
+[< Voltar para o Desafio](../Student/Challenge-04.md) | **[Home](README.md)**
 
-## Pre-check
+## Pré-verificação
 
-Ensure students have a running Kind cluster (ideally the multi-node cluster from Challenge 03):
+Certifique-se de que os alunos tenham um cluster Kind em execução (idealmente o cluster multi-nó do Desafio 03):
 
 ```bash
 kubectl get nodes
 ```
 
-Expected output (single-node is also fine):
+Saída esperada (nó único também funciona):
 
 ```
 NAME                    STATUS   ROLES           AGE   VERSION
@@ -19,7 +19,7 @@ k8s-lab-worker          Ready    <none>          30m   v1.33.0
 k8s-lab-worker2         Ready    <none>          30m   v1.33.0
 ```
 
-Clean up any leftover Pods from previous challenges:
+Limpe quaisquer Pods remanescentes de desafios anteriores:
 
 ```bash
 kubectl delete pods --all 2>/dev/null
@@ -27,11 +27,11 @@ kubectl delete pods --all 2>/dev/null
 
 ---
 
-## Task 1: Create a Deployment with 3 Replicas
+## Tarefa 1: Crie um Deployment com 3 Réplicas
 
-### Step-by-step
+### Passo a passo
 
-Create the Deployment manifest file `webapp-deployment.yaml`:
+Crie o arquivo de manifesto do Deployment `webapp-deployment.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -55,43 +55,43 @@ spec:
             - containerPort: 80
 ```
 
-Apply the Deployment:
+Aplique o Deployment:
 
 ```bash
 kubectl apply -f webapp-deployment.yaml
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 deployment.apps/webapp created
 ```
 
-**Verify the Deployment:**
+**Verifique o Deployment:**
 
 ```bash
 kubectl get deployment webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME     READY   UP-TO-DATE   AVAILABLE   AGE
 webapp   3/3     3            3           30s
 ```
 
-> **Coach note:** Explain the columns:
-> - `READY` — Pods ready / desired replicas
-> - `UP-TO-DATE` — Pods running the latest template
-> - `AVAILABLE` — Pods available to serve traffic
+> **Nota para o Coach:** Explique as colunas:
+> - `READY` — Pods prontos / réplicas desejadas
+> - `UP-TO-DATE` — Pods executando o template mais recente
+> - `AVAILABLE` — Pods disponíveis para servir tráfego
 
-**List the Pods created by the Deployment:**
+**Liste os Pods criados pelo Deployment:**
 
 ```bash
 kubectl get pods -l app=webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                      READY   STATUS    RESTARTS   AGE
@@ -100,35 +100,35 @@ webapp-xxxxxxxxxx-fghij   1/1     Running   0          45s
 webapp-xxxxxxxxxx-klmno   1/1     Running   0          45s
 ```
 
-**Show the ReplicaSet managing these Pods:**
+**Mostre o ReplicaSet gerenciando estes Pods:**
 
 ```bash
 kubectl get replicaset -l app=webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                DESIRED   CURRENT   READY   AGE
 webapp-xxxxxxxxxx   3         3         3       1m
 ```
 
-> **Coach note:** Explain the hierarchy: **Deployment** → **ReplicaSet** → **Pods**. The Deployment manages ReplicaSets, which manage Pods. Students should never edit ReplicaSets directly.
+> **Nota para o Coach:** Explique a hierarquia: **Deployment** → **ReplicaSet** → **Pods**. O Deployment gerencia ReplicaSets, que gerenciam Pods. Os alunos nunca devem editar ReplicaSets diretamente.
 
-**Demonstrate self-healing — delete a Pod and watch it come back:**
+**Demonstre a auto-recuperação — delete um Pod e observe-o voltar:**
 
 ```bash
-# Get a Pod name
+# Obtenha o nome de um Pod
 POD_NAME=$(kubectl get pods -l app=webapp -o jsonpath='{.items[0].metadata.name}')
 
-# Delete it
+# Delete-o
 kubectl delete pod $POD_NAME
 
-# Watch the Deployment recreate it immediately
+# Observe o Deployment recriá-lo imediatamente
 kubectl get pods -l app=webapp -w
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                      READY   STATUS        RESTARTS   AGE
@@ -140,41 +140,41 @@ webapp-xxxxxxxxxx-pqrst   0/1     ContainerCreating   0    1s
 webapp-xxxxxxxxxx-pqrst   1/1     Running       0          3s
 ```
 
-Press `Ctrl+C` to stop watching.
+Pressione `Ctrl+C` para parar de acompanhar.
 
-> **Coach note:** This is the key difference from bare Pods in Challenge 02. The Deployment controller detects the missing replica and creates a replacement.
+> **Nota para o Coach:** Esta é a diferença-chave dos Pods sem controller do Desafio 02. O controller do Deployment detecta a réplica ausente e cria um substituto.
 
-### Verification
+### Verificação
 
-- `kubectl get deployment webapp` shows `3/3` Ready
-- `kubectl get pods -l app=webapp` shows 3 Running Pods
-- Deleting a Pod causes the Deployment to automatically create a replacement
+- `kubectl get deployment webapp` mostra `3/3` Ready
+- `kubectl get pods -l app=webapp` mostra 3 Pods Running
+- Deletar um Pod faz com que o Deployment crie automaticamente um substituto
 
 ---
 
-## Task 2: Scale the Deployment
+## Tarefa 2: Escale o Deployment
 
-### Step-by-step
+### Passo a passo
 
-**Scale up to 5 replicas:**
+**Escale para 5 réplicas:**
 
 ```bash
 kubectl scale deployment webapp --replicas=5
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 deployment.apps/webapp scaled
 ```
 
-Watch the new Pods appear:
+Observe os novos Pods aparecerem:
 
 ```bash
 kubectl get pods -l app=webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                      READY   STATUS    RESTARTS   AGE
@@ -185,32 +185,32 @@ webapp-xxxxxxxxxx-pqrst   1/1     Running   0          10s
 webapp-xxxxxxxxxx-uvwxy   1/1     Running   0          10s
 ```
 
-Confirm the Deployment shows 5 replicas:
+Confirme que o Deployment mostra 5 réplicas:
 
 ```bash
 kubectl get deployment webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME     READY   UP-TO-DATE   AVAILABLE   AGE
 webapp   5/5     5            5           4m
 ```
 
-**Scale back down to 3 replicas:**
+**Reduza para 3 réplicas:**
 
 ```bash
 kubectl scale deployment webapp --replicas=3
 ```
 
-Watch Pods terminate:
+Observe os Pods sendo terminados:
 
 ```bash
 kubectl get pods -l app=webapp -w
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                      READY   STATUS        RESTARTS   AGE
@@ -221,52 +221,52 @@ webapp-xxxxxxxxxx-pqrst   1/1     Terminating   0          2m
 webapp-xxxxxxxxxx-uvwxy   1/1     Terminating   0          2m
 ```
 
-Press `Ctrl+C` to stop watching.
+Pressione `Ctrl+C` para parar de acompanhar.
 
-Confirm 3 replicas remain:
+Confirme que 3 réplicas permanecem:
 
 ```bash
 kubectl get deployment webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME     READY   UP-TO-DATE   AVAILABLE   AGE
 webapp   3/3     3            3           6m
 ```
 
-### Verification
+### Verificação
 
-- After scaling up: `kubectl get deployment webapp` shows `5/5`
-- After scaling down: `kubectl get deployment webapp` shows `3/3`
-- Excess Pods were terminated gracefully
+- Após escalar para cima: `kubectl get deployment webapp` mostra `5/5`
+- Após escalar para baixo: `kubectl get deployment webapp` mostra `3/3`
+- Os Pods excedentes foram terminados graciosamente
 
 ---
 
-## Task 3: Perform a Rolling Update
+## Tarefa 3: Realize um Rolling Update
 
-### Step-by-step
+### Passo a passo
 
-**Update the image from `nginx:stable` to `nginx:alpine`:**
+**Atualize a imagem de `nginx:stable` para `nginx:alpine`:**
 
 ```bash
 kubectl set image deployment/webapp nginx=nginx:alpine
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 deployment.apps/webapp image updated
 ```
 
-**Watch the rollout progress:**
+**Acompanhe o progresso do rollout:**
 
 ```bash
 kubectl rollout status deployment/webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Waiting for deployment "webapp" rollout to finish: 1 out of 3 new replicas have been updated...
@@ -275,13 +275,13 @@ Waiting for deployment "webapp" rollout to finish: 2 of 3 updated replicas are a
 deployment "webapp" successfully rolled out
 ```
 
-**Observe the rolling update strategy — old Pods terminate as new Pods start:**
+**Observe a estratégia de rolling update — Pods antigos terminam enquanto novos Pods iniciam:**
 
 ```bash
 kubectl get pods -l app=webapp
 ```
 
-Expected output (all Pods should have new names and short AGE):
+Saída esperada (todos os Pods devem ter novos nomes e AGE curto):
 
 ```
 NAME                      READY   STATUS    RESTARTS   AGE
@@ -290,43 +290,43 @@ webapp-yyyyyyyyyy-bbbbb   1/1     Running   0          25s
 webapp-yyyyyyyyyy-ccccc   1/1     Running   0          20s
 ```
 
-> **Coach note:** Notice the ReplicaSet hash changed (`xxxxxxxxxx` → `yyyyyyyyyy`). A rolling update creates a **new** ReplicaSet, scales it up, and scales the old one down.
+> **Nota para o Coach:** Observe que o hash do ReplicaSet mudou (`xxxxxxxxxx` → `yyyyyyyyyy`). Um rolling update cria um **novo** ReplicaSet, escala-o para cima e escala o antigo para baixo.
 
-**Verify the image was updated:**
+**Verifique se a imagem foi atualizada:**
 
 ```bash
 kubectl describe deployment webapp | grep Image
 ```
 
-Expected output:
+Saída esperada:
 
 ```
     Image:        nginx:alpine
 ```
 
-**Show the ReplicaSets — old and new:**
+**Mostre os ReplicaSets — antigo e novo:**
 
 ```bash
 kubectl get replicaset -l app=webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                DESIRED   CURRENT   READY   AGE
-webapp-xxxxxxxxxx   0         0         0       10m    # old - scaled to 0
-webapp-yyyyyyyyyy   3         3         3       1m     # new - active
+webapp-xxxxxxxxxx   0         0         0       10m    # antigo - escalado para 0
+webapp-yyyyyyyyyy   3         3         3       1m     # novo - ativo
 ```
 
-> **Coach note:** The old ReplicaSet is kept (scaled to 0) to enable rollback. This is how Kubernetes tracks revision history.
+> **Nota para o Coach:** O ReplicaSet antigo é mantido (escalado para 0) para permitir rollback. É assim que o Kubernetes rastreia o histórico de revisões.
 
-**Check rollout history:**
+**Verifique o histórico de rollout:**
 
 ```bash
 kubectl rollout history deployment/webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 deployment.apps/webapp
@@ -335,61 +335,61 @@ REVISION  CHANGE-CAUSE
 2         <none>
 ```
 
-### Verification
+### Verificação
 
-- `kubectl rollout status deployment/webapp` reports "successfully rolled out"
-- `kubectl describe deployment webapp | grep Image` shows `nginx:alpine`
-- Two ReplicaSets exist: the old one scaled to 0, the new one at 3
+- `kubectl rollout status deployment/webapp` reporta "successfully rolled out"
+- `kubectl describe deployment webapp | grep Image` mostra `nginx:alpine`
+- Dois ReplicaSets existem: o antigo escalado para 0, o novo com 3
 
 ---
 
-## Task 4: Rollback to the Previous Version
+## Tarefa 4: Rollback para a Versão Anterior
 
-### Step-by-step
+### Passo a passo
 
-**Rollback to the previous revision:**
+**Faça rollback para a revisão anterior:**
 
 ```bash
 kubectl rollout undo deployment/webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 deployment.apps/webapp rolled back
 ```
 
-**Watch the rollback complete:**
+**Acompanhe o rollback completar:**
 
 ```bash
 kubectl rollout status deployment/webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 deployment "webapp" successfully rolled out
 ```
 
-**Verify the image is back to `nginx:stable`:**
+**Verifique se a imagem voltou para `nginx:stable`:**
 
 ```bash
 kubectl describe deployment webapp | grep Image
 ```
 
-Expected output:
+Saída esperada:
 
 ```
     Image:        nginx:stable
 ```
 
-**Check rollout history — a new revision was created:**
+**Verifique o histórico de rollout — uma nova revisão foi criada:**
 
 ```bash
 kubectl rollout history deployment/webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 deployment.apps/webapp
@@ -398,20 +398,20 @@ REVISION  CHANGE-CAUSE
 3         <none>
 ```
 
-> **Coach note:** Revision 1 is gone because the rollback reused its template (Kubernetes renumbers it as revision 3). Revision 2 is the `nginx:alpine` version, still available for rollback if needed.
+> **Nota para o Coach:** A Revisão 1 desapareceu porque o rollback reutilizou seu template (o Kubernetes o renumera como revisão 3). A Revisão 2 é a versão `nginx:alpine`, ainda disponível para rollback se necessário.
 
-### Verification
+### Verificação
 
-- `kubectl describe deployment webapp | grep Image` shows `nginx:stable`
-- `kubectl rollout history deployment/webapp` shows a new revision
+- `kubectl describe deployment webapp | grep Image` mostra `nginx:stable`
+- `kubectl rollout history deployment/webapp` mostra uma nova revisão
 
 ---
 
-## Task 5: Set Resource Requests and Limits
+## Tarefa 5: Defina Resource Requests e Limits
 
-### Step-by-step
+### Passo a passo
 
-Update the Deployment manifest to include resource constraints. Edit `webapp-deployment.yaml`:
+Atualize o manifesto do Deployment para incluir restrições de recursos. Edite `webapp-deployment.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -442,39 +442,39 @@ spec:
               memory: "128Mi"
 ```
 
-> **Coach note:** Explain the difference:
-> - **requests** — the minimum resources the scheduler guarantees to the Pod. Used for scheduling decisions (like reserving a seat on a flight).
-> - **limits** — the maximum resources the container can use. Exceeding memory limits → OOMKill. Exceeding CPU limits → throttling.
-> - `50m` CPU = 50 millicores = 5% of one CPU core.
-> - `64Mi` memory = 64 mebibytes.
+> **Nota para o Coach:** Explique a diferença:
+> - **requests** — os recursos mínimos que o scheduler garante ao Pod. Usados para decisões de agendamento (como reservar um assento em um voo).
+> - **limits** — os recursos máximos que o container pode usar. Exceder limites de memória → OOMKill. Exceder limites de CPU → throttling.
+> - `50m` CPU = 50 millicores = 5% de um núcleo de CPU.
+> - `64Mi` memória = 64 mebibytes.
 
-Apply the updated manifest:
+Aplique o manifesto atualizado:
 
 ```bash
 kubectl apply -f webapp-deployment.yaml
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 deployment.apps/webapp configured
 ```
 
-This triggers a rolling update because the Pod template changed.
+Isso dispara um rolling update porque o template do Pod mudou.
 
-**Wait for the rollout to complete:**
+**Aguarde o rollout completar:**
 
 ```bash
 kubectl rollout status deployment/webapp
 ```
 
-**Verify the resources are set:**
+**Verifique se os recursos estão definidos:**
 
 ```bash
 kubectl describe deployment webapp
 ```
 
-Look for the `Containers` section:
+Procure a seção `Containers`:
 
 ```
   Containers:
@@ -489,14 +489,14 @@ Look for the `Containers` section:
       memory:  64Mi
 ```
 
-**Alternatively, inspect a specific Pod:**
+**Alternativamente, inspecione um Pod específico:**
 
 ```bash
 POD_NAME=$(kubectl get pods -l app=webapp -o jsonpath='{.items[0].metadata.name}')
 kubectl describe pod $POD_NAME | grep -A 6 "Limits\|Requests"
 ```
 
-Expected output:
+Saída esperada:
 
 ```
     Limits:
@@ -507,32 +507,32 @@ Expected output:
       memory:  64Mi
 ```
 
-### Verification
+### Verificação
 
-- `kubectl describe deployment webapp` shows `Requests` and `Limits` under the container spec
-- All 3 Pods are running with the resource constraints applied
+- `kubectl describe deployment webapp` mostra `Requests` e `Limits` sob a spec do container
+- Todos os 3 Pods estão executando com as restrições de recursos aplicadas
 
 ---
 
-## Cleanup
+## Limpeza
 
 ```bash
 kubectl delete deployment webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 deployment.apps/webapp deleted
 ```
 
-Confirm all Pods are gone:
+Confirme que todos os Pods foram removidos:
 
 ```bash
 kubectl get pods -l app=webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 No resources found in default namespace.
@@ -540,16 +540,15 @@ No resources found in default namespace.
 
 ---
 
-## Common Issues
+## Problemas Comuns
 
-| Issue | Symptom | Fix |
+| Problema | Sintoma | Correção |
 |---|---|---|
-| `selector` doesn't match template labels | Deployment creation fails: `invalid: spec.template.metadata.labels: Invalid value` | Ensure `spec.selector.matchLabels` exactly matches `spec.template.metadata.labels` |
-| Rolling update stuck | `kubectl rollout status` hangs forever | Check Pod events: `kubectl describe pods -l app=webapp`. Usually a bad image tag. Fix with `kubectl rollout undo deployment/webapp` |
-| Students edit ReplicaSets directly | Changes get overwritten by the Deployment controller | Explain: always modify the **Deployment** spec. The Deployment controller owns the ReplicaSets |
-| `kubectl scale` doesn't persist | After reapplying the YAML, replicas revert to the YAML value | Explain: `kubectl scale` is imperative. If they re-apply the YAML with `replicas: 3`, it overrides the scale command. For persistence, edit the YAML file |
-| Resource values rejected | `must match the regex` or `quantities must match` | CPU uses millicores (`50m`), memory uses Mi/Gi (`64Mi`). Common mistake: `50M` (megabytes, not millicores) for CPU |
-| Pods pending after adding resource requests | Pods stuck in `Pending` with "Insufficient cpu/memory" | The Kind cluster has limited resources. Lower the requests (e.g., `cpu: 10m, memory: 32Mi`) or reduce replicas |
-| Students don't understand why rollout undo creates a new revision | They expect the revision number to go back to 1 | Explain: `undo` creates a new revision that happens to match an old template. History always moves forward. The old revision number is retired |
-| OOMKilled Pods | Pod status shows `OOMKilled` | The memory limit is too low for the process. Increase `limits.memory`. Inspect with `kubectl describe pod <name>` → look at "Last State: Terminated, Reason: OOMKilled" |
-
+| `selector` não corresponde aos labels do template | Criação do Deployment falha: `invalid: spec.template.metadata.labels: Invalid value` | Certifique-se de que `spec.selector.matchLabels` corresponda exatamente a `spec.template.metadata.labels` |
+| Rolling update travado | `kubectl rollout status` fica preso indefinidamente | Verifique eventos dos Pods: `kubectl describe pods -l app=webapp`. Geralmente é uma tag de imagem inválida. Corrija com `kubectl rollout undo deployment/webapp` |
+| Alunos editam ReplicaSets diretamente | As mudanças são sobrescritas pelo controller do Deployment | Explique: sempre modifique a spec do **Deployment**. O controller do Deployment é dono dos ReplicaSets |
+| `kubectl scale` não persiste | Após reaplicar o YAML, as réplicas voltam ao valor do YAML | Explique: `kubectl scale` é imperativo. Se reaplicarem o YAML com `replicas: 3`, isso sobrescreve o comando de scale. Para persistência, edite o arquivo YAML |
+| Valores de recursos rejeitados | `must match the regex` ou `quantities must match` | CPU usa millicores (`50m`), memória usa Mi/Gi (`64Mi`). Erro comum: `50M` (megabytes, não millicores) para CPU |
+| Pods pendentes após adicionar resource requests | Pods presos em `Pending` com "Insufficient cpu/memory" | O cluster Kind tem recursos limitados. Reduza os requests (ex: `cpu: 10m, memory: 32Mi`) ou reduza as réplicas |
+| Alunos não entendem por que rollout undo cria uma nova revisão | Eles esperam que o número da revisão volte para 1 | Explique: `undo` cria uma nova revisão que coincidentemente corresponde a um template antigo. O histórico sempre avança. O número da revisão antiga é aposentado |
+| Pods com OOMKilled | Status do Pod mostra `OOMKilled` | O limite de memória é muito baixo para o processo. Aumente `limits.memory`. Inspecione com `kubectl describe pod <name>` → procure "Last State: Terminated, Reason: OOMKilled" |

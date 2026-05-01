@@ -1,27 +1,27 @@
-# Challenge 08 — ConfigMaps and Secrets
+# Desafio 08 — ConfigMaps e Secrets
 
-[< Previous Challenge](Challenge-07.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-09.md)
+[< Desafio Anterior](Challenge-07.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-09.md)
 
-## Introduction
+## Introdução
 
-On a Linux server, configuration is everywhere: `/etc/nginx/nginx.conf` controls your web server, `export DB_HOST=10.0.0.5` injects connection strings into a process, and `/etc/shadow` keeps passwords in a file readable only by root (`chmod 600`). When you want every shell to inherit variables you drop a script in `/etc/profile.d/`, and if you need to react to a config file change you use `inotifywait`.
+Em um servidor Linux, configuração está em todo lugar: `/etc/nginx/nginx.conf` controla seu servidor web, `export DB_HOST=10.0.0.5` injeta strings de conexão em um processo, e `/etc/shadow` mantém senhas em um arquivo legível apenas pelo root (`chmod 600`). Quando você quer que todo shell herde variáveis, você coloca um script em `/etc/profile.d/`, e se precisa reagir a uma mudança de arquivo de configuração você usa `inotifywait`.
 
-Kubernetes has direct equivalents for all of this:
+O Kubernetes tem equivalentes diretos para tudo isso:
 
-- **ConfigMaps** are the `/etc/*.conf` files and environment variables of the cluster — they hold non-sensitive configuration data (feature flags, connection strings, entire config files).
-- **Secrets** are the `/etc/shadow` and `/etc/ssl/private` of the cluster — they hold sensitive data (passwords, tokens, TLS certificates) and can be restricted with RBAC and file permissions (`defaultMode`).
+- **ConfigMaps** são os arquivos `/etc/*.conf` e variáveis de ambiente do cluster — eles armazenam dados de configuração não-sensíveis (feature flags, strings de conexão, arquivos de configuração completos).
+- **Secrets** são o `/etc/shadow` e `/etc/ssl/private` do cluster — eles armazenam dados sensíveis (senhas, tokens, certificados TLS) e podem ser restritos com RBAC e permissões de arquivo (`defaultMode`).
 
-Both can be injected into a Pod as **environment variables** (like `export`) or **mounted as files** (like bind-mounting a config file into a container). The critical difference from traditional Linux: ConfigMap-mounted volumes are **automatically updated** by the kubelet when the source changes — like having `inotifywait` built in — but environment variables are **frozen at Pod start** and never change until you restart the Pod.
+Ambos podem ser injetados em um Pod como **variáveis de ambiente** (como `export`) ou **montados como arquivos** (como bind-mount de um arquivo de configuração em um container). A diferença crítica em relação ao Linux tradicional: volumes montados via ConfigMap são **atualizados automaticamente** pelo kubelet quando a fonte muda — como ter `inotifywait` embutido — mas variáveis de ambiente são **congeladas no início do Pod** e nunca mudam até você reiniciar o Pod.
 
-In this challenge you will create ConfigMaps and Secrets, inject them both ways, and observe the hot-reload behavior that catches many newcomers off guard.
+Neste desafio você criará ConfigMaps e Secrets, os injetará de ambas as formas, e observará o comportamento de hot-reload que pega muitos iniciantes de surpresa.
 
-## Description
+## Descrição
 
-Your mission is to:
+Sua missão é:
 
-1. **Create a ConfigMap from literal values and from a file**
+1. **Criar um ConfigMap a partir de valores literais e de um arquivo**
 
-   First, create a ConfigMap using `--from-literal`:
+   Primeiro, crie um ConfigMap usando `--from-literal`:
 
    ```bash
    kubectl create configmap app-config \
@@ -29,7 +29,7 @@ Your mission is to:
      --from-literal=APP_MODE=production
    ```
 
-   Next, create a local configuration file and build a ConfigMap from it:
+   Em seguida, crie um arquivo de configuração local e construa um ConfigMap a partir dele:
 
    ```bash
    cat <<'EOF' > nginx-custom.conf
@@ -50,18 +50,18 @@ Your mission is to:
    kubectl create configmap nginx-config --from-file=default.conf=nginx-custom.conf
    ```
 
-   Inspect what was created:
+   Inspecione o que foi criado:
 
    ```bash
    kubectl get configmap app-config -o yaml
    kubectl get configmap nginx-config -o yaml
    ```
 
-   > **Note:** `--from-file=default.conf=nginx-custom.conf` sets the key name to `default.conf` inside the ConfigMap. Without the `key=` prefix, the key defaults to the filename.
+   > **Nota:** `--from-file=default.conf=nginx-custom.conf` define o nome da chave como `default.conf` dentro do ConfigMap. Sem o prefixo `key=`, a chave assume o nome do arquivo.
 
-2. **Mount a ConfigMap as a volume in a Pod**
+2. **Montar um ConfigMap como volume em um Pod**
 
-   Just like bind-mounting `/etc/nginx/conf.d/default.conf` on a Linux host, mount the `nginx-config` ConfigMap into an NGINX container:
+   Assim como fazer bind-mount de `/etc/nginx/conf.d/default.conf` em um host Linux, monte o ConfigMap `nginx-config` em um container NGINX:
 
    ```yaml
    # nginx-with-config.yaml
@@ -90,11 +90,11 @@ Your mission is to:
    kubectl exec nginx-configured -- wget -qO- http://localhost/health
    ```
 
-   The config file appears inside the container exactly as if you had mounted it with `mount --bind`.
+   O arquivo de configuração aparece dentro do container exatamente como se você o tivesse montado com `mount --bind`.
 
-3. **Use ConfigMap values as environment variables**
+3. **Usar valores de ConfigMap como variáveis de ambiente**
 
-   This is the Kubernetes equivalent of `export VAR=val` or `source /etc/profile.d/myapp.sh`:
+   Este é o equivalente Kubernetes de `export VAR=val` ou `source /etc/profile.d/myapp.sh`:
 
    ```yaml
    # env-demo.yaml
@@ -118,7 +118,7 @@ Your mission is to:
    # Output: Color=blue Mode=production
    ```
 
-   You can also pick individual keys using `env[].valueFrom.configMapKeyRef`:
+   Você também pode selecionar chaves individuais usando `env[].valueFrom.configMapKeyRef`:
 
    ```yaml
    env:
@@ -129,9 +129,9 @@ Your mission is to:
            key: APP_COLOR
    ```
 
-4. **Create a Secret and mount it in a Pod**
+4. **Criar um Secret e montá-lo em um Pod**
 
-   Secrets are like `/etc/shadow` — they hold sensitive data and should have restricted permissions. Create an opaque Secret:
+   Secrets são como `/etc/shadow` — eles armazenam dados sensíveis e devem ter permissões restritas. Crie um Secret opaco:
 
    ```bash
    kubectl create secret generic db-creds \
@@ -139,13 +139,13 @@ Your mission is to:
      --from-literal=DB_PASSWORD='S3cur3P@ss!'
    ```
 
-   Inspect the Secret (values are base64-encoded in the output):
+   Inspecione o Secret (valores são codificados em base64 na saída):
 
    ```bash
    kubectl get secret db-creds -o yaml
    ```
 
-   Mount it into a Pod as a volume with restricted file permissions, just like `chmod 0400`:
+   Monte-o em um Pod como volume com permissões de arquivo restritas, assim como `chmod 0400`:
 
    ```yaml
    # secret-pod.yaml
@@ -175,9 +175,9 @@ Your mission is to:
    kubectl exec secret-pod -- ls -la /etc/credentials/
    ```
 
-   Each key in the Secret becomes a file. The `defaultMode: 0400` is the Kubernetes equivalent of `chmod 400` — owner-read only.
+   Cada chave no Secret se torna um arquivo. O `defaultMode: 0400` é o equivalente Kubernetes de `chmod 400` — somente leitura pelo proprietário.
 
-   You can also inject Secrets as environment variables:
+   Você também pode injetar Secrets como variáveis de ambiente:
 
    ```yaml
    env:
@@ -188,16 +188,16 @@ Your mission is to:
            key: DB_PASSWORD
    ```
 
-5. **Understand Secret encoding — base64 is NOT encryption**
+5. **Entender a codificação de Secrets — base64 NÃO é criptografia**
 
-   A common misconception: Secrets are **encoded** with base64, not **encrypted**. Anyone with `kubectl get secret -o yaml` access can decode them instantly:
+   Um equívoco comum: Secrets são **codificados** com base64, não **criptografados**. Qualquer pessoa com acesso a `kubectl get secret -o yaml` pode decodificá-los instantaneamente:
 
    ```bash
    kubectl get secret db-creds -o jsonpath='{.data.DB_PASSWORD}' | base64 -d
    # Output: S3cur3P@ss!
    ```
 
-   Verify this yourself — create a Secret from a YAML manifest using `stringData` (which handles encoding for you) vs `data` (which requires pre-encoded base64):
+   Verifique você mesmo — crie um Secret a partir de um manifesto YAML usando `stringData` (que lida com a codificação para você) vs `data` (que requer base64 pré-codificado):
 
    ```yaml
    # manual-secret.yaml
@@ -215,24 +215,24 @@ Your mission is to:
    kubectl get secret manual-secret -o jsonpath='{.data.API_KEY}' | base64 -d
    ```
 
-   **Security best practices:**
-   - Use RBAC to restrict who can `get` Secrets
-   - Enable [encryption at rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/) for the etcd datastore
-   - Consider external secret management (e.g., Sealed Secrets, external-secrets-operator)
-   - Never commit Secret manifests with `data:` values to version control
-   - Mark Secrets as `immutable: true` when they should never change
+   **Melhores práticas de segurança:**
+   - Use RBAC para restringir quem pode fazer `get` em Secrets
+   - Habilite [criptografia em repouso](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/) para o datastore etcd
+   - Considere gerenciamento externo de secrets (ex: Sealed Secrets, external-secrets-operator)
+   - Nunca faça commit de manifestos Secret com valores `data:` no controle de versão
+   - Marque Secrets como `immutable: true` quando eles nunca devem mudar
 
-6. **Hot-reload: update a ConfigMap and observe volume vs env var behavior**
+6. **Hot-reload: atualizar um ConfigMap e observar o comportamento de volume vs variável de ambiente**
 
-   This is the task that surprises everyone. Update the ConfigMap and watch what happens:
+   Esta é a tarefa que surpreende todo mundo. Atualize o ConfigMap e observe o que acontece:
 
    ```bash
    kubectl edit configmap app-config
    ```
 
-   Change `APP_COLOR` from `blue` to `red`, save, and exit.
+   Altere `APP_COLOR` de `blue` para `red`, salve e saia.
 
-   **Test the volume-mounted Pod** — create one if you haven't:
+   **Teste o Pod com volume montado** — crie um se ainda não tiver:
 
    ```yaml
    # watch-config.yaml
@@ -259,16 +259,16 @@ Your mission is to:
    kubectl logs watch-config -f
    ```
 
-   After editing the ConfigMap, the volume-mounted file updates automatically within ~30–60 seconds (the kubelet sync period). You'll see the output change from `blue` to `red` **without restarting the Pod**.
+   Após editar o ConfigMap, o arquivo montado via volume atualiza automaticamente dentro de ~30–60 segundos (o período de sincronização do kubelet). Você verá a saída mudar de `blue` para `red` **sem reiniciar o Pod**.
 
-   **Test the env var Pod** — check `env-demo`:
+   **Teste o Pod com variável de ambiente** — verifique `env-demo`:
 
    ```bash
    kubectl exec env-demo -- sh -c 'echo $APP_COLOR'
    # Still outputs: blue  (the OLD value!)
    ```
 
-   **Environment variables are set at container start and never change.** To pick up new values you must restart the Pod:
+   **Variáveis de ambiente são definidas no início do container e nunca mudam.** Para receber novos valores você deve reiniciar o Pod:
 
    ```bash
    kubectl delete pod env-demo
@@ -277,60 +277,60 @@ Your mission is to:
    # Now outputs: Color=red Mode=production
    ```
 
-   > **Key takeaway:** If your application reads config from **files**, it can react to ConfigMap changes without a restart. If it reads from **environment variables**, a Pod restart is required.
+   > **Conclusão principal:** Se sua aplicação lê configuração de **arquivos**, ela pode reagir a mudanças no ConfigMap sem reiniciar. Se ela lê de **variáveis de ambiente**, uma reinicialização do Pod é necessária.
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] You created a ConfigMap from `--from-literal` and verified it with `kubectl get configmap -o yaml` (Task 1)
-- [ ] You created a ConfigMap from a file (`--from-file`) and confirmed the key/value structure (Task 1)
-- [ ] You mounted a ConfigMap as a volume and the config file appears at the expected path inside the container (Task 2)
-- [ ] You injected ConfigMap values as environment variables using `envFrom` and `configMapRef` (Task 3)
-- [ ] You created an opaque Secret and mounted it as a volume with `defaultMode: 0400` (Task 4)
-- [ ] You decoded a Secret's base64 value and can explain why base64 is not encryption (Task 5)
-- [ ] You updated a ConfigMap and observed the volume-mounted file change automatically (Task 6)
-- [ ] You confirmed that environment variables do **not** update after a ConfigMap change — a Pod restart is required (Task 6)
-- [ ] You can explain when to use volume mounts vs environment variables for configuration
+- [ ] Você criou um ConfigMap a partir de `--from-literal` e verificou com `kubectl get configmap -o yaml` (Tarefa 1)
+- [ ] Você criou um ConfigMap a partir de um arquivo (`--from-file`) e confirmou a estrutura chave/valor (Tarefa 1)
+- [ ] Você montou um ConfigMap como volume e o arquivo de configuração aparece no caminho esperado dentro do container (Tarefa 2)
+- [ ] Você injetou valores do ConfigMap como variáveis de ambiente usando `envFrom` e `configMapRef` (Tarefa 3)
+- [ ] Você criou um Secret opaque e o montou como volume com `defaultMode: 0400` (Tarefa 4)
+- [ ] Você decodificou o valor base64 de um Secret e consegue explicar por que base64 não é criptografia (Tarefa 5)
+- [ ] Você atualizou um ConfigMap e observou o arquivo montado via volume mudar automaticamente (Tarefa 6)
+- [ ] Você confirmou que variáveis de ambiente **não** atualizam após uma mudança no ConfigMap — uma reinicialização do Pod é necessária (Tarefa 6)
+- [ ] Você consegue explicar quando usar montagens de volume vs variáveis de ambiente para configuração
 
-## Linux ↔ Kubernetes Reference
+## Referência Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent |
+| Conceito Linux | Equivalente Kubernetes |
 |---|---|
-| `/etc/nginx/nginx.conf` (config file) | ConfigMap mounted as a volume |
-| `export VAR=val` (environment variable) | ConfigMap/Secret as env vars (`envFrom` or `valueFrom`) |
-| `source /etc/profile.d/*.sh` (load all vars) | `envFrom: configMapRef` (inject all keys as env vars) |
-| `/etc/shadow`, `/etc/ssl/private` (sensitive files) | Secret (opaque, TLS, docker-registry) |
-| `chmod 600` (restricted file permissions) | Secret with `defaultMode: 0400` |
-| `inotifywait` (file change watcher) | ConfigMap volume auto-update (~30–60s kubelet sync) |
-| `/etc/environment` (set once at boot) | Env vars from ConfigMap — frozen at Pod start |
-| `echo 'password' | base64` (encoding) | Secret `.data` field — base64-encoded, **not encrypted** |
+| `/etc/nginx/nginx.conf` (arquivo de config) | ConfigMap montado como volume |
+| `export VAR=val` (variável de ambiente) | ConfigMap/Secret como env vars (`envFrom` ou `valueFrom`) |
+| `source /etc/profile.d/*.sh` (carregar todas as vars) | `envFrom: configMapRef` (injetar todas as chaves como env vars) |
+| `/etc/shadow`, `/etc/ssl/private` (arquivos sensíveis) | Secret (opaque, TLS, docker-registry) |
+| `chmod 600` (permissões restritas de arquivo) | Secret com `defaultMode: 0400` |
+| `inotifywait` (observador de mudanças em arquivo) | Atualização automática de volume ConfigMap (~30–60s sincronização do kubelet) |
+| `/etc/environment` (definido uma vez no boot) | Env vars do ConfigMap — congeladas no início do Pod |
+| `echo 'password' \| base64` (codificação) | Campo `.data` do Secret — codificado em base64, **não criptografado** |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: What's the difference between <code>data</code> and <code>stringData</code> in a Secret manifest?</summary>
+<summary>Dica 1: Qual é a diferença entre <code>data</code> e <code>stringData</code> em um manifesto Secret?</summary>
 
-When writing a Secret in YAML:
+Ao escrever um Secret em YAML:
 
-- **`data`** — values must be **base64-encoded** before you put them in the manifest:
+- **`data`** — os valores devem estar **codificados em base64** antes de colocá-los no manifesto:
   ```yaml
   data:
     password: UEBzc3cwcmQ=    # echo -n 'P@ssw0rd' | base64
   ```
 
-- **`stringData`** — values are plain text; Kubernetes encodes them for you:
+- **`stringData`** — os valores são texto simples; o Kubernetes codifica para você:
   ```yaml
   stringData:
     password: P@ssw0rd
   ```
 
-Both produce the same Secret object. Use `stringData` for readability during development, but remember: the Secret is still only base64-encoded in etcd, **not encrypted**.
+Ambos produzem o mesmo objeto Secret. Use `stringData` para legibilidade durante o desenvolvimento, mas lembre-se: o Secret ainda é apenas codificado em base64 no etcd, **não criptografado**.
 
 </details>
 
 <details>
-<summary>Hint 2: How do I mount only one key from a ConfigMap instead of the whole thing?</summary>
+<summary>Dica 2: Como montar apenas uma chave de um ConfigMap em vez de tudo?</summary>
 
-Use the `items` field to select specific keys and control the filename:
+Use o campo `items` para selecionar chaves específicas e controlar o nome do arquivo:
 
 ```yaml
 volumes:
@@ -342,9 +342,9 @@ volumes:
           path: site.conf
 ```
 
-This mounts only the `default.conf` key as a file named `site.conf`. Without `items`, every key in the ConfigMap becomes a file in the mount directory.
+Isso monta apenas a chave `default.conf` como um arquivo chamado `site.conf`. Sem `items`, toda chave no ConfigMap se torna um arquivo no diretório de montagem.
 
-**Warning:** When you mount a ConfigMap (or Secret) to a directory, it **replaces the entire directory contents**. Use `subPath` if you need to mount a single file without hiding other files:
+**Atenção:** Quando você monta um ConfigMap (ou Secret) em um diretório, ele **substitui todo o conteúdo do diretório**. Use `subPath` se precisar montar um único arquivo sem ocultar outros arquivos:
 
 ```yaml
 volumeMounts:
@@ -353,22 +353,22 @@ volumeMounts:
     subPath: default.conf
 ```
 
-> **Trade-off:** `subPath` mounts do **not** receive automatic updates when the ConfigMap changes.
+> **Trade-off:** Montagens com `subPath` **não** recebem atualizações automáticas quando o ConfigMap muda.
 
 </details>
 
 <details>
-<summary>Hint 3: Why aren't my ConfigMap changes showing up in the Pod?</summary>
+<summary>Dica 3: Por que minhas alterações no ConfigMap não estão aparecendo no Pod?</summary>
 
-Three common reasons:
+Três razões comuns:
 
-1. **You're reading from environment variables** — env vars are set at container start and never refresh. You must delete and recreate the Pod (or use a Deployment and trigger a rollout).
+1. **Você está lendo de variáveis de ambiente** — env vars são definidas no início do container e nunca são atualizadas. Você deve deletar e recriar o Pod (ou usar um Deployment e acionar um rollout).
 
-2. **You used `subPath`** — volume mounts with `subPath` do not receive automatic updates. Only full-directory ConfigMap mounts are auto-refreshed.
+2. **Você usou `subPath`** — montagens de volume com `subPath` não recebem atualizações automáticas. Apenas montagens de ConfigMap em diretório completo são auto-atualizadas.
 
-3. **Not enough time has passed** — the kubelet syncs ConfigMap volumes on its sync period (default ~60 seconds) plus a cache propagation delay. Wait at least 1–2 minutes after editing the ConfigMap.
+3. **Não passou tempo suficiente** — o kubelet sincroniza volumes de ConfigMap no seu período de sincronização (padrão ~60 segundos) mais um atraso de propagação de cache. Aguarde pelo menos 1–2 minutos após editar o ConfigMap.
 
-Check the current values inside the Pod:
+Verifique os valores atuais dentro do Pod:
 ```bash
 kubectl exec watch-config -- cat /config/APP_COLOR
 kubectl exec env-demo -- printenv APP_COLOR
@@ -377,23 +377,23 @@ kubectl exec env-demo -- printenv APP_COLOR
 </details>
 
 <details>
-<summary>Hint 4: How do I trigger a Deployment rollout when a ConfigMap changes?</summary>
+<summary>Dica 4: Como acionar um rollout de Deployment quando um ConfigMap muda?</summary>
 
-Kubernetes doesn't automatically restart Pods in a Deployment when a referenced ConfigMap changes. A common pattern is to annotate the Pod template with a hash of the ConfigMap data:
+O Kubernetes não reinicia automaticamente os Pods em um Deployment quando um ConfigMap referenciado muda. Um padrão comum é anotar o template do Pod com um hash dos dados do ConfigMap:
 
 ```bash
 kubectl patch deployment my-app -p \
   "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"configmap-hash\":\"$(kubectl get configmap app-config -o jsonpath='{.data}' | md5sum | cut -d' ' -f1)\"}}}}}"
 ```
 
-This changes the Pod template, which triggers a rolling update. Some tools (like Reloader by stakater) automate this pattern.
+Isso altera o template do Pod, o que aciona uma atualização rolling. Algumas ferramentas (como Reloader do stakater) automatizam este padrão.
 
 </details>
 
 <details>
-<summary>Hint 5: How do I mark a ConfigMap or Secret as immutable?</summary>
+<summary>Dica 5: Como marcar um ConfigMap ou Secret como imutável?</summary>
 
-Add `immutable: true` to prevent any further changes:
+Adicione `immutable: true` para prevenir quaisquer alterações futuras:
 
 ```yaml
 apiVersion: v1
@@ -405,13 +405,13 @@ data:
   VERSION: "2.5.0"
 ```
 
-Once set, **you cannot change the data or remove the `immutable` flag** — you must delete and recreate the ConfigMap. This improves cluster performance (the kubelet stops polling for updates) and protects against accidental changes in production.
+Uma vez definido, **você não pode alterar os dados ou remover a flag `immutable`** — você deve deletar e recriar o ConfigMap. Isso melhora a performance do cluster (o kubelet para de verificar atualizações) e protege contra alterações acidentais em produção.
 
-The same `immutable: true` field works on Secrets.
+O mesmo campo `immutable: true` funciona em Secrets.
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [ConfigMaps — kubernetes.io](https://kubernetes.io/docs/concepts/configuration/configmap/)
 - [Secrets — kubernetes.io](https://kubernetes.io/docs/concepts/configuration/secret/)
@@ -420,13 +420,13 @@ The same `immutable: true` field works on Secrets.
 - [Distribute Credentials Securely Using Secrets — kubernetes.io](https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/)
 - [Encrypting Confidential Data at Rest — kubernetes.io](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/)
 
-## Break & Fix 🔧
+## Quebra & Conserta 🔧
 
-After completing the challenge, try diagnosing these broken scenarios:
+Após completar o desafio, tente diagnosticar estes cenários quebrados:
 
-### Scenario 1: Pod stuck in ContainerCreating — missing ConfigMap
+### Cenário 1: Pod preso em ContainerCreating — ConfigMap ausente
 
-A developer deploys a Pod, but it never starts:
+Um desenvolvedor implanta um Pod, mas ele nunca inicia:
 
 ```yaml
 # broken-configmap-ref.yaml
@@ -455,21 +455,21 @@ kubectl describe pod broken-cm-pod       # Look at Events
 ```
 
 <details>
-<summary>💡 Root cause & fix</summary>
+<summary>💡 Causa raiz & correção</summary>
 
-The Pod references a ConfigMap named `does-not-exist` that was never created. The kubelet cannot mount the volume, so the container never starts.
+O Pod referencia um ConfigMap chamado `does-not-exist` que nunca foi criado. O kubelet não consegue montar o volume, então o container nunca inicia.
 
-The Events section will show:
+A seção Events mostrará:
 ```
 Warning  FailedMount  ... configmap "does-not-exist" not found
 ```
 
-**Fix:** Create the missing ConfigMap, or correct the name in the Pod spec:
+**Correção:** Crie o ConfigMap ausente, ou corrija o nome na spec do Pod:
 ```bash
 kubectl create configmap does-not-exist --from-literal=placeholder=value
 ```
 
-> **Tip:** You can make the ConfigMap reference optional using `optional: true`:
+> **Dica:** Você pode tornar a referência ao ConfigMap opcional usando `optional: true`:
 > ```yaml
 > volumes:
 >   - name: config
@@ -477,13 +477,13 @@ kubectl create configmap does-not-exist --from-literal=placeholder=value
 >       name: does-not-exist
 >       optional: true
 > ```
-> With `optional: true`, the Pod starts even if the ConfigMap doesn't exist (the mount directory will be empty).
+> Com `optional: true`, o Pod inicia mesmo se o ConfigMap não existir (o diretório de montagem ficará vazio).
 
 </details>
 
-### Scenario 2: Secret creation fails — value not base64-encoded
+### Cenário 2: Criação de Secret falha — valor não codificado em base64
 
-A developer writes a Secret manifest by hand but gets an error:
+Um desenvolvedor escreve um manifesto Secret manualmente mas recebe um erro:
 
 ```yaml
 # broken-secret.yaml
@@ -502,18 +502,18 @@ kubectl apply -f broken-secret.yaml
 ```
 
 <details>
-<summary>💡 Root cause & fix</summary>
+<summary>💡 Causa raiz & correção</summary>
 
-The `data` field requires **valid base64** values. The string `NotBase64Encoded!@#` is plain text, not base64.
+O campo `data` requer valores **base64 válidos**. A string `NotBase64Encoded!@#` é texto simples, não base64.
 
-**Fix option 1** — encode the value:
+**Opção de correção 1** — codifique o valor:
 ```bash
 echo -n 'NotBase64Encoded!@#' | base64
 # Output: Tm90QmFzZTY0RW5jb2RlZCFAIw==
 ```
-Then use the encoded value in `data.password`.
+Depois use o valor codificado em `data.password`.
 
-**Fix option 2** — use `stringData` instead of `data` (Kubernetes encodes it for you):
+**Opção de correção 2** — use `stringData` em vez de `data` (o Kubernetes codifica para você):
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -524,13 +524,13 @@ stringData:
   password: "NotBase64Encoded!@#"
 ```
 
-> **Rule of thumb:** Use `stringData` when writing manifests by hand. Use `data` only when you're generating manifests programmatically and already have base64 values.
+> **Regra geral:** Use `stringData` ao escrever manifestos manualmente. Use `data` apenas quando estiver gerando manifestos programaticamente e já tiver valores base64.
 
 </details>
 
-### Scenario 3: Environment variable doesn't update after ConfigMap change
+### Cenário 3: Variável de ambiente não atualiza após mudança no ConfigMap
 
-A developer updates a ConfigMap and expects the running Pod to pick up the change, but it doesn't:
+Um desenvolvedor atualiza um ConfigMap e espera que o Pod em execução pegue a mudança, mas não pega:
 
 ```yaml
 # env-no-refresh.yaml
@@ -561,20 +561,20 @@ kubectl logs env-no-refresh --tail=1         # Still COLOR=blue  ← not updated
 ```
 
 <details>
-<summary>💡 Root cause & fix</summary>
+<summary>💡 Causa raiz & correção</summary>
 
-**Environment variables are injected at container start time and never change.** This is identical to how Linux processes work — if you `export VAR=val` and start a process, changing the variable in the parent shell does not affect the running child process.
+**Variáveis de ambiente são injetadas no momento de início do container e nunca mudam.** Isso é idêntico a como processos Linux funcionam — se você faz `export VAR=val` e inicia um processo, alterar a variável no shell pai não afeta o processo filho em execução.
 
-Unlike volume-mounted ConfigMaps (which the kubelet syncs automatically), env vars are static for the lifetime of the container.
+Diferente de ConfigMaps montados como volume (que o kubelet sincroniza automaticamente), env vars são estáticas durante toda a vida do container.
 
-**Fix:** Restart the Pod to pick up the new values:
+**Correção:** Reinicie o Pod para pegar os novos valores:
 ```bash
 kubectl delete pod env-no-refresh
 kubectl apply -f env-no-refresh.yaml
-kubectl logs env-no-refresh --tail=1         # Now: COLOR=green
+kubectl logs env-no-refresh --tail=1         # Agora: COLOR=green
 ```
 
-**Better pattern:** If you need hot-reloadable config, mount the ConfigMap as a volume and have your application read from the file. Or use a Deployment and trigger a rollout restart:
+**Padrão melhor:** Se você precisa de configuração hot-reloadable, monte o ConfigMap como volume e faça sua aplicação ler do arquivo. Ou use um Deployment e acione um rollout restart:
 ```bash
 kubectl rollout restart deployment my-app
 ```

@@ -1,45 +1,45 @@
-# Challenge 10 — Autoscaling
+# Desafio 10 — Autoscaling
 
-[< Previous Challenge](Challenge-09.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-11.md)
+[< Desafio Anterior](Challenge-09.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-11.md)
 
-## Introduction
+## Introdução
 
-On a Linux server, you watch system load with `top` or `htop` and react accordingly. If CPU spikes, you might spawn additional worker processes, resize the machine, or have a cron job that scales things up during business hours. All of these are forms of **autoscaling** — adjusting capacity to meet demand.
+Em um servidor Linux, você observa a carga do sistema com `top` ou `htop` e reage conforme necessário. Se a CPU dispara, você pode criar processos worker adicionais, redimensionar a máquina, ou ter um cron job que escala as coisas durante o horário comercial. Todos estes são formas de **autoscaling** — ajustar a capacidade para atender a demanda.
 
-Kubernetes automates the same patterns:
+O Kubernetes automatiza os mesmos padrões:
 
-| Strategy | Linux Equivalent | Kubernetes Equivalent |
+| Estratégia | Equivalente Linux | Equivalente Kubernetes |
 |---|---|---|
-| Add more worker processes | `fork()` / spawn more instances | **HPA** — Horizontal Pod Autoscaler |
-| Give a process more CPU/RAM | Resize the VM or bump `ulimit` | **VPA** — Vertical Pod Autoscaler |
-| Scale on an external signal (queue depth, cron) | Cron job + script that starts workers | **KEDA** — Event-Driven Autoscaler |
+| Adicionar mais processos worker | `fork()` / criar mais instâncias | **HPA** — Horizontal Pod Autoscaler |
+| Dar mais CPU/RAM a um processo | Redimensionar a VM ou aumentar `ulimit` | **VPA** — Vertical Pod Autoscaler |
+| Escalar baseado em sinal externo (profundidade de fila, cron) | Cron job + script que inicia workers | **KEDA** — Event-Driven Autoscaler |
 
-In this challenge you will install the **Metrics Server** on your Kind cluster (the equivalent of making `/proc/stat` and `/proc/meminfo` available to the cluster), create an HPA that automatically adjusts the number of Pod replicas based on CPU utilization, generate synthetic load to watch it scale up, and then observe the cool-down when load stops. You will also learn the concepts behind VPA and KEDA so you understand when to reach for each tool.
+Neste desafio você vai instalar o **Metrics Server** no seu cluster Kind (o equivalente a tornar `/proc/stat` e `/proc/meminfo` disponíveis para o cluster), criar um HPA que automaticamente ajusta o número de réplicas de Pod baseado na utilização de CPU, gerar carga sintética para vê-lo escalar, e depois observar o cool-down quando a carga para. Você também vai aprender os conceitos por trás do VPA e KEDA para entender quando usar cada ferramenta.
 
-> **Cluster requirement:** All exercises use a local [Kind](https://kind.sigs.k8s.io/) cluster — no cloud account needed. If you haven't created one yet, run:
+> **Requisito do cluster:** Todos os exercícios usam um cluster local [Kind](https://kind.sigs.k8s.io/) — nenhuma conta cloud é necessária. Se você ainda não criou um, execute:
 > ```bash
 > kind create cluster --name fasthack
 > ```
 
-## Description
+## Descrição
 
-### Task 1 — Install Metrics Server on Kind
+### Tarefa 1 — Instalar Metrics Server no Kind
 
-The HPA controller needs real-time CPU and memory metrics to make scaling decisions. On a Linux box this data comes from `/proc/stat`; in Kubernetes it comes from the **Metrics Server** API.
+O controlador HPA precisa de métricas de CPU e memória em tempo real para tomar decisões de escalonamento. Em uma máquina Linux esses dados vêm de `/proc/stat`; no Kubernetes eles vêm da API do **Metrics Server**.
 
-Install Metrics Server and patch it so it works on Kind (which uses self-signed kubelet certificates):
+Instale o Metrics Server e aplique um patch para que funcione no Kind (que usa certificados kubelet auto-assinados):
 
 ```bash
-# Install Metrics Server
+# Instalar Metrics Server
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
-# Patch to accept Kind's self-signed kubelet certificates
+# Patch para aceitar certificados kubelet auto-assinados do Kind
 kubectl patch -n kube-system deployment metrics-server \
   --type=json \
   -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
 ```
 
-Wait for the Metrics Server Pod to become `Running`, then verify it's collecting data:
+Aguarde o Pod do Metrics Server ficar `Running`, depois verifique se está coletando dados:
 
 ```bash
 kubectl -n kube-system rollout status deployment metrics-server
@@ -47,11 +47,11 @@ kubectl top nodes
 kubectl top pods -A
 ```
 
-You should see CPU and memory values — not errors. If `kubectl top` still fails, give Metrics Server another 30–60 seconds to collect its first scrape.
+Você deve ver valores de CPU e memória — não erros. Se `kubectl top` ainda falhar, dê mais 30–60 segundos para o Metrics Server coletar seu primeiro scrape.
 
-### Task 2 — Deploy a CPU-intensive application
+### Tarefa 2 — Implantar uma aplicação intensiva em CPU
 
-Create a Deployment with an explicit CPU request (the HPA needs this to calculate utilization percentages). Save this as `php-apache.yaml`:
+Crie um Deployment com um request de CPU explícito (o HPA precisa disso para calcular percentuais de utilização). Salve isso como `php-apache.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -91,16 +91,16 @@ spec:
       targetPort: 80
 ```
 
-Apply it:
+Aplique:
 
 ```bash
 kubectl apply -f php-apache.yaml
 kubectl rollout status deployment php-apache
 ```
 
-### Task 3 — Create an HPA targeting 50% CPU
+### Tarefa 3 — Criar um HPA com alvo de 50% de CPU
 
-Create a Horizontal Pod Autoscaler that keeps average CPU utilization at 50%, scaling between 1 and 10 replicas:
+Crie um Horizontal Pod Autoscaler que mantém a utilização média de CPU em 50%, escalando entre 1 e 10 réplicas:
 
 ```bash
 kubectl autoscale deployment php-apache \
@@ -109,24 +109,24 @@ kubectl autoscale deployment php-apache \
   --max=10
 ```
 
-Verify the HPA was created and is reading metrics (not `<unknown>`):
+Verifique se o HPA foi criado e está lendo métricas (não `<unknown>`):
 
 ```bash
 kubectl get hpa php-apache
 ```
 
-You should see something like:
+Você deve ver algo como:
 
 ```
 NAME         REFERENCE               TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
 php-apache   Deployment/php-apache   0%/50%    1         10        1          30s
 ```
 
-> **If you see `<unknown>/50%`:** Metrics Server is either not running or the Pod lacks a `resources.requests.cpu` field. See Break & Fix Scenario 1 below.
+> **Se você vir `<unknown>/50%`:** O Metrics Server não está executando ou o Pod não tem o campo `resources.requests.cpu`. Veja o Cenário 1 do Quebra & Conserta abaixo.
 
-### Task 4 — Generate load and watch scale-up
+### Tarefa 4 — Gerar carga e observar o scale-up
 
-Open a **second terminal** and start a load generator — a BusyBox Pod that hammers the Service in a tight loop:
+Abra um **segundo terminal** e inicie um gerador de carga — um Pod BusyBox que bombardeia o Service em um loop apertado:
 
 ```bash
 kubectl run load-generator \
@@ -135,43 +135,43 @@ kubectl run load-generator \
   -- /bin/sh -c "while true; do wget -q -O- http://php-apache; done"
 ```
 
-In your first terminal, watch the HPA react:
+No seu primeiro terminal, observe o HPA reagir:
 
 ```bash
 kubectl get hpa php-apache --watch
 ```
 
-Within 1–2 minutes you should see the CPU target climb above 50% and the replica count increase. Also watch the Pods:
+Em 1–2 minutos você deve ver o alvo de CPU subir acima de 50% e a contagem de réplicas aumentar. Observe também os Pods:
 
 ```bash
 kubectl get pods -l app=php-apache --watch
 ```
 
-### Task 5 — Stop load and observe scale-down
+### Tarefa 5 — Parar a carga e observar o scale-down
 
-Delete the load generator:
+Delete o gerador de carga:
 
 ```bash
 kubectl delete pod load-generator
 ```
 
-Keep watching the HPA. After the **stabilization window** (default 5 minutes for scale-down), the HPA will gradually reduce the replica count back toward 1.
+Continue observando o HPA. Após a **janela de estabilização** (padrão de 5 minutos para scale-down), o HPA vai gradualmente reduzir a contagem de réplicas de volta para 1.
 
 ```bash
 kubectl get hpa php-apache --watch
 ```
 
-> **Why does scale-down take so long?** The HPA has a default `--horizontal-pod-autoscaler-downscale-stabilization` window of 5 minutes. This prevents flapping — the same reason you'd add hysteresis to a monitoring alert on a Linux server.
+> **Por que o scale-down demora tanto?** O HPA tem uma janela padrão `--horizontal-pod-autoscaler-downscale-stabilization` de 5 minutos. Isso previne flapping — a mesma razão pela qual você adicionaria histerese a um alerta de monitoramento em um servidor Linux.
 
-### Task 6 — Explore the HPA manifest (YAML)
+### Tarefa 6 — Explorar o manifesto HPA (YAML)
 
-Export the HPA you created imperatively and study its structure:
+Exporte o HPA que você criou imperativamente e estude sua estrutura:
 
 ```bash
 kubectl get hpa php-apache -o yaml
 ```
 
-Now create the equivalent HPA declaratively. Save this as `php-apache-hpa.yaml`:
+Agora crie o HPA equivalente de forma declarativa. Salve isso como `php-apache-hpa.yaml`:
 
 ```yaml
 apiVersion: autoscaling/v2
@@ -197,47 +197,47 @@ spec:
       stabilizationWindowSeconds: 60
 ```
 
-Apply it:
+Aplique:
 
 ```bash
 kubectl apply -f php-apache-hpa.yaml
 ```
 
-Notice the `behavior.scaleDown.stabilizationWindowSeconds` — set to 60 seconds here for faster feedback in a lab environment. In production you would keep the default (300s) or tune it based on your workload's traffic pattern.
+Note o `behavior.scaleDown.stabilizationWindowSeconds` — definido para 60 segundos aqui para feedback mais rápido em um ambiente de laboratório. Em produção você manteria o padrão (300s) ou ajustaria baseado no padrão de tráfego da sua carga de trabalho.
 
-### Task 7 — Introduction to VPA (Vertical Pod Autoscaler)
+### Tarefa 7 — Introdução ao VPA (Vertical Pod Autoscaler)
 
-The HPA adds or removes Pods (horizontal scaling). The **Vertical Pod Autoscaler (VPA)** adjusts `requests` and `limits` on existing Pods — like resizing a VM or changing `ulimit` values for a running process.
+O HPA adiciona ou remove Pods (escalonamento horizontal). O **Vertical Pod Autoscaler (VPA)** ajusta `requests` e `limits` em Pods existentes — como redimensionar uma VM ou mudar valores de `ulimit` para um processo em execução.
 
-**When to use VPA instead of HPA:**
+**Quando usar VPA em vez de HPA:**
 
-- Your workload cannot be scaled horizontally (e.g., a stateful singleton database).
-- You don't know the right resource requests for a new application and want VPA to recommend values.
-- You want to right-size Pods so they're not over- or under-provisioned.
+- Sua carga de trabalho não pode ser escalada horizontalmente (ex: um banco de dados singleton stateful).
+- Você não sabe os requests de recurso corretos para uma nova aplicação e quer que o VPA recomende valores.
+- Você quer dimensionar corretamente os Pods para que não estejam super ou sub-provisionados.
 
-> **Note:** VPA is not installed by default and is a separate project. You do **not** need to install it for this challenge — understanding the concept is sufficient. VPA and HPA should generally **not** target the same metric (CPU) on the same Deployment, as they can conflict.
+> **Nota:** O VPA não é instalado por padrão e é um projeto separado. Você **não** precisa instalá-lo para este desafio — entender o conceito é suficiente. VPA e HPA geralmente **não** devem ter como alvo a mesma métrica (CPU) no mesmo Deployment, pois podem conflitar.
 
-Read the VPA README to understand its three modes:
+Leia o README do VPA para entender seus três modos:
 
-| VPA Mode | Behavior |
+| Modo VPA | Comportamento |
 |---|---|
-| `Off` | Only recommends — does not change Pods |
-| `Initial` | Sets requests/limits at Pod creation time only |
-| `Auto` | Evicts and recreates Pods with updated requests/limits |
+| `Off` | Apenas recomenda — não altera Pods |
+| `Initial` | Define requests/limits apenas no momento de criação do Pod |
+| `Auto` | Despeja e recria Pods com requests/limits atualizados |
 
-### Task 8 — Introduction to KEDA (Event-Driven Autoscaling)
+### Tarefa 8 — Introdução ao KEDA (Event-Driven Autoscaling)
 
-**KEDA** (Kubernetes Event-Driven Autoscaling) extends the HPA to scale on signals beyond CPU and memory — like message queue depth, HTTP request rate, cron schedules, or Prometheus metrics.
+**KEDA** (Kubernetes Event-Driven Autoscaling) estende o HPA para escalar baseado em sinais além de CPU e memória — como profundidade de fila de mensagens, taxa de requisições HTTP, agendamentos cron, ou métricas Prometheus.
 
-**Linux analogy:** Imagine a cron job that checks a RabbitMQ queue every minute and spawns workers when messages pile up. KEDA does the same thing, but as a native Kubernetes controller.
+**Analogia Linux:** Imagine um cron job que verifica uma fila RabbitMQ a cada minuto e cria workers quando mensagens se acumulam. O KEDA faz a mesma coisa, mas como um controlador nativo do Kubernetes.
 
-KEDA uses **ScaledObject** resources that define:
+KEDA usa recursos **ScaledObject** que definem:
 
-- **What** to scale (a Deployment or Job)
-- **What trigger** to watch (Prometheus, cron, Kafka, etc.)
-- **When** to scale to zero (scale-to-zero is a key KEDA feature)
+- **O que** escalar (um Deployment ou Job)
+- **Qual trigger** observar (Prometheus, cron, Kafka, etc.)
+- **Quando** escalar para zero (scale-to-zero é um recurso chave do KEDA)
 
-Example — a cron-based ScaledObject (cloud-agnostic):
+Exemplo — um ScaledObject baseado em cron (cloud-agnostic):
 
 ```yaml
 apiVersion: keda.sh/v1alpha1
@@ -258,11 +258,11 @@ spec:
         desiredReplicas: "5"
 ```
 
-This scales `php-apache` to 5 replicas during business hours and back to 0 outside of them — like a smarter cron job.
+Isso escala `php-apache` para 5 réplicas durante o horário comercial e volta para 0 fora dele — como um cron job mais inteligente.
 
-> **Note:** You do **not** need to install KEDA for this challenge. Understanding the concept and knowing when to use it is sufficient.
+> **Nota:** Você **não** precisa instalar o KEDA para este desafio. Entender o conceito e saber quando usá-lo é suficiente.
 
-### Clean Up
+### Limpeza
 
 ```bash
 kubectl delete -f php-apache.yaml
@@ -271,58 +271,58 @@ kubectl delete -f php-apache-hpa.yaml 2>/dev/null
 kubectl delete pod load-generator 2>/dev/null
 ```
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] Metrics Server is running on your Kind cluster and `kubectl top nodes` returns CPU/memory data.
-- [ ] You deployed the `php-apache` application with explicit CPU `requests`.
-- [ ] You created an HPA targeting 50% CPU utilization with min=1 and max=10 replicas.
-- [ ] `kubectl get hpa` shows actual CPU percentage (not `<unknown>`).
-- [ ] You generated load and observed the HPA scale the Deployment above 1 replica.
-- [ ] After stopping load, you observed the HPA scale the Deployment back down.
-- [ ] You can explain the difference between the `autoscaling/v2` YAML manifest and the imperative `kubectl autoscale` command.
-- [ ] You can explain when you would use VPA instead of HPA.
-- [ ] You can explain what KEDA does and give an example of an event-driven trigger.
+- [ ] O Metrics Server está executando no seu cluster Kind e `kubectl top nodes` retorna dados de CPU/memória.
+- [ ] Você implantou a aplicação `php-apache` com `requests` de CPU explícitos.
+- [ ] Você criou um HPA com alvo de 50% de utilização de CPU com min=1 e max=10 réplicas.
+- [ ] `kubectl get hpa` mostra o percentual real de CPU (não `<unknown>`).
+- [ ] Você gerou carga e observou o HPA escalar o Deployment acima de 1 réplica.
+- [ ] Após parar a carga, você observou o HPA escalar o Deployment de volta para baixo.
+- [ ] Você consegue explicar a diferença entre o manifesto YAML `autoscaling/v2` e o comando imperativo `kubectl autoscale`.
+- [ ] Você consegue explicar quando usaria VPA em vez de HPA.
+- [ ] Você consegue explicar o que o KEDA faz e dar um exemplo de trigger event-driven.
 
-## Linux ↔ Kubernetes Reference
+## Referência Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent | Notes |
+| Conceito Linux | Equivalente Kubernetes | Notas |
 |---|---|---|
-| `top` / `htop` | `kubectl top pods` | Real-time CPU and memory usage per Pod |
-| `/proc/stat` (CPU counters) | Metrics Server API | The data source the HPA controller reads |
-| `ulimit` (per-process limits) | `resources.requests` / `resources.limits` | Pod-level CPU and memory boundaries |
-| Spawn workers based on load | HPA (Horizontal Pod Autoscaler) | Adds/removes Pod replicas automatically |
-| Resize VM / add RAM | VPA (Vertical Pod Autoscaler) | Adjusts requests/limits on existing Pods |
-| Cron + script to scale workers | KEDA (event-driven autoscaling) | Scales on queue depth, Prometheus, cron, etc. |
-| `monit` / `supervisord` | HPA controller (kube-controller-manager) | The control loop that watches metrics and adjusts replicas |
-| Load average → fork workers | `averageUtilization` threshold | HPA's target metric that triggers scaling |
+| `top` / `htop` | `kubectl top pods` | Uso de CPU e memória em tempo real por Pod |
+| `/proc/stat` (contadores de CPU) | API do Metrics Server | A fonte de dados que o controlador HPA lê |
+| `ulimit` (limites por processo) | `resources.requests` / `resources.limits` | Limites de CPU e memória no nível do Pod |
+| Criar workers baseado em carga | HPA (Horizontal Pod Autoscaler) | Adiciona/remove réplicas de Pod automaticamente |
+| Redimensionar VM / adicionar RAM | VPA (Vertical Pod Autoscaler) | Ajusta requests/limits em Pods existentes |
+| Cron + script para escalar workers | KEDA (event-driven autoscaling) | Escala baseado em profundidade de fila, Prometheus, cron, etc. |
+| `monit` / `supervisord` | Controlador HPA (kube-controller-manager) | O loop de controle que observa métricas e ajusta réplicas |
+| Load average → criar workers | Threshold `averageUtilization` | Métrica alvo do HPA que aciona o escalonamento |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: Metrics Server takes a minute to warm up</summary>
+<summary>Dica 1: Metrics Server leva um minuto para aquecer</summary>
 
-After installing Metrics Server and applying the `--kubelet-insecure-tls` patch, the Deployment will roll out a new Pod. Wait for it:
+Após instalar o Metrics Server e aplicar o patch `--kubelet-insecure-tls`, o Deployment fará rollout de um novo Pod. Aguarde:
 
 ```bash
 kubectl -n kube-system rollout status deployment metrics-server
 ```
 
-Then give it 30–60 seconds before running `kubectl top`. The first scrape needs time to collect data from all kubelets.
+Depois dê 30–60 segundos antes de executar `kubectl top`. O primeiro scrape precisa de tempo para coletar dados de todos os kubelets.
 
-If `kubectl top nodes` returns `error: metrics not available yet`, just wait and retry.
+Se `kubectl top nodes` retornar `error: metrics not available yet`, apenas aguarde e tente novamente.
 
 </details>
 
 <details>
-<summary>Hint 2: Why does the HPA show &lt;unknown&gt;?</summary>
+<summary>Dica 2: Por que o HPA mostra &lt;unknown&gt;?</summary>
 
-The HPA calculates utilization as: `(current CPU usage) / (requested CPU)`.
+O HPA calcula a utilização como: `(uso atual de CPU) / (CPU solicitada)`.
 
-If the target Pods have **no `resources.requests.cpu`** defined, the HPA cannot compute a percentage and shows `<unknown>`.
+Se os Pods alvo **não têm `resources.requests.cpu`** definido, o HPA não pode calcular um percentual e mostra `<unknown>`.
 
-**Fix:** Add a `resources.requests.cpu` field to every container in the Deployment's Pod template. For this lab, `200m` (200 millicores) is a good starting value.
+**Correção:** Adicione um campo `resources.requests.cpu` a todo container no template de Pod do Deployment. Para este laboratório, `200m` (200 millicores) é um bom valor inicial.
 
-Also check that Metrics Server is healthy:
+Verifique também se o Metrics Server está saudável:
 
 ```bash
 kubectl -n kube-system get pods -l k8s-app=metrics-server
@@ -332,9 +332,9 @@ kubectl top pods
 </details>
 
 <details>
-<summary>Hint 3: Load generator isn't driving CPU high enough</summary>
+<summary>Dica 3: O gerador de carga não está elevando a CPU o suficiente</summary>
 
-Make sure the load generator is hitting the **Service name**, not a Pod IP:
+Certifique-se de que o gerador de carga está acessando o **nome do Service**, não um IP de Pod:
 
 ```bash
 kubectl run load-generator \
@@ -343,13 +343,13 @@ kubectl run load-generator \
   -- /bin/sh -c "while true; do wget -q -O- http://php-apache; done"
 ```
 
-If `php-apache` Service doesn't exist, the wget requests will fail silently. Verify:
+Se o Service `php-apache` não existir, as requisições wget falharão silenciosamente. Verifique:
 
 ```bash
 kubectl get svc php-apache
 ```
 
-You can also run multiple load generators in parallel for faster results:
+Você também pode executar múltiplos geradores de carga em paralelo para resultados mais rápidos:
 
 ```bash
 for i in 1 2 3; do
@@ -363,11 +363,11 @@ done
 </details>
 
 <details>
-<summary>Hint 4: Scale-down is slow — is that normal?</summary>
+<summary>Dica 4: O scale-down é lento — isso é normal?</summary>
 
-Yes. The HPA default stabilization window for scale-down is **5 minutes** (`--horizontal-pod-autoscaler-downscale-stabilization=5m0s`). This prevents the replica count from flapping if load fluctuates.
+Sim. A janela de estabilização padrão do HPA para scale-down é de **5 minutos** (`--horizontal-pod-autoscaler-downscale-stabilization=5m0s`). Isso previne que a contagem de réplicas fique oscilando se a carga flutuar.
 
-You can speed this up in a lab by setting `behavior.scaleDown.stabilizationWindowSeconds` in the HPA spec:
+Você pode acelerar isso em um laboratório definindo `behavior.scaleDown.stabilizationWindowSeconds` na spec do HPA:
 
 ```yaml
 behavior:
@@ -375,20 +375,20 @@ behavior:
     stabilizationWindowSeconds: 30
 ```
 
-In production, keep the default or increase it — premature scale-down can cause outages during bursty traffic.
+Em produção, mantenha o padrão ou aumente — scale-down prematuro pode causar indisponibilidade durante tráfego em rajadas.
 
 </details>
 
 <details>
-<summary>Hint 5: Viewing HPA events and decisions</summary>
+<summary>Dica 5: Visualizando eventos e decisões do HPA</summary>
 
-The HPA controller logs its scaling decisions as Kubernetes events. View them with:
+O controlador HPA registra suas decisões de escalonamento como eventos Kubernetes. Visualize-os com:
 
 ```bash
 kubectl describe hpa php-apache
 ```
 
-Look at the **Conditions** and **Events** sections. You'll see entries like:
+Observe as seções **Conditions** e **Events**. Você verá entradas como:
 
 ```
 AbleToScale     True    ReadyForNewScale   recommended size matches current size
@@ -396,11 +396,11 @@ ScalingActive   True    ValidMetricFound   the HPA was able to successfully calc
 ScalingLimited  False   DesiredWithinRange  the desired count is within the acceptable range
 ```
 
-This is the Kubernetes equivalent of reading system logs (`journalctl`) to understand why `monit` restarted a service.
+Este é o equivalente Kubernetes de ler logs do sistema (`journalctl`) para entender por que o `monit` reiniciou um serviço.
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [Horizontal Pod Autoscaling — Kubernetes official docs](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
 - [HPA Walkthrough](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/)
@@ -410,13 +410,13 @@ This is the Kubernetes equivalent of reading system logs (`journalctl`) to under
 - [Vertical Pod Autoscaler — Kubernetes docs](https://kubernetes.io/docs/concepts/workloads/autoscaling/#scaling-workloads-vertically)
 - [KEDA — Kubernetes Event-Driven Autoscaling](https://keda.sh/docs/latest/concepts/)
 
-## Break & Fix 🔧
+## Quebra & Conserta 🔧
 
-Try each scenario, diagnose the problem, and fix it.
+Tente cada cenário, diagnostique o problema e corrija.
 
-### Scenario 1 — HPA shows `<unknown>/50%` for CPU
+### Cenário 1 — HPA mostra `<unknown>/50%` para CPU
 
-Apply this Deployment and HPA — the HPA will not work:
+Aplique este Deployment e HPA — o HPA não vai funcionar:
 
 ```yaml
 apiVersion: apps/v1
@@ -438,7 +438,7 @@ spec:
           image: nginx:stable
           ports:
             - containerPort: 80
-          # BUG: no resources.requests defined!
+          # BUG: nenhum resources.requests definido!
 ```
 
 ```bash
@@ -447,19 +447,19 @@ kubectl autoscale deployment broken-hpa-app --cpu-percent=50 --min=1 --max=5
 kubectl get hpa broken-hpa-app
 ```
 
-**What you'll see:** `TARGETS` shows `<unknown>/50%` even though Metrics Server is running.
+**O que você verá:** `TARGETS` mostra `<unknown>/50%` mesmo com o Metrics Server executando.
 
-**Diagnose:** `kubectl describe hpa broken-hpa-app` — look for the event: `FailedGetResourceMetric ... missing request for cpu`.
+**Diagnostique:** `kubectl describe hpa broken-hpa-app` — procure o evento: `FailedGetResourceMetric ... missing request for cpu`.
 
-**Root cause:** The HPA computes utilization as `current / requested`. With no `requests.cpu`, there is nothing to divide by.
+**Causa raiz:** O HPA calcula utilização como `atual / solicitado`. Sem `requests.cpu`, não há nada para dividir.
 
-**Fix:** Add `resources.requests.cpu: 200m` to the container spec, re-apply, and verify:
+**Correção:** Adicione `resources.requests.cpu: 200m` à spec do container, re-aplique e verifique:
 
 ```bash
 kubectl get hpa broken-hpa-app --watch
 ```
 
-**Clean up:**
+**Limpeza:**
 
 ```bash
 kubectl delete deployment broken-hpa-app
@@ -468,9 +468,9 @@ kubectl delete hpa broken-hpa-app
 
 ---
 
-### Scenario 2 — HPA doesn't scale up under load
+### Cenário 2 — HPA não escala sob carga
 
-Apply the correct `php-apache` Deployment and HPA from Tasks 2–3, then start this load generator:
+Aplique o Deployment e HPA corretos de `php-apache` das Tarefas 2–3, depois inicie este gerador de carga:
 
 ```bash
 kubectl run bad-load \
@@ -479,21 +479,21 @@ kubectl run bad-load \
   -- /bin/sh -c "while true; do wget -q -O- http://wrong-service-name; done"
 ```
 
-**What you'll see:** The HPA stays at 1 replica — CPU never rises.
+**O que você verá:** O HPA permanece em 1 réplica — a CPU nunca sobe.
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
-# Check load generator logs — wget is failing
+# Verificar logs do gerador de carga — wget está falhando
 kubectl logs bad-load
 
-# Check HPA — CPU stays near 0%
+# Verificar HPA — CPU permanece perto de 0%
 kubectl get hpa php-apache
 ```
 
-**Root cause:** The load generator is hitting `wrong-service-name`, which doesn't exist. The requests never reach `php-apache`, so its CPU stays idle.
+**Causa raiz:** O gerador de carga está acessando `wrong-service-name`, que não existe. As requisições nunca chegam ao `php-apache`, então sua CPU permanece ociosa.
 
-**Fix:** Delete the broken load generator and create one pointing to the correct Service:
+**Correção:** Delete o gerador de carga quebrado e crie um apontando para o Service correto:
 
 ```bash
 kubectl delete pod bad-load
@@ -503,9 +503,9 @@ kubectl run good-load \
   -- /bin/sh -c "while true; do wget -q -O- http://php-apache; done"
 ```
 
-**Linux analogy:** It's like running a load test against `localhost:9999` when your app is on port `8080` — your monitoring shows zero load because nothing is actually hitting the server.
+**Analogia Linux:** É como executar um teste de carga contra `localhost:9999` quando sua aplicação está na porta `8080` — seu monitoramento mostra zero carga porque nada está realmente acessando o servidor.
 
-**Clean up:**
+**Limpeza:**
 
 ```bash
 kubectl delete pod good-load
@@ -513,40 +513,40 @@ kubectl delete pod good-load
 
 ---
 
-### Scenario 3 — Pods scaled up but won't come back down
+### Cenário 3 — Pods escalaram mas não voltam
 
-Run the full load test from Tasks 4–5. Once the HPA has scaled up to several replicas, delete the load generator and immediately check replicas:
+Execute o teste de carga completo das Tarefas 4–5. Uma vez que o HPA escalou para várias réplicas, delete o gerador de carga e verifique as réplicas imediatamente:
 
 ```bash
 kubectl delete pod load-generator
 kubectl get hpa php-apache
 ```
 
-**What you'll see:** Even though CPU drops to 0%, the replica count stays elevated for several minutes.
+**O que você verá:** Mesmo com a CPU caindo para 0%, a contagem de réplicas permanece elevada por vários minutos.
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
 kubectl describe hpa php-apache
 ```
 
-Look for the condition:
+Procure a condição:
 
 ```
 ScalingLimited  True  TooFewReplicas  the desired replica count is less than the minimum replica count
 ```
 
-Or more likely:
+Ou mais provavelmente:
 
 ```
 AbleToScale  True  ReadyForNewScale  recommended size matches current size
 ```
 
-The HPA is **waiting out the stabilization window** before scaling down.
+O HPA está **esperando a janela de estabilização** antes de escalar para baixo.
 
-**Root cause:** The default `stabilizationWindowSeconds` for scale-down is 300 seconds (5 minutes). This is by design — it prevents flapping if load comes back quickly.
+**Causa raiz:** O `stabilizationWindowSeconds` padrão para scale-down é 300 segundos (5 minutos). Isso é por design — previne flapping se a carga voltar rapidamente.
 
-**Fix (for lab only — not production):** Patch the HPA to use a shorter stabilization window:
+**Correção (apenas para laboratório — não para produção):** Aplique patch no HPA para usar uma janela de estabilização mais curta:
 
 ```bash
 kubectl patch hpa php-apache --type=merge -p '{
@@ -560,6 +560,6 @@ kubectl patch hpa php-apache --type=merge -p '{
 }'
 ```
 
-After ~30 seconds of low CPU, the replicas will scale down.
+Após ~30 segundos de CPU baixa, as réplicas vão escalar para baixo.
 
-**Linux analogy:** This is hysteresis — like setting a 5-minute cooldown on a monitoring alert so it doesn't page you for every brief spike. The same principle applies in reverse: don't deallocate workers the instant load drops, in case it comes right back.
+**Analogia Linux:** Isso é histerese — como definir um cooldown de 5 minutos em um alerta de monitoramento para que não te avise a cada pico breve. O mesmo princípio se aplica ao contrário: não desaloque workers no instante em que a carga cai, caso ela volte rapidamente.

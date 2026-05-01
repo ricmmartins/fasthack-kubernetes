@@ -1,22 +1,22 @@
-# Challenge 06 — Ingress and Gateway API
+# Desafio 06 — Ingress e Gateway API
 
-[< Previous Challenge](Challenge-05.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-07.md)
+[< Desafio Anterior](Challenge-05.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-07.md)
 
-## Introduction
+## Introdução
 
-If you've ever configured **nginx** or **Apache** as a reverse proxy — writing `server` blocks with `server_name`, `location` directives, and `proxy_pass` rules — you already understand the problem that Ingress and Gateway API solve.
+Se você já configurou **nginx** ou **Apache** como um proxy reverso — escrevendo blocos `server` com `server_name`, diretivas `location` e regras `proxy_pass` — você já entende o problema que Ingress e Gateway API resolvem.
 
-On a traditional Linux server, you expose multiple web applications behind a single IP by configuring virtual hosts and path-based routing in your reverse proxy config. In Kubernetes, **Ingress** and the newer **Gateway API** are the declarative equivalents: you describe _what_ traffic should go _where_, and a controller (the running reverse proxy) makes it happen.
+Em um servidor Linux tradicional, você expõe múltiplas aplicações web atrás de um único IP configurando virtual hosts e roteamento baseado em caminho na configuração do seu proxy reverso. No Kubernetes, **Ingress** e a mais recente **Gateway API** são os equivalentes declarativos: você descreve _qual_ tráfego deve ir _para onde_, e um controller (o proxy reverso em execução) faz acontecer.
 
-**Ingress** has been the standard since Kubernetes 1.1, but it has well-known limitations — no standard way to handle TCP/UDP traffic, limited extensibility, and a single resource trying to serve both cluster operators and application developers. **Gateway API** is the official successor: it's more expressive, role-oriented, and already GA as of Kubernetes 1.29. In this challenge, you'll learn both.
+**Ingress** é o padrão desde o Kubernetes 1.1, mas tem limitações bem conhecidas — nenhuma forma padrão de lidar com tráfego TCP/UDP, extensibilidade limitada, e um único recurso tentando servir tanto operadores de cluster quanto desenvolvedores de aplicações. **Gateway API** é o sucessor oficial: é mais expressivo, orientado a papéis, e já está GA desde o Kubernetes 1.29. Neste desafio, você aprenderá ambos.
 
-## Description
+## Descrição
 
-Your mission is to:
+Sua missão é:
 
-1. **Recreate your Kind cluster with Ingress support**
+1. **Recriar seu cluster Kind com suporte a Ingress**
 
-   Your current Kind cluster likely doesn't have the port mappings needed for Ingress. Delete it and create a new one using this config:
+   Seu cluster Kind atual provavelmente não tem os mapeamentos de porta necessários para Ingress. Delete-o e crie um novo usando esta configuração:
 
    ```yaml
    # kind-ingress.yaml
@@ -38,15 +38,15 @@ Your mission is to:
    kind create cluster --name fasthack --config kind-ingress.yaml
    ```
 
-2. **Install the NGINX Ingress Controller**
+2. **Instalar o NGINX Ingress Controller**
 
-   Deploy the NGINX Ingress Controller using the Kind-specific manifest:
+   Faça deploy do NGINX Ingress Controller usando o manifesto específico para Kind:
 
    ```bash
    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
    ```
 
-   Wait for it to be ready:
+   Aguarde até estar pronto:
 
    ```bash
    kubectl wait --namespace ingress-nginx \
@@ -55,9 +55,9 @@ Your mission is to:
      --timeout=90s
    ```
 
-3. **Deploy two backend applications**
+3. **Fazer deploy de duas aplicações backend**
 
-   Create two simple web apps to route traffic to:
+   Crie duas aplicações web simples para rotear tráfego:
 
    ```yaml
    # app1.yaml
@@ -97,51 +97,51 @@ Your mission is to:
        targetPort: 5678
    ```
 
-   Create a similar manifest for `app2` (with `"-text=Hello from App2"`), then apply both.
+   Crie um manifesto similar para `app2` (com `"-text=Hello from App2"`), e então aplique ambos.
 
-4. **Create an Ingress with host-based routing**
+4. **Criar um Ingress com roteamento baseado em host**
 
-   Write an Ingress resource that routes:
+   Escreva um recurso Ingress que roteia:
    - `app1.localhost` → `app1-svc`
    - `app2.localhost` → `app2-svc`
 
-   Verify with:
+   Verifique com:
 
    ```bash
    curl http://app1.localhost/
    curl http://app2.localhost/
    ```
 
-   > **Note:** On most systems, `*.localhost` resolves to `127.0.0.1` automatically. If it doesn't on yours, add entries to `/etc/hosts` (Linux/Mac) or `C:\Windows\System32\drivers\etc\hosts` (Windows).
+   > **Nota:** Na maioria dos sistemas, `*.localhost` resolve para `127.0.0.1` automaticamente. Se não funcionar no seu, adicione entradas no `/etc/hosts` (Linux/Mac) ou `C:\Windows\System32\drivers\etc\hosts` (Windows).
 
-5. **Create an Ingress with path-based routing**
+5. **Criar um Ingress com roteamento baseado em caminho**
 
-   Write a _second_ Ingress resource (or modify the first) that routes by path on a single hostname:
+   Escreva um _segundo_ recurso Ingress (ou modifique o primeiro) que roteia por caminho em um único hostname:
    - `localhost/app1` → `app1-svc`
    - `localhost/app2` → `app2-svc`
 
-   Use `pathType: Prefix` and verify with:
+   Use `pathType: Prefix` e verifique com:
 
    ```bash
    curl http://localhost/app1
    curl http://localhost/app2
    ```
 
-6. **Install Gateway API and create an HTTPRoute**
+6. **Instalar Gateway API e criar um HTTPRoute**
 
-   Install the Gateway API CRDs:
+   Instale os CRDs da Gateway API:
 
    ```bash
    kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
    ```
 
-   The NGINX Ingress Controller you already installed supports Gateway API. Enable it by adding the `--enable-gateway-api` flag, or install a dedicated Gateway API controller. For this lab, use the NGINX Gateway Fabric:
+   O NGINX Ingress Controller que você já instalou suporta Gateway API. Habilite-o adicionando a flag `--enable-gateway-api`, ou instale um controller dedicado para Gateway API. Para este laboratório, use o NGINX Gateway Fabric:
 
    ```bash
    kubectl apply -f https://github.com/nginx/nginx-gateway-fabric/releases/download/v1.6.2/nginx-gateway-fabric.yaml
    ```
 
-   Then create a **Gateway** and **HTTPRoute**:
+   Em seguida, crie um **Gateway** e **HTTPRoute**:
 
    ```yaml
    # gateway.yaml
@@ -190,7 +190,7 @@ Your mission is to:
          port: 80
    ```
 
-   Inspect the resources:
+   Inspecione os recursos:
 
    ```bash
    kubectl get gateways
@@ -198,41 +198,41 @@ Your mission is to:
    kubectl describe httproute app-routes
    ```
 
-7. **Compare Ingress vs Gateway API**
+7. **Comparar Ingress vs Gateway API**
 
-   Study the differences and be prepared to explain:
-   - How Gateway API separates concerns (infrastructure owner → `Gateway`, app developer → `HTTPRoute`)
-   - What features Gateway API adds (traffic splitting, header matching, request mirroring)
-   - Why Gateway API is the recommended path forward for new projects
+   Estude as diferenças e esteja preparado para explicar:
+   - Como Gateway API separa responsabilidades (dono da infraestrutura → `Gateway`, desenvolvedor da aplicação → `HTTPRoute`)
+   - Quais funcionalidades Gateway API adiciona (divisão de tráfego, correspondência de headers, espelhamento de requisições)
+   - Por que Gateway API é o caminho recomendado para novos projetos
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] Your Kind cluster was created with `extraPortMappings` for ports 80 and 443
-- [ ] The NGINX Ingress Controller is running in the `ingress-nginx` namespace
-- [ ] You can reach `app1` and `app2` via **host-based routing** (`app1.localhost`, `app2.localhost`)
-- [ ] You can reach `app1` and `app2` via **path-based routing** (`localhost/app1`, `localhost/app2`)
-- [ ] Gateway API CRDs are installed (`kubectl get crds | grep gateway`)
-- [ ] A `Gateway` resource exists and shows `Accepted` or `Programmed` status
-- [ ] An `HTTPRoute` is attached to the Gateway and routes traffic to your backend services
-- [ ] You can explain at least three differences between Ingress and Gateway API
+- [ ] Seu cluster Kind foi criado com `extraPortMappings` para as portas 80 e 443
+- [ ] O NGINX Ingress Controller está rodando no namespace `ingress-nginx`
+- [ ] Você consegue acessar `app1` e `app2` via **roteamento baseado em host** (`app1.localhost`, `app2.localhost`)
+- [ ] Você consegue acessar `app1` e `app2` via **roteamento baseado em caminho** (`localhost/app1`, `localhost/app2`)
+- [ ] Os CRDs da Gateway API estão instalados (`kubectl get crds | grep gateway`)
+- [ ] Um recurso `Gateway` existe e mostra status `Accepted` ou `Programmed`
+- [ ] Um `HTTPRoute` está vinculado ao Gateway e roteia tráfego para seus Services backend
+- [ ] Você consegue explicar pelo menos três diferenças entre Ingress e Gateway API
 
-## Linux ↔ Kubernetes Reference
+## Referência Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent |
+| Conceito Linux | Equivalente Kubernetes |
 |---|---|
-| nginx / Apache as reverse proxy | Ingress Controller (e.g., NGINX Ingress) |
-| `server { }` blocks / VirtualHosts | Ingress resource `rules[].host` |
-| `location /path { proxy_pass ... }` | Ingress path-based routing (`rules[].http.paths[]`) |
-| `server_name app1.example.com` | Host-based routing (`rules[].host`) |
-| HAProxy frontend/backend model | Gateway API: `Gateway` (frontend) + `HTTPRoute` (backend) |
-| SSL termination (certbot / Let's Encrypt) | TLS section in Ingress or Gateway `listeners[].tls` |
-| `nginx -t` (config test) | `kubectl describe ingress` / `kubectl describe httproute` |
-| `/etc/nginx/sites-enabled/` | `ingressClassName` selects which controller handles the resource |
+| nginx / Apache como proxy reverso | Ingress Controller (ex: NGINX Ingress) |
+| Blocos `server { }` / VirtualHosts | Campo `rules[].host` do recurso Ingress |
+| `location /path { proxy_pass ... }` | Roteamento baseado em caminho do Ingress (`rules[].http.paths[]`) |
+| `server_name app1.example.com` | Roteamento baseado em host (`rules[].host`) |
+| Modelo frontend/backend do HAProxy | Gateway API: `Gateway` (frontend) + `HTTPRoute` (backend) |
+| Terminação SSL (certbot / Let's Encrypt) | Seção TLS no Ingress ou `listeners[].tls` do Gateway |
+| `nginx -t` (teste de configuração) | `kubectl describe ingress` / `kubectl describe httproute` |
+| `/etc/nginx/sites-enabled/` | `ingressClassName` seleciona qual controller trata o recurso |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: Host-based Ingress resource</summary>
+<summary>Dica 1: Recurso Ingress baseado em host</summary>
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -265,11 +265,11 @@ spec:
               number: 80
 ```
 
-The `ingressClassName: nginx` field tells Kubernetes which Ingress Controller should handle this resource.
+O campo `ingressClassName: nginx` diz ao Kubernetes qual Ingress Controller deve tratar este recurso.
 </details>
 
 <details>
-<summary>Hint 2: Path-based Ingress resource</summary>
+<summary>Dica 2: Recurso Ingress baseado em caminho</summary>
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -299,13 +299,13 @@ spec:
               number: 80
 ```
 
-**Important:** `pathType` can be `Exact` or `Prefix`. With `Prefix`, `/app1` matches `/app1`, `/app1/`, and `/app1/anything`.
+**Importante:** `pathType` pode ser `Exact` ou `Prefix`. Com `Prefix`, `/app1` corresponde a `/app1`, `/app1/` e `/app1/qualquer-coisa`.
 </details>
 
 <details>
-<summary>Hint 3: Debugging Ingress issues</summary>
+<summary>Dica 3: Depurando problemas de Ingress</summary>
 
-If your Ingress isn't working:
+Se seu Ingress não está funcionando:
 
 ```bash
 # Check the Ingress has an ADDRESS assigned
@@ -322,11 +322,11 @@ kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller --tail=5
 kubectl get ingressclass
 ```
 
-Common issue: if you see `<none>` under ADDRESS, either the controller isn't installed or the `ingressClassName` doesn't match.
+Problema comum: se você vê `<none>` sob ADDRESS, ou o controller não está instalado ou o `ingressClassName` não corresponde.
 </details>
 
 <details>
-<summary>Hint 4: Gateway API — verifying your setup</summary>
+<summary>Dica 4: Gateway API — verificando sua configuração</summary>
 
 ```bash
 # Verify CRDs are installed
@@ -342,25 +342,25 @@ kubectl get gateway my-gateway -o yaml | grep -A 5 conditions
 kubectl describe httproute app-routes
 ```
 
-If the Gateway stays in `Pending`, the GatewayClass controller may not be running. Verify the controller pods are up.
+Se o Gateway permanecer em `Pending`, o controller da GatewayClass pode não estar rodando. Verifique se os pods do controller estão ativos.
 </details>
 
 <details>
-<summary>Hint 5: Ingress vs Gateway API — key differences</summary>
+<summary>Dica 5: Ingress vs Gateway API — diferenças principais</summary>
 
-| Aspect | Ingress | Gateway API |
+| Aspecto | Ingress | Gateway API |
 |---|---|---|
-| **Role separation** | Single resource for all config | `Gateway` (infra) + `HTTPRoute` (app dev) |
-| **Protocol support** | HTTP/HTTPS only (by spec) | HTTP, gRPC, TCP, UDP, TLS via typed routes |
-| **Extensibility** | Annotations (non-portable) | Typed, versioned policy objects |
-| **Traffic splitting** | Not built-in | Native weight-based splitting |
-| **Header matching** | Annotation-dependent | First-class `matches` in HTTPRoute |
-| **Status** | Stable but frozen | GA and actively evolving |
-| **Recommendation** | Existing workloads | New projects going forward |
+| **Separação de papéis** | Recurso único para toda a configuração | `Gateway` (infra) + `HTTPRoute` (dev da aplicação) |
+| **Suporte a protocolos** | Apenas HTTP/HTTPS (pela especificação) | HTTP, gRPC, TCP, UDP, TLS via rotas tipadas |
+| **Extensibilidade** | Annotations (não portáveis) | Objetos de política tipados e versionados |
+| **Divisão de tráfego** | Não nativo | Divisão nativa baseada em peso |
+| **Correspondência de headers** | Dependente de annotations | `matches` de primeira classe no HTTPRoute |
+| **Status** | Estável mas congelado | GA e evoluindo ativamente |
+| **Recomendação** | Workloads existentes | Novos projetos daqui em diante |
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [Kubernetes Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
 - [Kubernetes Ingress Controllers](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)
@@ -369,13 +369,13 @@ If the Gateway stays in `Pending`, the GatewayClass controller may not be runnin
 - [Kind — Ingress Setup](https://kind.sigs.k8s.io/docs/user/ingress/)
 - [NGINX Ingress Controller — Kind Guide](https://kubernetes.github.io/ingress-nginx/deploy/#quick-start)
 
-## Break & Fix 🔧
+## Quebra & Conserta 🔧
 
-After completing the challenge, try these diagnostic scenarios:
+Após completar o desafio, tente estes cenários de diagnóstico:
 
-### Scenario 1: Ingress has no ADDRESS
+### Cenário 1: Ingress sem ADDRESS
 
-An Ingress resource was created but `kubectl get ingress` shows a blank ADDRESS column:
+Um recurso Ingress foi criado mas `kubectl get ingress` mostra a coluna ADDRESS em branco:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -397,11 +397,11 @@ spec:
               number: 80
 ```
 
-Apply it and investigate. Why is there no ADDRESS? How do you fix it?
+Aplique e investigue. Por que não há ADDRESS? Como você corrige?
 
-> 💡 **Root cause:** The `ingressClassName` field is missing. Without it, no Ingress Controller claims the resource. Add `ingressClassName: nginx` to the `spec` section.
+> 💡 **Causa raiz:** O campo `ingressClassName` está faltando. Sem ele, nenhum Ingress Controller reivindica o recurso. Adicione `ingressClassName: nginx` à seção `spec`.
 
-### Scenario 2: Wrong ingressClassName
+### Cenário 2: ingressClassName errado
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -424,11 +424,11 @@ spec:
               number: 80
 ```
 
-Apply this and try `curl http://wrong.localhost/`. What happens? How do you diagnose and fix it?
+Aplique isso e tente `curl http://wrong.localhost/`. O que acontece? Como você diagnostica e corrige?
 
-> 💡 **Root cause:** `ingressClassName: traefik` doesn't match any installed controller. Run `kubectl get ingressclass` to see available classes and change it to `nginx`.
+> 💡 **Causa raiz:** `ingressClassName: traefik` não corresponde a nenhum controller instalado. Execute `kubectl get ingressclass` para ver as classes disponíveis e altere para `nginx`.
 
-### Scenario 3: Backend Service doesn't exist
+### Cenário 3: Service backend não existe
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -451,6 +451,6 @@ spec:
               number: 80
 ```
 
-Apply this and `curl http://ghost.localhost/`. What HTTP status code do you get? Check the Ingress Controller logs to understand why.
+Aplique isso e `curl http://ghost.localhost/`. Qual código de status HTTP você recebe? Verifique os logs do Ingress Controller para entender o porquê.
 
-> 💡 **Root cause:** The Service `does-not-exist` is not found. The NGINX Ingress Controller returns a **503 Service Temporarily Unavailable**. Check logs with `kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller --tail=20` and create the missing Service.
+> 💡 **Causa raiz:** O Service `does-not-exist` não foi encontrado. O NGINX Ingress Controller retorna um **503 Service Temporarily Unavailable**. Verifique os logs com `kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller --tail=20` e crie o Service que está faltando.

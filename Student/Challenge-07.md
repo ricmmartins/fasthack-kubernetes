@@ -1,22 +1,22 @@
-# Challenge 07 — Volumes and Persistence
+# Desafio 07 — Volumes e Persistência
 
-[< Previous Challenge](Challenge-06.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-08.md)
+[< Desafio Anterior](Challenge-06.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-08.md)
 
-## Introduction
+## Introdução
 
-On a Linux server you manage storage every day — editing `/etc/fstab` to declare filesystems, running `mount` to attach block devices, grouping disks into LVM volume groups, and using `/tmp` for throwaway scratch space. When a process dies, `/tmp` disappears, but data on a mounted volume survives.
+Em um servidor Linux você gerencia armazenamento todos os dias — editando `/etc/fstab` para declarar sistemas de arquivos, executando `mount` para anexar dispositivos de bloco, agrupando discos em volume groups LVM, e usando `/tmp` para espaço temporário descartável. Quando um processo morre, `/tmp` desaparece, mas os dados em um volume montado sobrevivem.
 
-Kubernetes follows the exact same philosophy. Containers are **ephemeral by default** — when a Pod is deleted, everything inside its writable layer is gone. To keep data across restarts you need volumes, just like a Linux process needs a mounted filesystem to persist anything beyond its own lifetime.
+O Kubernetes segue exatamente a mesma filosofia. Containers são **efêmeros por padrão** — quando um Pod é deletado, tudo dentro da sua camada gravável desaparece. Para manter dados entre reinicializações você precisa de volumes, assim como um processo Linux precisa de um sistema de arquivos montado para persistir qualquer coisa além do seu próprio tempo de vida.
 
-In this challenge you'll work through the full storage lifecycle: see data vanish with ephemeral storage, create persistent volumes, attach them to Pods and StatefulSets, explore dynamic provisioning via StorageClasses, and share data between containers using `emptyDir`.
+Neste desafio você trabalhará por todo o ciclo de vida de armazenamento: ver dados desaparecerem com armazenamento efêmero, criar volumes persistentes, anexá-los a Pods e StatefulSets, explorar provisionamento dinâmico via StorageClasses, e compartilhar dados entre containers usando `emptyDir`.
 
-## Description
+## Descrição
 
-Your mission is to:
+Sua missão é:
 
-1. **Prove that container storage is ephemeral**
+1. **Provar que o armazenamento de container é efêmero**
 
-   Create a Pod that writes a file, delete the Pod, recreate it, and confirm the file is gone.
+   Crie um Pod que escreve um arquivo, delete o Pod, recrie-o e confirme que o arquivo desapareceu.
 
    ```yaml
    apiVersion: v1
@@ -38,11 +38,11 @@ Your mission is to:
    kubectl exec ephemeral-demo -- cat /data/message.txt   # file is gone!
    ```
 
-2. **Create a PersistentVolume (PV) and PersistentVolumeClaim (PVC) manually**
+2. **Criar um PersistentVolume (PV) e PersistentVolumeClaim (PVC) manualmente**
 
-   Define a `hostPath` PV (suitable for Kind single-node clusters) and a matching PVC. Then launch a Pod that mounts the PVC, writes data, gets deleted, and a new Pod proves the data survives.
+   Defina um PV do tipo `hostPath` (adequado para clusters Kind de nó único) e um PVC correspondente. Em seguida, inicie um Pod que monta o PVC, escreve dados, é deletado, e um novo Pod prova que os dados sobrevivem.
 
-   Create the PV:
+   Crie o PV:
    ```yaml
    apiVersion: v1
    kind: PersistentVolume
@@ -59,7 +59,7 @@ Your mission is to:
        type: DirectoryOrCreate
    ```
 
-   Create the PVC:
+   Crie o PVC:
    ```yaml
    apiVersion: v1
    kind: PersistentVolumeClaim
@@ -74,7 +74,7 @@ Your mission is to:
      storageClassName: ""   # empty string prevents dynamic provisioning
    ```
 
-   Deploy a Pod that uses the PVC:
+   Faça deploy de um Pod que usa o PVC:
    ```yaml
    apiVersion: v1
    kind: Pod
@@ -94,7 +94,7 @@ Your mission is to:
            claimName: manual-pvc
    ```
 
-   Test persistence:
+   Teste a persistência:
    ```bash
    kubectl apply -f manual-pv.yaml
    kubectl apply -f manual-pvc.yaml
@@ -105,15 +105,15 @@ Your mission is to:
    kubectl exec pvc-demo -- cat /data/message.txt   # data survives!
    ```
 
-   Inspect the binding:
+   Inspecione a vinculação:
    ```bash
    kubectl get pv,pvc
    kubectl describe pv manual-pv
    ```
 
-3. **Deploy a StatefulSet with volumeClaimTemplates**
+3. **Fazer deploy de um StatefulSet com volumeClaimTemplates**
 
-   StatefulSets give each Pod a stable hostname (`redis-0`, `redis-1`, …) and its own PVC. Deploy a Redis StatefulSet and verify each replica has independent persistent storage.
+   StatefulSets dão a cada Pod um hostname estável (`redis-0`, `redis-1`, …) e seu próprio PVC. Faça deploy de um StatefulSet Redis e verifique que cada réplica tem armazenamento persistente independente.
 
    ```yaml
    apiVersion: apps/v1
@@ -149,7 +149,7 @@ Your mission is to:
                storage: 128Mi
    ```
 
-   You also need a headless Service for the StatefulSet:
+   Você também precisa de um Service headless para o StatefulSet:
    ```yaml
    apiVersion: v1
    kind: Service
@@ -163,7 +163,7 @@ Your mission is to:
        - port: 6379
    ```
 
-   Verify:
+   Verifique:
    ```bash
    kubectl apply -f redis-headless-svc.yaml
    kubectl apply -f redis-statefulset.yaml
@@ -175,15 +175,15 @@ Your mission is to:
    kubectl exec redis-0 -- redis-cli GET mykey       # data survives!
    ```
 
-4. **Explore StorageClasses and dynamic provisioning**
+4. **Explorar StorageClasses e provisionamento dinâmico**
 
-   Kind ships with a default StorageClass named `standard` backed by the `rancher.io/local-path` provisioner. When a PVC references this StorageClass, a PV is created automatically — no manual PV needed.
+   O Kind vem com uma StorageClass padrão chamada `standard` sustentada pelo provisioner `rancher.io/local-path`. Quando um PVC referencia esta StorageClass, um PV é criado automaticamente — nenhum PV manual necessário.
 
    ```bash
    kubectl get storageclass
    ```
 
-   Create a PVC that uses dynamic provisioning:
+   Crie um PVC que usa provisionamento dinâmico:
    ```yaml
    apiVersion: v1
    kind: PersistentVolumeClaim
@@ -198,7 +198,7 @@ Your mission is to:
      storageClassName: standard
    ```
 
-   Deploy a Pod that uses it:
+   Faça deploy de um Pod que o usa:
    ```yaml
    apiVersion: v1
    kind: Pod
@@ -226,11 +226,11 @@ Your mission is to:
    kubectl exec dynamic-demo -- cat /data/hello.txt
    ```
 
-   > **Note:** The `standard` StorageClass in Kind uses `volumeBindingMode: WaitForFirstConsumer`, which means the PV is only created once a Pod actually claims the PVC. This avoids scheduling conflicts in multi-node clusters.
+   > **Nota:** A StorageClass `standard` no Kind usa `volumeBindingMode: WaitForFirstConsumer`, o que significa que o PV só é criado quando um Pod realmente reivindica o PVC. Isso evita conflitos de agendamento em clusters multi-nó.
 
-5. **Use emptyDir for sharing data between containers (sidecar pattern)**
+5. **Usar emptyDir para compartilhar dados entre containers (padrão sidecar)**
 
-   An `emptyDir` volume is created when a Pod is assigned to a node and exists as long as the Pod runs — both containers can read and write to it. This is the Kubernetes equivalent of a shared `/tmp` directory.
+   Um volume `emptyDir` é criado quando um Pod é atribuído a um node e existe enquanto o Pod estiver rodando — ambos os containers podem ler e escrever nele. Este é o equivalente Kubernetes de um diretório `/tmp` compartilhado.
 
    ```yaml
    apiVersion: v1
@@ -262,53 +262,53 @@ Your mission is to:
    kubectl delete pod sidecar-demo              # emptyDir data is gone
    ```
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] You demonstrated that data written inside a container is lost when the Pod is deleted (Task 1)
-- [ ] You created a PV and PVC manually, mounted them in a Pod, and proved data survives Pod deletion (Task 2)
-- [ ] You deployed a Redis StatefulSet where each replica has its own PVC and data persists across Pod restarts (Task 3)
-- [ ] You used the `standard` StorageClass for dynamic provisioning and a PV was created automatically (Task 4)
-- [ ] You deployed a multi-container Pod using `emptyDir` and observed data flowing between the sidecar containers (Task 5)
-- [ ] You can run `kubectl get pv,pvc` and explain the Status, Access Mode, and StorageClass of each entry
-- [ ] You can explain when to use `emptyDir` vs PVC, and why StatefulSets are needed for databases
+- [ ] Você demonstrou que dados escritos dentro de um container são perdidos quando o Pod é deletado (Tarefa 1)
+- [ ] Você criou um PV e PVC manualmente, montou-os em um Pod e provou que os dados sobrevivem à exclusão do Pod (Tarefa 2)
+- [ ] Você fez deploy de um StatefulSet Redis onde cada réplica tem seu próprio PVC e os dados persistem entre reinicializações de Pod (Tarefa 3)
+- [ ] Você usou a StorageClass `standard` para provisionamento dinâmico e um PV foi criado automaticamente (Tarefa 4)
+- [ ] Você fez deploy de um Pod multi-container usando `emptyDir` e observou dados fluindo entre os containers sidecar (Tarefa 5)
+- [ ] Você consegue executar `kubectl get pv,pvc` e explicar o Status, Modo de Acesso e StorageClass de cada entrada
+- [ ] Você consegue explicar quando usar `emptyDir` vs PVC, e por que StatefulSets são necessários para bancos de dados
 
-## Linux ↔ Kubernetes Reference
+## Referência Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent |
+| Conceito Linux | Equivalente Kubernetes |
 |---|---|
-| `/etc/fstab` (declare filesystems) | PersistentVolume (PV) — declares a storage resource |
-| `mount /dev/sdb1 /mnt/data` | PersistentVolumeClaim (PVC) binding — requests and attaches storage |
-| LVM / volume groups | StorageClass — defines *how* to provision storage |
-| `/tmp` (ephemeral, gone on reboot) | `emptyDir` volume — lives only as long as the Pod |
-| NFS mount (`mount -t nfs ...`) | NFS PersistentVolume or CSI NFS driver |
-| `df -h` (list mounted filesystems) | `kubectl get pv,pvc` |
-| `blkid` / `lsblk` (inspect block devices) | `kubectl describe pv <name>` |
-| `fsck` (filesystem health check) | Volume health monitoring (CSI drivers) |
+| `/etc/fstab` (declarar sistemas de arquivos) | PersistentVolume (PV) — declara um recurso de armazenamento |
+| `mount /dev/sdb1 /mnt/data` | Vinculação de PersistentVolumeClaim (PVC) — requisita e anexa armazenamento |
+| LVM / volume groups | StorageClass — define *como* provisionar armazenamento |
+| `/tmp` (efêmero, desaparece no reboot) | Volume `emptyDir` — existe apenas enquanto o Pod existir |
+| Montagem NFS (`mount -t nfs ...`) | PersistentVolume NFS ou driver CSI NFS |
+| `df -h` (listar sistemas de arquivos montados) | `kubectl get pv,pvc` |
+| `blkid` / `lsblk` (inspecionar dispositivos de bloco) | `kubectl describe pv <nome>` |
+| `fsck` (verificação de saúde do sistema de arquivos) | Monitoramento de saúde de volume (drivers CSI) |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: PVC stuck in Pending?</summary>
+<summary>Dica 1: PVC preso em Pending?</summary>
 
-Check if a PV exists that matches the PVC's request:
+Verifique se existe um PV que corresponde à solicitação do PVC:
 ```bash
 kubectl describe pvc manual-pvc
 ```
 
-Look at the `Events` section. Common issues:
-- The PVC requests more storage than the PV offers
-- The `storageClassName` in the PVC doesn't match the PV (use `storageClassName: ""` for manual binding)
-- The `accessModes` don't match between PV and PVC
+Veja a seção `Events`. Problemas comuns:
+- O PVC solicita mais armazenamento do que o PV oferece
+- O `storageClassName` no PVC não corresponde ao PV (use `storageClassName: ""` para vinculação manual)
+- Os `accessModes` não correspondem entre PV e PVC
 
 </details>
 
 <details>
-<summary>Hint 2: What's the difference between Retain and Delete reclaim policies?</summary>
+<summary>Dica 2: Qual a diferença entre as políticas de reclaim Retain e Delete?</summary>
 
-- **Retain** — When the PVC is deleted, the PV and its data are kept. An administrator must manually reclaim it. Use this for important data.
-- **Delete** — When the PVC is deleted, the PV and its underlying storage are automatically removed. This is the default for most dynamic provisioners (including Kind's `standard` StorageClass).
+- **Retain** — Quando o PVC é deletado, o PV e seus dados são mantidos. Um administrador deve recuperá-lo manualmente. Use para dados importantes.
+- **Delete** — Quando o PVC é deletado, o PV e seu armazenamento subjacente são removidos automaticamente. Este é o padrão para a maioria dos provisioners dinâmicos (incluindo a StorageClass `standard` do Kind).
 
-Check a PV's reclaim policy:
+Verifique a política de reclaim de um PV:
 ```bash
 kubectl get pv -o custom-columns=NAME:.metadata.name,RECLAIM:.spec.persistentVolumeReclaimPolicy
 ```
@@ -316,21 +316,21 @@ kubectl get pv -o custom-columns=NAME:.metadata.name,RECLAIM:.spec.persistentVol
 </details>
 
 <details>
-<summary>Hint 3: Why does the StatefulSet need a headless Service?</summary>
+<summary>Dica 3: Por que o StatefulSet precisa de um Service headless?</summary>
 
-A headless Service (one with `clusterIP: None`) gives each Pod a stable DNS name like `redis-0.redis.default.svc.cluster.local`. StatefulSets require this for ordered Pod identity. Without it, the StatefulSet controller cannot assign stable network identities.
+Um Service headless (um com `clusterIP: None`) dá a cada Pod um nome DNS estável como `redis-0.redis.default.svc.cluster.local`. StatefulSets requerem isso para identidade ordenada de Pods. Sem ele, o controller do StatefulSet não pode atribuir identidades de rede estáveis.
 
 </details>
 
 <details>
-<summary>Hint 4: How do I see where Kind stores data on the host?</summary>
+<summary>Dica 4: Como eu vejo onde o Kind armazena dados no host?</summary>
 
-Kind runs inside Docker containers. To find where local-path-provisioner stores PV data:
+O Kind roda dentro de containers Docker. Para encontrar onde o local-path-provisioner armazena dados de PV:
 ```bash
 kubectl get pv -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.hostPath.path}{"\n"}{end}'
 ```
 
-You can exec into the Kind node container to inspect the directory:
+Você pode executar exec no container do node Kind para inspecionar o diretório:
 ```bash
 docker exec -it kind-control-plane ls -la /var/local-path-provisioner/
 ```
@@ -338,9 +338,9 @@ docker exec -it kind-control-plane ls -la /var/local-path-provisioner/
 </details>
 
 <details>
-<summary>Hint 5: What is the OCI VolumeSource? (new in v1.36)</summary>
+<summary>Dica 5: O que é o OCI VolumeSource? (novo no v1.36)</summary>
 
-Kubernetes v1.36 graduated the **OCI VolumeSource** to GA. This lets you mount content from any OCI-compliant registry directly as a read-only volume — no PVC needed. It's useful for ML model weights, static assets, or configuration bundles that are published as OCI artifacts.
+O Kubernetes v1.36 promoveu o **OCI VolumeSource** para GA. Isso permite montar conteúdo de qualquer registro compatível com OCI diretamente como um volume somente leitura — sem necessidade de PVC. É útil para pesos de modelos ML, assets estáticos ou pacotes de configuração publicados como artefatos OCI.
 
 ```yaml
 apiVersion: v1
@@ -364,21 +364,21 @@ spec:
 </details>
 
 <details>
-<summary>Hint 6: Cloud-equivalent StorageClasses (for reference)</summary>
+<summary>Dica 6: StorageClasses equivalentes em nuvem (para referência)</summary>
 
-In production you'll use CSI drivers instead of Kind's local-path provisioner:
+Em produção você usará drivers CSI em vez do provisioner local-path do Kind:
 
-| Cloud | CSI Driver | StorageClass Example |
+| Nuvem | Driver CSI | Exemplo de StorageClass |
 |---|---|---|
 | AKS (Azure) | `disk.csi.azure.com` | `managed-csi` |
 | EKS (AWS) | `ebs.csi.aws.com` | `gp3` |
 | GKE (Google) | `pd.csi.storage.gke.io` | `standard-rwo` |
 
-> **Important:** The old in-tree provisioners (`kubernetes.io/azure-disk`, `kubernetes.io/aws-ebs`, `kubernetes.io/gce-pd`) are **deprecated**. Always use CSI drivers in production.
+> **Importante:** Os antigos provisioners in-tree (`kubernetes.io/azure-disk`, `kubernetes.io/aws-ebs`, `kubernetes.io/gce-pd`) estão **deprecados**. Sempre use drivers CSI em produção.
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [Volumes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/volumes/)
 - [Persistent Volumes — kubernetes.io](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
@@ -389,13 +389,13 @@ In production you'll use CSI drivers instead of Kind's local-path provisioner:
 - [OCI VolumeSource (v1.36 GA) — kubernetes.io](https://kubernetes.io/docs/concepts/storage/volumes/#oci)
 - [local-path-provisioner — GitHub](https://github.com/rancher/local-path-provisioner)
 
-## Break & Fix 🔧
+## Quebra & Conserta 🔧
 
-After completing the challenge, try diagnosing these broken scenarios:
+Após completar o desafio, tente diagnosticar estes cenários quebrados:
 
-**1. PVC stuck in Pending — no matching PV**
+**1. PVC preso em Pending — nenhum PV correspondente**
 
-Apply this PVC and figure out why it never binds:
+Aplique este PVC e descubra por que ele nunca se vincula:
 ```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -414,11 +414,11 @@ kubectl apply -f broken-pvc.yaml
 kubectl get pvc broken-pvc            # Stuck in Pending
 kubectl describe pvc broken-pvc       # Read the Events section
 ```
-> **Fix:** The `storageClassName` references a class that doesn't exist. Change it to `standard` (Kind's default) or `""` and provide a matching PV.
+> **Correção:** O `storageClassName` referencia uma classe que não existe. Altere para `standard` (padrão do Kind) ou `""` e forneça um PV correspondente.
 
-**2. Pod stuck in ContainerCreating — volume mount issue**
+**2. Pod preso em ContainerCreating — problema de montagem de volume**
 
-Apply this Pod and diagnose why it won't start:
+Aplique este Pod e diagnostique por que ele não inicia:
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -442,11 +442,11 @@ kubectl apply -f broken-mount.yaml
 kubectl get pod broken-mount          # ContainerCreating (stuck)
 kubectl describe pod broken-mount     # Look for "persistentvolumeclaim not found"
 ```
-> **Fix:** The PVC `does-not-exist` was never created. Create the PVC first, or correct the `claimName` to reference an existing PVC.
+> **Correção:** O PVC `does-not-exist` nunca foi criado. Crie o PVC primeiro, ou corrija o `claimName` para referenciar um PVC existente.
 
-**3. Data lost after Pod deletion — used emptyDir instead of PVC**
+**3. Dados perdidos após exclusão do Pod — usou emptyDir em vez de PVC**
 
-A developer complains their data keeps disappearing. Can you spot the bug?
+Um desenvolvedor reclama que seus dados continuam desaparecendo. Você consegue identificar o bug?
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -470,4 +470,4 @@ kubectl delete pod broken-persistence
 kubectl apply -f broken-persistence.yaml
 kubectl exec broken-persistence -- redis-cli GET important   # returns (nil)!
 ```
-> **Fix:** `emptyDir` is ephemeral — it's destroyed when the Pod is deleted. Replace the `emptyDir` volume with a `persistentVolumeClaim` reference, and create a corresponding PVC. For databases, use a StatefulSet with `volumeClaimTemplates` so each replica gets its own durable storage.
+> **Correção:** `emptyDir` é efêmero — é destruído quando o Pod é deletado. Substitua o volume `emptyDir` por uma referência `persistentVolumeClaim`, e crie um PVC correspondente. Para bancos de dados, use um StatefulSet com `volumeClaimTemplates` para que cada réplica tenha seu próprio armazenamento durável.

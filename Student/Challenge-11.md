@@ -1,104 +1,104 @@
-# Challenge 11 — Helm and Kustomize
+# Desafio 11 — Helm e Kustomize
 
-[< Previous Challenge](Challenge-10.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-12.md)
+[< Desafio Anterior](Challenge-10.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-12.md)
 
-## Introduction
+## Introdução
 
-On a Linux server, you rarely compile every piece of software from source. Instead you use **package managers** — `apt`, `yum`, `dnf` — to install, upgrade, and remove software with a single command. The package manager handles dependencies, versioning, and rollback. When you need to override default configuration, you drop files into directories like `/etc/default/` or `/etc/nginx/conf.d/` — layering your customizations on top of upstream defaults without editing the original files.
+Em um servidor Linux, raramente você compila cada software a partir do código-fonte. Em vez disso, você usa **gerenciadores de pacotes** — `apt`, `yum`, `dnf` — para instalar, atualizar e remover software com um único comando. O gerenciador de pacotes cuida das dependências, versionamento e rollback. Quando você precisa sobrescrever a configuração padrão, você coloca arquivos em diretórios como `/etc/default/` ou `/etc/nginx/conf.d/` — sobrepondo suas customizações às configurações padrão originais sem editar os arquivos originais.
 
-Kubernetes has its own equivalents:
+O Kubernetes tem seus próprios equivalentes:
 
-| Linux Concept | Kubernetes Equivalent | What It Does |
+| Conceito Linux | Equivalente Kubernetes | O Que Faz |
 |---|---|---|
-| `apt` / `yum` / `dnf` (package manager) | **Helm** | Packages, installs, upgrades, and rolls back complete Kubernetes applications |
-| `/etc/apt/sources.list` (package repos) | `helm repo add` | Points Helm at a chart repository |
-| `/etc/default/nginx` (config overrides) | **Kustomize** overlays | Layers environment-specific patches on top of base manifests |
+| `apt` / `yum` / `dnf` (gerenciador de pacotes) | **Helm** | Empacota, instala, atualiza e faz rollback de aplicações Kubernetes completas |
+| `/etc/apt/sources.list` (repositórios de pacotes) | `helm repo add` | Aponta o Helm para um repositório de charts |
+| `/etc/default/nginx` (sobrescrita de configuração) | **Kustomize** overlays | Sobrepõe patches específicos de ambiente sobre os manifests base |
 
-**Helm** is the package manager for Kubernetes. A Helm **chart** bundles all the YAML manifests a Kubernetes application needs — Deployments, Services, ConfigMaps, Ingress — into a single versioned, parameterizable package. You install it with one command, customize it with values, and roll it back if something goes wrong.
+**Helm** é o gerenciador de pacotes do Kubernetes. Um **chart** do Helm agrupa todos os manifests YAML que uma aplicação Kubernetes precisa — Deployments, Services, ConfigMaps, Ingress — em um único pacote versionado e parametrizável. Você instala com um comando, customiza com values e faz rollback se algo der errado.
 
-**Kustomize** takes a different approach. Instead of templates with placeholders, Kustomize uses **overlays** — small patch files that modify a set of base manifests. It's built into `kubectl` (no extra tool needed) and follows a purely declarative model: you describe the desired end state, and Kustomize merges it for you.
+**Kustomize** adota uma abordagem diferente. Em vez de templates com placeholders, o Kustomize usa **overlays** — pequenos arquivos de patch que modificam um conjunto de manifests base. Ele é integrado ao `kubectl` (nenhuma ferramenta extra necessária) e segue um modelo puramente declarativo: você descreve o estado final desejado e o Kustomize faz o merge para você.
 
-In this challenge you will learn both tools, understand when to use each, and gain the hands-on skills to manage Kubernetes applications like a sysadmin manages packages.
+Neste desafio, você aprenderá ambas as ferramentas, entenderá quando usar cada uma e ganhará habilidades práticas para gerenciar aplicações Kubernetes como um sysadmin gerencia pacotes.
 
-> **Cluster requirement:** All exercises use a local [Kind](https://kind.sigs.k8s.io/) cluster — no cloud account needed. If you haven't created one yet, run:
+> **Requisito de cluster:** Todos os exercícios usam um cluster local [Kind](https://kind.sigs.k8s.io/) — nenhuma conta em nuvem necessária. Se você ainda não criou um, execute:
 > ```bash
 > kind create cluster --name fasthack
 > ```
 
-## Description
+## Descrição
 
-### Task 1 — Install Helm and Add the Bitnami Repository
+### Tarefa 1 — Instalar o Helm e Adicionar o Repositório Bitnami
 
-Just as `apt` needs `/etc/apt/sources.list` to know where to find packages, Helm needs **chart repositories** to know where to find charts.
+Assim como o `apt` precisa do `/etc/apt/sources.list` para saber onde encontrar pacotes, o Helm precisa de **repositórios de charts** para saber onde encontrar charts.
 
-First, verify Helm is installed:
+Primeiro, verifique se o Helm está instalado:
 
 ```bash
 helm version
 ```
 
-If Helm is not installed, install it:
+Se o Helm não estiver instalado, instale-o:
 
 ```bash
 # Linux / macOS (via script)
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-# Or via package manager
+# Ou via gerenciador de pacotes
 # macOS:  brew install helm
 # Ubuntu: sudo snap install helm --classic
 ```
 
-Now add the Bitnami chart repository — one of the largest collections of curated, production-ready Helm charts:
+Agora adicione o repositório de charts Bitnami — uma das maiores coleções de Helm charts curados e prontos para produção:
 
 ```bash
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
 ```
 
-Explore what's available:
+Explore o que está disponível:
 
 ```bash
-# List all charts in the Bitnami repo
+# Listar todos os charts no repositório Bitnami
 helm search repo bitnami | head -20
 
-# Search for a specific chart
+# Buscar um chart específico
 helm search repo bitnami/nginx
 ```
 
-This is the equivalent of running `apt update && apt search nginx` on Debian/Ubuntu.
+Isso é o equivalente a executar `apt update && apt search nginx` no Debian/Ubuntu.
 
-### Task 2 — Deploy a Chart with Default Values
+### Tarefa 2 — Implantar um Chart com Valores Padrão
 
-Install the Bitnami NGINX chart with default settings:
+Instale o chart Bitnami NGINX com configurações padrão:
 
 ```bash
 helm install my-nginx bitnami/nginx
 ```
 
-Inspect what Helm created:
+Inspecione o que o Helm criou:
 
 ```bash
-# List all releases
+# Listar todas as releases
 helm list
 
-# See the Kubernetes resources the chart created
+# Ver os recursos Kubernetes que o chart criou
 kubectl get all -l app.kubernetes.io/instance=my-nginx
 
-# Check the status of the release
+# Verificar o status da release
 helm status my-nginx
 ```
 
-Now look at the **default values** the chart uses — this is the equivalent of `apt show nginx` or reading the default config:
+Agora veja os **valores padrão** que o chart usa — isso é o equivalente a `apt show nginx` ou ler a configuração padrão:
 
 ```bash
 helm show values bitnami/nginx | head -50
 ```
 
-### Task 3 — Customize a Release with `--set` and `values.yaml`
+### Tarefa 3 — Customizar uma Release com `--set` e `values.yaml`
 
-Helm charts are parameterized via **values**. You can override defaults two ways:
+Os charts Helm são parametrizados via **values**. Você pode sobrescrever os padrões de duas formas:
 
-**Method 1 — Inline with `--set`** (quick, ad hoc):
+**Método 1 — Inline com `--set`** (rápido, ad hoc):
 
 ```bash
 helm upgrade my-nginx bitnami/nginx \
@@ -106,9 +106,9 @@ helm upgrade my-nginx bitnami/nginx \
   --set service.type=ClusterIP
 ```
 
-**Method 2 — With a `values.yaml` file** (repeatable, version-controllable):
+**Método 2 — Com um arquivo `values.yaml`** (repetível, versionável):
 
-Create a file called `my-nginx-values.yaml`:
+Crie um arquivo chamado `my-nginx-values.yaml`:
 
 ```yaml
 replicaCount: 2
@@ -117,32 +117,32 @@ service:
   port: 8080
 ```
 
-Apply it:
+Aplique-o:
 
 ```bash
 helm upgrade my-nginx bitnami/nginx -f my-nginx-values.yaml
 ```
 
-Verify the changes took effect:
+Verifique se as alterações foram aplicadas:
 
 ```bash
 kubectl get pods -l app.kubernetes.io/instance=my-nginx
 kubectl get svc -l app.kubernetes.io/instance=my-nginx
 ```
 
-> **Linux analogy:** `--set` is like passing `-o` flags to a command; a `values.yaml` is like editing `/etc/default/nginx` — a persistent configuration file that survives upgrades.
+> **Analogia com Linux:** `--set` é como passar flags `-o` para um comando; um `values.yaml` é como editar `/etc/default/nginx` — um arquivo de configuração persistente que sobrevive a atualizações.
 
-### Task 4 — Upgrade and Rollback a Helm Release
+### Tarefa 4 — Atualizar e Fazer Rollback de uma Release Helm
 
-Helm tracks every change as a **revision**. This is like having `apt` snapshots you can revert to.
+O Helm rastreia cada alteração como uma **revisão**. Isso é como ter snapshots do `apt` para os quais você pode reverter.
 
-Check the release history:
+Verifique o histórico da release:
 
 ```bash
 helm history my-nginx
 ```
 
-Upgrade to a different configuration:
+Atualize para uma configuração diferente:
 
 ```bash
 helm upgrade my-nginx bitnami/nginx \
@@ -150,57 +150,57 @@ helm upgrade my-nginx bitnami/nginx \
   --set service.type=ClusterIP
 ```
 
-Verify a new revision was created:
+Verifique se uma nova revisão foi criada:
 
 ```bash
 helm history my-nginx
 ```
 
-Something went wrong? **Rollback** to the previous revision:
+Algo deu errado? **Faça rollback** para a revisão anterior:
 
 ```bash
-# Roll back to the previous revision
+# Fazer rollback para a revisão anterior
 helm rollback my-nginx 1
 ```
 
-Verify the rollback:
+Verifique o rollback:
 
 ```bash
 helm history my-nginx
 kubectl get pods -l app.kubernetes.io/instance=my-nginx
 ```
 
-> **Linux analogy:** `helm rollback` is like `apt install nginx=1.18.0-0ubuntu1` — pinning to a known-good version. Helm makes this even easier because it tracks the full state, not just the package version.
+> **Analogia com Linux:** `helm rollback` é como `apt install nginx=1.18.0-0ubuntu1` — fixando em uma versão sabidamente boa. O Helm torna isso ainda mais fácil porque rastreia o estado completo, não apenas a versão do pacote.
 
-### Task 5 — Create a Helm Chart from Scratch
+### Tarefa 5 — Criar um Chart Helm do Zero
 
-Now create your own chart. This is like writing your own `.deb` or `.rpm` package.
+Agora crie seu próprio chart. Isso é como escrever seu próprio pacote `.deb` ou `.rpm`.
 
 ```bash
 helm create myapp
 ```
 
-Explore the generated structure:
+Explore a estrutura gerada:
 
 ```
 myapp/
-├── Chart.yaml          # Chart metadata (name, version, description)
-├── values.yaml         # Default configuration values
-├── charts/             # Dependencies (sub-charts)
-├── templates/          # Kubernetes manifest templates
+├── Chart.yaml          # Metadados do chart (nome, versão, descrição)
+├── values.yaml         # Valores de configuração padrão
+├── charts/             # Dependências (sub-charts)
+├── templates/          # Templates de manifests Kubernetes
 │   ├── deployment.yaml
 │   ├── service.yaml
 │   ├── ingress.yaml
 │   ├── hpa.yaml
 │   ├── serviceaccount.yaml
-│   ├── _helpers.tpl    # Template helper functions
-│   ├── NOTES.txt       # Post-install message
+│   ├── _helpers.tpl    # Funções auxiliares de template
+│   ├── NOTES.txt       # Mensagem pós-instalação
 │   └── tests/
 │       └── test-connection.yaml
-└── .helmignore         # Files to exclude from packaging
+└── .helmignore         # Arquivos a excluir do empacotamento
 ```
 
-Edit `myapp/values.yaml` to customize the defaults:
+Edite `myapp/values.yaml` para customizar os padrões:
 
 ```yaml
 replicaCount: 2
@@ -223,39 +223,39 @@ resources:
     memory: 128Mi
 ```
 
-Validate and install your chart:
+Valide e instale seu chart:
 
 ```bash
-# Lint the chart for errors
+# Verificar erros no chart
 helm lint myapp/
 
-# Dry-run to see what would be created (without actually applying)
+# Dry-run para ver o que seria criado (sem realmente aplicar)
 helm install myapp-release myapp/ --dry-run
 
-# Install for real
+# Instalar de verdade
 helm install myapp-release myapp/
 ```
 
-Verify it's running:
+Verifique se está em execução:
 
 ```bash
 helm list
 kubectl get all -l app.kubernetes.io/instance=myapp-release
 ```
 
-Clean up the Helm release when done:
+Limpe a release do Helm quando terminar:
 
 ```bash
 helm uninstall myapp-release
 ```
 
-### Task 6 — Introduction to Kustomize: Base + Overlays
+### Tarefa 6 — Introdução ao Kustomize: Base + Overlays
 
-Kustomize takes a fundamentally different approach from Helm. Instead of templates with `{{ .Values.x }}` placeholders, Kustomize uses **plain YAML** with **patches** layered on top. It's built directly into `kubectl` — no extra binary needed.
+O Kustomize adota uma abordagem fundamentalmente diferente do Helm. Em vez de templates com placeholders `{{ .Values.x }}`, o Kustomize usa **YAML puro** com **patches** sobrepostos. Ele é integrado diretamente ao `kubectl` — nenhum binário extra necessário.
 
-**Concept:** You define a **base** set of manifests, then create **overlays** (dev, staging, prod) that modify only what needs to change.
+**Conceito:** Você define um conjunto **base** de manifests, depois cria **overlays** (dev, staging, prod) que modificam apenas o que precisa mudar.
 
-Create the following directory structure:
+Crie a seguinte estrutura de diretórios:
 
 ```
 kustom-demo/
@@ -270,9 +270,9 @@ kustom-demo/
         └── kustomization.yaml
 ```
 
-**Step 1 — Create the base manifests:**
+**Passo 1 — Criar os manifests base:**
 
-Create `kustom-demo/base/deployment.yaml`:
+Crie `kustom-demo/base/deployment.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -300,7 +300,7 @@ spec:
               memory: 64Mi
 ```
 
-Create `kustom-demo/base/service.yaml`:
+Crie `kustom-demo/base/service.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -315,7 +315,7 @@ spec:
       targetPort: 80
 ```
 
-Create `kustom-demo/base/kustomization.yaml`:
+Crie `kustom-demo/base/kustomization.yaml`:
 
 ```yaml
 resources:
@@ -323,9 +323,9 @@ resources:
   - service.yaml
 ```
 
-**Step 2 — Create the dev overlay:**
+**Passo 2 — Criar o overlay de dev:**
 
-Create `kustom-demo/overlays/dev/kustomization.yaml`:
+Crie `kustom-demo/overlays/dev/kustomization.yaml`:
 
 ```yaml
 resources:
@@ -342,9 +342,9 @@ replicas:
     count: 1
 ```
 
-**Step 3 — Create the prod overlay:**
+**Passo 3 — Criar o overlay de prod:**
 
-Create `kustom-demo/overlays/prod/kustomization.yaml`:
+Crie `kustom-demo/overlays/prod/kustomization.yaml`:
 
 ```yaml
 resources:
@@ -361,115 +361,115 @@ replicas:
     count: 3
 ```
 
-**Step 4 — Preview and apply:**
+**Passo 4 — Visualizar e aplicar:**
 
-Preview what each overlay produces (without applying):
+Visualize o que cada overlay produz (sem aplicar):
 
 ```bash
-# Preview the dev overlay
+# Visualizar o overlay de dev
 kubectl kustomize kustom-demo/overlays/dev/
 
-# Preview the prod overlay
+# Visualizar o overlay de prod
 kubectl kustomize kustom-demo/overlays/prod/
 ```
 
-Notice how the base manifests are identical, but the overlays change the name prefix, labels, and replica count. Apply both to different namespaces:
+Note como os manifests base são idênticos, mas os overlays alteram o prefixo do nome, labels e contagem de réplicas. Aplique ambos em namespaces diferentes:
 
 ```bash
-# Create namespaces
+# Criar namespaces
 kubectl create namespace dev
 kubectl create namespace prod
 
-# Apply dev overlay
+# Aplicar overlay de dev
 kubectl apply -k kustom-demo/overlays/dev/ -n dev
 
-# Apply prod overlay
+# Aplicar overlay de prod
 kubectl apply -k kustom-demo/overlays/prod/ -n prod
 ```
 
-Verify both environments:
+Verifique ambos os ambientes:
 
 ```bash
 kubectl get all -n dev
 kubectl get all -n prod
 ```
 
-You should see `dev-web-app` with 1 replica in the `dev` namespace and `prod-web-app` with 3 replicas in `prod`.
+Você deve ver `dev-web-app` com 1 réplica no namespace `dev` e `prod-web-app` com 3 réplicas em `prod`.
 
-> **Linux analogy:** The base is like the upstream package's default config (`/etc/nginx/nginx.conf`). The overlays are like your site-specific overrides in `/etc/nginx/conf.d/` — you never edit the original, you layer on top.
+> **Analogia com Linux:** A base é como a configuração padrão do pacote upstream (`/etc/nginx/nginx.conf`). Os overlays são como suas sobrescritas específicas do site em `/etc/nginx/conf.d/` — você nunca edita o original, você sobrepõe por cima.
 
-### Task 7 — Compare Helm vs Kustomize: When to Use Which
+### Tarefa 7 — Comparar Helm vs Kustomize: Quando Usar Qual
 
-Now that you've used both tools, let's understand when to reach for each:
+Agora que você usou ambas as ferramentas, vamos entender quando usar cada uma:
 
-| Aspect | Helm | Kustomize |
+| Aspecto | Helm | Kustomize |
 |---|---|---|
-| **Approach** | Templating (`{{ .Values.x }}`) | Patching (overlay on plain YAML) |
-| **Packaging** | Charts (versioned, distributable archives) | Directories of YAML files |
-| **Distribution** | Chart repositories (like `apt` repos) | Git repositories |
-| **Lifecycle mgmt** | Install, upgrade, rollback, uninstall | Apply only (use Git for rollback) |
-| **Dependencies** | Built-in sub-chart support | Manual (list in `resources`) |
-| **Learning curve** | Steeper (Go templates, chart structure) | Gentler (plain YAML + patches) |
-| **Best for** | Distributing apps to others; complex parameterization | Internal apps; environment promotion (dev→prod) |
-| **Built into kubectl** | No (separate binary) | Yes (`kubectl apply -k`) |
+| **Abordagem** | Templating (`{{ .Values.x }}`) | Patching (overlay sobre YAML puro) |
+| **Empacotamento** | Charts (arquivos versionados e distribuíveis) | Diretórios de arquivos YAML |
+| **Distribuição** | Repositórios de charts (como repositórios `apt`) | Repositórios Git |
+| **Gestão de ciclo de vida** | Install, upgrade, rollback, uninstall | Apenas apply (use Git para rollback) |
+| **Dependências** | Suporte nativo a sub-charts | Manual (listar em `resources`) |
+| **Curva de aprendizado** | Mais íngreme (templates Go, estrutura de chart) | Mais suave (YAML puro + patches) |
+| **Melhor para** | Distribuir apps para outros; parametrização complexa | Apps internas; promoção entre ambientes (dev→prod) |
+| **Integrado ao kubectl** | Não (binário separado) | Sim (`kubectl apply -k`) |
 
-**Rule of thumb:**
+**Regra geral:**
 
-- **Use Helm** when you're consuming third-party applications (databases, monitoring stacks, ingress controllers) or packaging your own app for distribution to multiple teams/clusters.
-- **Use Kustomize** when you own the manifests, want to keep them as plain YAML, and need to promote the same app across environments (dev → staging → prod).
-- **You can use both together** — install a Helm chart, then layer Kustomize patches on top of the rendered output.
+- **Use Helm** quando estiver consumindo aplicações de terceiros (bancos de dados, stacks de monitoramento, ingress controllers) ou empacotando sua própria aplicação para distribuição a múltiplos times/clusters.
+- **Use Kustomize** quando você é dono dos manifests, quer mantê-los como YAML puro e precisa promover a mesma aplicação entre ambientes (dev → staging → prod).
+- **Você pode usar ambos juntos** — instale um chart Helm, depois sobreponha patches Kustomize sobre a saída renderizada.
 
-### Clean Up
+### Limpeza
 
 ```bash
-# Remove Helm releases
+# Remover releases do Helm
 helm uninstall my-nginx 2>/dev/null
 
-# Remove Kustomize resources
+# Remover recursos do Kustomize
 kubectl delete -k kustom-demo/overlays/dev/ -n dev 2>/dev/null
 kubectl delete -k kustom-demo/overlays/prod/ -n prod 2>/dev/null
 kubectl delete namespace dev prod 2>/dev/null
 
-# Remove local files (optional)
+# Remover arquivos locais (opcional)
 rm -rf myapp/ kustom-demo/ my-nginx-values.yaml
 ```
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] Helm is installed and `helm version` returns a v3.x version.
-- [ ] You added the Bitnami repo and can run `helm search repo bitnami/nginx` successfully.
-- [ ] You deployed `bitnami/nginx` with `helm install` and verified the Pods and Service are running.
-- [ ] You customized the release using both `--set` flags and a `values.yaml` file.
-- [ ] You performed a `helm upgrade` followed by a `helm rollback` and verified the release history shows multiple revisions.
-- [ ] You created a Helm chart from scratch with `helm create`, linted it, and installed it successfully.
-- [ ] You created a Kustomize base with a Deployment and Service.
-- [ ] You created dev and prod overlays that change the name prefix, labels, and replica count.
-- [ ] `kubectl kustomize` shows the correct rendered output for each overlay.
-- [ ] You deployed both overlays to separate namespaces and verified the differences (replica count, name prefix, labels).
-- [ ] You can explain when to use Helm vs Kustomize and give a concrete example of each.
+- [ ] O Helm está instalado e `helm version` retorna uma versão v3.x.
+- [ ] Você adicionou o repositório Bitnami e consegue executar `helm search repo bitnami/nginx` com sucesso.
+- [ ] Você implantou `bitnami/nginx` com `helm install` e verificou que os Pods e o Service estão em execução.
+- [ ] Você customizou a release usando tanto flags `--set` quanto um arquivo `values.yaml`.
+- [ ] Você realizou um `helm upgrade` seguido de um `helm rollback` e verificou que o histórico da release mostra múltiplas revisões.
+- [ ] Você criou um chart Helm do zero com `helm create`, fez lint e instalou com sucesso.
+- [ ] Você criou uma base Kustomize com um Deployment e Service.
+- [ ] Você criou overlays de dev e prod que alteram o prefixo do nome, labels e contagem de réplicas.
+- [ ] `kubectl kustomize` mostra a saída renderizada correta para cada overlay.
+- [ ] Você implantou ambos os overlays em namespaces separados e verificou as diferenças (contagem de réplicas, prefixo do nome, labels).
+- [ ] Você consegue explicar quando usar Helm vs Kustomize e dar um exemplo concreto de cada.
 
-## Linux ↔ Kubernetes Reference
+## Referência Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent | Notes |
+| Conceito Linux | Equivalente Kubernetes | Notas |
 |---|---|---|
-| `apt install nginx` | `helm install my-nginx bitnami/nginx` | Install a packaged application with one command |
-| `apt upgrade nginx` | `helm upgrade my-nginx bitnami/nginx` | Upgrade to a new version or new config values |
-| `apt remove nginx` | `helm uninstall my-nginx` | Remove all resources associated with a release |
-| `/etc/apt/sources.list` | `helm repo add` | Register a package/chart repository |
-| `dpkg -l` / `rpm -qa` | `helm list` | List all installed packages/releases |
-| `apt show nginx` | `helm show values bitnami/nginx` | View package metadata and default configuration |
-| `/etc/default/nginx` (config overrides) | Kustomize overlays | Layer environment-specific changes on top of defaults |
-| `apt-cache policy nginx` (version pinning) | `helm rollback my-nginx 1` | Revert to a known-good release revision |
-| `dpkg -L nginx` (list package files) | `helm get manifest my-nginx` | Show all Kubernetes manifests installed by a release |
+| `apt install nginx` | `helm install my-nginx bitnami/nginx` | Instalar uma aplicação empacotada com um comando |
+| `apt upgrade nginx` | `helm upgrade my-nginx bitnami/nginx` | Atualizar para uma nova versão ou novos valores de configuração |
+| `apt remove nginx` | `helm uninstall my-nginx` | Remover todos os recursos associados a uma release |
+| `/etc/apt/sources.list` | `helm repo add` | Registrar um repositório de pacotes/charts |
+| `dpkg -l` / `rpm -qa` | `helm list` | Listar todos os pacotes/releases instalados |
+| `apt show nginx` | `helm show values bitnami/nginx` | Ver metadados do pacote e configuração padrão |
+| `/etc/default/nginx` (sobrescrita de config) | Kustomize overlays | Sobrepor alterações específicas de ambiente sobre os padrões |
+| `apt-cache policy nginx` (fixação de versão) | `helm rollback my-nginx 1` | Reverter para uma revisão de release sabidamente boa |
+| `dpkg -L nginx` (listar arquivos do pacote) | `helm get manifest my-nginx` | Mostrar todos os manifests Kubernetes instalados por uma release |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: Helm install hangs — chart is waiting for a LoadBalancer</summary>
+<summary>Dica 1: Helm install trava — chart está aguardando um LoadBalancer</summary>
 
-Many Bitnami charts default to `service.type=LoadBalancer`. On Kind, there is no cloud load balancer, so the Service will stay in `Pending` state forever.
+Muitos charts Bitnami usam `service.type=LoadBalancer` como padrão. No Kind, não há load balancer cloud, então o Service ficará no estado `Pending` para sempre.
 
-**Fix:** Override the service type during install:
+**Correção:** Sobrescreva o tipo de service durante a instalação:
 
 ```bash
 helm install my-nginx bitnami/nginx --set service.type=ClusterIP
@@ -481,70 +481,70 @@ Or if you already installed it:
 helm upgrade my-nginx bitnami/nginx --set service.type=ClusterIP
 ```
 
-This is a common gotcha when running Helm charts designed for cloud environments on a local cluster.
+Este é um problema comum ao executar charts Helm projetados para ambientes cloud em um cluster local.
 
 </details>
 
 <details>
-<summary>Hint 2: helm repo update — always run it before install/upgrade</summary>
+<summary>Dica 2: helm repo update — sempre execute antes de install/upgrade</summary>
 
-Helm caches the chart index locally. If you added the repo days ago, the cache may be stale. Always run:
+O Helm armazena o índice de charts localmente em cache. Se você adicionou o repositório dias atrás, o cache pode estar desatualizado. Sempre execute:
 
 ```bash
 helm repo update
 ```
 
-This is the Helm equivalent of `apt update` — it refreshes the list of available chart versions before you install or upgrade.
+Este é o equivalente do Helm ao `apt update` — ele atualiza a lista de versões de charts disponíveis antes de você instalar ou atualizar.
 
 </details>
 
 <details>
-<summary>Hint 3: Debugging Kustomize — preview before you apply</summary>
+<summary>Dica 3: Depurando Kustomize — visualize antes de aplicar</summary>
 
-Never apply a Kustomize overlay blindly. Always preview the rendered output first:
+Nunca aplique um overlay Kustomize às cegas. Sempre visualize a saída renderizada primeiro:
 
 ```bash
-# Preview only — does not apply anything
+# Apenas visualizar — não aplica nada
 kubectl kustomize kustom-demo/overlays/dev/
 ```
 
-This prints the fully merged YAML to stdout. Pipe it through `less` or redirect to a file to inspect it carefully:
+Isso imprime o YAML completamente mesclado no stdout. Passe por pipe para `less` ou redirecione para um arquivo para inspecionar com cuidado:
 
 ```bash
 kubectl kustomize kustom-demo/overlays/dev/ | less
 ```
 
-If you see an error like `accumulating resources`, it usually means a path in the `resources` list of `kustomization.yaml` is wrong. Double-check relative paths — they are relative to the directory containing the `kustomization.yaml` file.
+Se você vir um erro como `accumulating resources`, geralmente significa que um caminho na lista `resources` do `kustomization.yaml` está errado. Verifique novamente os caminhos relativos — eles são relativos ao diretório que contém o arquivo `kustomization.yaml`.
 
 </details>
 
 <details>
-<summary>Hint 4: Helm dry-run — test before you deploy</summary>
+<summary>Dica 4: Helm dry-run — teste antes de implantar</summary>
 
-Before installing or upgrading a Helm chart, render the templates locally to see exactly what Kubernetes manifests will be created:
+Antes de instalar ou atualizar um chart Helm, renderize os templates localmente para ver exatamente quais manifests Kubernetes serão criados:
 
 ```bash
-# See what would be installed (without applying)
+# Ver o que seria instalado (sem aplicar)
 helm install my-release bitnami/nginx --dry-run
 
-# Or for an upgrade
+# Ou para um upgrade
 helm upgrade my-nginx bitnami/nginx --dry-run -f my-nginx-values.yaml
 ```
 
-This is the equivalent of `apt install --simulate` — it shows you what would happen without actually doing it. If you see template rendering errors, fix your values before deploying.
+Isso é o equivalente a `apt install --simulate` — mostra o que aconteceria sem realmente fazer. Se você vir erros de renderização de template, corrija seus values antes de implantar.
 
 </details>
 
 <details>
-<summary>Hint 5: Understanding Helm revision numbers</summary>
+<summary>Dica 5: Entendendo os números de revisão do Helm</summary>
 
-Every `helm install`, `helm upgrade`, and `helm rollback` creates a new **revision**. View them with:
+Cada `helm install`, `helm upgrade` e `helm rollback` cria uma nova **revisão**. Visualize-as com:
 
 ```bash
 helm history my-nginx
 ```
 
-You'll see output like:
+Você verá uma saída como:
 
 ```
 REVISION  UPDATED                   STATUS      CHART         APP VERSION  DESCRIPTION
@@ -553,11 +553,11 @@ REVISION  UPDATED                   STATUS      CHART         APP VERSION  DESCR
 3         2025-01-15 10:10:00       deployed    nginx-18.3.1  1.27.3       Rollback to 1
 ```
 
-Notice that a rollback creates a **new** revision (3) that restores the state of an old revision (1). Revision numbers always increase — they are never reused.
+Note que um rollback cria uma **nova** revisão (3) que restaura o estado de uma revisão antiga (1). Os números de revisão sempre aumentam — eles nunca são reutilizados.
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [Helm — Getting Started Guide](https://helm.sh/docs/intro/quickstart/)
 - [Helm — Using Helm (install, upgrade, rollback)](https://helm.sh/docs/intro/using_helm/)

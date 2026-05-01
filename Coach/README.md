@@ -1,61 +1,61 @@
-# Coach's Guide
+# Guia do Coach
 
-This directory contains solutions and guidance for coaches running the Kubernetes for Linux Sysadmins Hackathon.
+Este diretório contém soluções e orientações para coaches conduzindo o Hackathon Kubernetes para Sysadmins Linux.
 
-## Guidelines for Coaches
+## Diretrizes para Coaches
 
-1. **Don't give answers immediately** — let students struggle and discover. That's where learning happens.
-2. **Use the Linux analogy** — when a student is stuck, relate the K8s concept back to Linux. "Remember iptables? NetworkPolicy is the same idea."
-3. **Encourage `kubectl describe`** — most answers are in the events section of `describe` output.
-4. **Let them break things** — the Break & Fix sections are the most valuable learning moments.
-5. **Validate, don't memorize** — students should reference the [official docs](https://kubernetes.io/docs/) during the hackathon.
+1. **Não dê respostas imediatamente** — deixe os estudantes se esforçarem e descobrirem. É aí que o aprendizado acontece.
+2. **Use a analogia com Linux** — quando um estudante estiver travado, relacione o conceito K8s com Linux. "Lembra do iptables? NetworkPolicy é a mesma ideia."
+3. **Incentive o `kubectl describe`** — a maioria das respostas está na seção de eventos da saída do `describe`.
+4. **Deixe-os quebrar coisas** — as seções Break & Fix são os momentos de aprendizado mais valiosos.
+5. **Valide, não memorize** — os estudantes devem consultar a [documentação oficial](https://kubernetes.io/docs/) durante o hackathon.
 
-## Solutions
+## Soluções
 
-- [Solution 01: Your First Container](Solution-01.md)
-- [Solution 02: From Container to Pod](Solution-02.md)
-- [Solution 03: Creating a Local Cluster](Solution-03.md)
-- [Solution 04: Deployments and Rolling Updates](Solution-04.md)
-- [Solution 05: Services and Networking](Solution-05.md)
-- [Solution 06: Ingress and Gateway API](Solution-06.md)
-- [Solution 07: Volumes and Persistence](Solution-07.md)
-- [Solution 08: ConfigMaps and Secrets](Solution-08.md)
-- [Solution 09: Security: RBAC and Pod Security](Solution-09.md)
-- [Solution 10: Autoscaling and Resource Management](Solution-10.md)
-- [Solution 11: Helm, Kustomize, and GitOps](Solution-11.md)
-- [Solution 12: Observability: Prometheus and Grafana](Solution-12.md)
-- [Solution 13: Troubleshooting: Break and Fix](Solution-13.md)
-- [Solution 14: Deploy to the Cloud](Solution-14.md)
-- [Solution 15: Pod Scheduling & Resource Management](Solution-15.md)
-- [Solution 16: Container Image Engineering](Solution-16.md)
-- [Solution 17: Advanced Deployment Strategies](Solution-17.md)
-- [Solution 18: kubeadm Cluster Administration](Solution-18.md)
-- [Solution 19: Cluster Security & Hardening](Solution-19.md)
-- [Solution 20: Supply Chain & Runtime Security](Solution-20.md)
+- [Solução 01: Seu Primeiro Container](Solution-01.md)
+- [Solução 02: De Container para Pod](Solution-02.md)
+- [Solução 03: Criando um Cluster Local](Solution-03.md)
+- [Solução 04: Deployments e Rolling Updates](Solution-04.md)
+- [Solução 05: Services e Rede](Solution-05.md)
+- [Solução 06: Ingress e Gateway API](Solution-06.md)
+- [Solução 07: Volumes e Persistência](Solution-07.md)
+- [Solução 08: ConfigMaps e Secrets](Solution-08.md)
+- [Solução 09: Segurança: RBAC e Pod Security](Solution-09.md)
+- [Solução 10: Autoscaling e Gerenciamento de Recursos](Solution-10.md)
+- [Solução 11: Helm, Kustomize e GitOps](Solution-11.md)
+- [Solução 12: Observabilidade: Prometheus e Grafana](Solution-12.md)
+- [Solução 13: Troubleshooting: Break and Fix](Solution-13.md)
+- [Solução 14: Deploy na Nuvem](Solution-14.md)
+- [Solução 15: Agendamento de Pods e Gerenciamento de Recursos](Solution-15.md)
+- [Solução 16: Engenharia de Imagens de Container](Solution-16.md)
+- [Solução 17: Estratégias Avançadas de Deployment](Solution-17.md)
+- [Solução 18: Administração de Cluster com kubeadm](Solution-18.md)
+- [Solução 19: Segurança e Hardening de Cluster](Solution-19.md)
+- [Solução 20: Supply Chain e Segurança em Runtime](Solution-20.md)
 
-## Timing Recommendations
+## Recomendações de Tempo
 
-| Challenge | Estimated Time | Notes |
+| Desafio | Tempo Estimado | Notas |
 |-----------|---------------|-------|
-| 01 | 30 min | Quick if Docker experience exists |
-| 02 | 30 min | First kubectl experience |
-| 03 | 45 min | Cluster setup can vary |
-| 04 | 45 min | Core deployment concepts |
-| 05 | 60 min | Networking takes time |
-| 06 | 60 min | Ingress setup is common pain point |
-| 07 | 45 min | Storage concepts click fast for Linux people |
-| 08 | 30 min | Straightforward |
-| 09 | 60 min | RBAC is conceptually complex |
-| 10 | 45 min | Metrics Server setup needed |
-| 11 | 60 min | Helm has a learning curve |
-| 12 | 60 min | Stack installation takes time |
-| 13 | 90 min | Most valuable challenge |
-| 14 | 60+ min | Depends on cloud access |
-| 15 | 90 min | Many scheduling concepts; 3-node cluster needed |
-| 16 | 60 min | Docker/Podman familiarity helps |
-| 17 | 75 min | Multiple deployment patterns to practice |
-| 18 | 120 min | VM setup adds overhead; kubeadm is complex |
-| 19 | 120–150 min | CKS-level; some tasks need node access + gVisor/Cilium setup |
-| 20 | 90–120 min | Many tools to install (Trivy, Falco, cosign) |
+| 01 | 30 min | Rápido se já tiver experiência com Docker |
+| 02 | 30 min | Primeira experiência com kubectl |
+| 03 | 45 min | Setup do cluster pode variar |
+| 04 | 45 min | Conceitos principais de deployment |
+| 05 | 60 min | Rede leva tempo |
+| 06 | 60 min | Setup do Ingress é ponto de dificuldade comum |
+| 07 | 45 min | Conceitos de storage são rápidos para pessoal de Linux |
+| 08 | 30 min | Direto ao ponto |
+| 09 | 60 min | RBAC é conceitualmente complexo |
+| 10 | 45 min | Setup do Metrics Server necessário |
+| 11 | 60 min | Helm tem curva de aprendizado |
+| 12 | 60 min | Instalação da stack leva tempo |
+| 13 | 90 min | Desafio mais valioso |
+| 14 | 60+ min | Depende do acesso à nuvem |
+| 15 | 90 min | Muitos conceitos de agendamento; cluster de 3 nodes necessário |
+| 16 | 60 min | Familiaridade com Docker/Podman ajuda |
+| 17 | 75 min | Múltiplos padrões de deployment para praticar |
+| 18 | 120 min | Setup de VMs adiciona overhead; kubeadm é complexo |
+| 19 | 120–150 min | Nível CKS; algumas tarefas precisam de acesso ao node + setup gVisor/Cilium |
+| 20 | 90–120 min | Muitas ferramentas para instalar (Trivy, Falco, cosign) |
 
-**Total: ~18-22 hours** (ideal for a 3-day hackathon or self-paced over 1-2 weeks)
+**Total: ~18-22 horas** (ideal para um hackathon de 3 dias ou ritmo individual em 1-2 semanas)

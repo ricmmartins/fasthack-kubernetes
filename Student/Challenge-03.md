@@ -1,71 +1,71 @@
-# Challenge 03 — Creating a Local Cluster
+# Desafio 03 — Criando um Cluster Local
 
-[< Previous Challenge](Challenge-02.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-04.md)
+[< Desafio Anterior](Challenge-02.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-04.md)
 
-## Introduction
+## Introdução
 
-Setting up your own Kubernetes cluster is like building a complete Linux server farm — but instead of racking physical servers, you spin up containers that *act* as servers.
+Configurar seu próprio cluster Kubernetes é como construir um data center Linux completo — mas em vez de montar servidores físicos, você inicia containers que *agem* como servidores.
 
-**Kind** (Kubernetes IN Docker) runs full Kubernetes nodes as Docker containers on your local machine. Think of it this way:
+**Kind** (Kubernetes IN Docker) executa nodes Kubernetes completos como containers Docker na sua máquina local. Pense assim:
 
-| Installing a Linux service | Creating a Kubernetes cluster |
+| Instalar um serviço Linux | Criar um cluster Kubernetes |
 |---|---|
 | `apt install nginx` | `kind create cluster` |
-| `systemctl start nginx` | Cluster bootstraps automatically |
-| One server, one service | Multiple "servers" (nodes) in containers |
+| `systemctl start nginx` | O cluster inicializa automaticamente |
+| Um servidor, um serviço | Múltiplos "servidores" (nodes) em containers |
 
-A Kubernetes cluster has two planes:
+Um cluster Kubernetes tem dois planos:
 
-- **Control Plane** (the brain): This is like the management layer of your server farm. It includes:
-  - **API Server** — the front door (like `sshd` for your cluster, every request goes through it)
-  - **etcd** — the database (like `/etc` for your entire cluster — stores all state)
-  - **Scheduler** — decides which node runs a workload (like a load balancer choosing a backend)
-  - **Controller Manager** — ensures desired state matches actual state (like `systemd` restarting crashed services)
+- **Control Plane** (o cérebro): É como a camada de gerenciamento do seu data center. Ele inclui:
+  - **API Server** — a porta de entrada (como `sshd` para o seu cluster, toda requisição passa por ele)
+  - **etcd** — o banco de dados (como `/etc` para o cluster inteiro — armazena todo o estado)
+  - **Scheduler** — decide qual node executa um workload (como um load balancer escolhendo um backend)
+  - **Controller Manager** — garante que o estado desejado corresponda ao estado real (como `systemd` reiniciando serviços que caíram)
 
-- **Data Plane** (the workers): These are your workhorses, the servers that actually run your applications. Each worker node runs:
-  - **kubelet** — the node agent (like `systemd` on each server, managing local workloads)
-  - **kube-proxy** — networking rules (like `iptables` managing traffic routing)
-  - **Container Runtime** — actually runs containers (like `containerd` or `dockerd`)
+- **Data Plane** (os trabalhadores): São os cavalos de batalha, os servidores que realmente executam suas aplicações. Cada worker node executa:
+  - **kubelet** — o agente do node (como `systemd` em cada servidor, gerenciando workloads locais)
+  - **kube-proxy** — regras de rede (como `iptables` gerenciando roteamento de tráfego)
+  - **Container Runtime** — realmente executa containers (como `containerd` ou `dockerd`)
 
-In this challenge, you'll build your own cluster from scratch, explore its internals, and understand how all these pieces fit together.
+Neste desafio, você vai construir seu próprio cluster do zero, explorar seus internos e entender como todas essas peças se encaixam.
 
-## Description
+## Descrição
 
-Your mission is to:
+Sua missão é:
 
-1. **Install Kind and create a single-node cluster** — Bootstrap your first Kubernetes cluster and verify it's running. This is the equivalent of provisioning a new Linux server and confirming you can SSH into it.
+1. **Instalar Kind e criar um cluster de node único** — Inicie seu primeiro cluster Kubernetes e verifique se está rodando. Isso é equivalente a provisionar um novo servidor Linux e confirmar que você pode acessá-lo via SSH.
 
-2. **Explore kubeconfig (`~/.kube/config`) and understand contexts** — Just like `/etc/hosts` maps hostnames to IPs, kubeconfig maps cluster names to API server endpoints and credentials. Understand how `kubectl` knows *which* cluster to talk to.
+2. **Explorar kubeconfig (`~/.kube/config`) e entender contexts** — Assim como `/etc/hosts` mapeia hostnames para IPs, kubeconfig mapeia nomes de clusters para endpoints do API server e credenciais. Entenda como `kubectl` sabe *com qual* cluster se comunicar.
 
-3. **List all Pods in the `kube-system` namespace and identify control plane components** — This is like running `systemctl list-units` on a Linux server to see what system services are running. The `kube-system` namespace holds the components that make Kubernetes itself work.
+3. **Listar todos os Pods no namespace `kube-system` e identificar componentes do control plane** — Isso é como executar `systemctl list-units` em um servidor Linux para ver quais serviços do sistema estão rodando. O namespace `kube-system` contém os componentes que fazem o próprio Kubernetes funcionar.
 
-4. **Create a multi-node cluster using a Kind configuration file** — Scale from a single server to a farm. Define a cluster with one control plane node and two worker nodes using a YAML config file — like writing an infrastructure-as-code manifest for your server fleet.
+4. **Criar um cluster multi-node usando um arquivo de configuração Kind** — Escale de um único servidor para um data center. Defina um cluster com um node control plane e dois worker nodes usando um arquivo de configuração YAML — como escrever um manifesto de infraestrutura como código para sua frota de servidores.
 
-> 💡 **Minikube alternative**: If you prefer, you can use [Minikube](https://minikube.sigs.k8s.io/) instead of Kind. The concepts are identical — only the CLI commands differ. Minikube creates a VM or container-based cluster with `minikube start` instead of `kind create cluster`.
+> 💡 **Alternativa Minikube**: Se preferir, você pode usar [Minikube](https://minikube.sigs.k8s.io/) em vez de Kind. Os conceitos são idênticos — apenas os comandos CLI diferem. Minikube cria um cluster baseado em VM ou container com `minikube start` em vez de `kind create cluster`.
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] `kind create cluster` completes successfully and `kubectl cluster-info` shows a running cluster
-- [ ] `kubectl get nodes` shows at least one node with status `Ready`
-- [ ] You can list pods in the `kube-system` namespace and identify the API server, etcd, scheduler, and controller manager
-- [ ] You can explain the structure of `~/.kube/config` (clusters, users, contexts) and switch between contexts
-- [ ] You created a multi-node cluster (1 control plane + 2 workers) using a Kind config file and all nodes show `Ready`
+- [ ] `kind create cluster` completa com sucesso e `kubectl cluster-info` mostra um cluster em execução
+- [ ] `kubectl get nodes` mostra pelo menos um node com status `Ready`
+- [ ] Você consegue listar pods no namespace `kube-system` e identificar o API server, etcd, scheduler e controller manager
+- [ ] Você consegue explicar a estrutura de `~/.kube/config` (clusters, users, contexts) e alternar entre contexts
+- [ ] Você criou um cluster multi-node (1 control plane + 2 workers) usando um arquivo de configuração Kind e todos os nodes mostram `Ready`
 
-## Linux ↔ Kubernetes Cluster Reference
+## Referência Linux ↔ Cluster Kubernetes
 
-| Linux Concept | Kubernetes Equivalent |
+| Conceito Linux | Equivalente Kubernetes |
 |---|---|
-| `/etc/hosts` (host resolution) | `~/.kube/config` (cluster connection config) |
-| `ssh user@server` (remote access) | `kubectl` with a context (cluster access) |
-| `systemd` services (`systemctl list-units`) | `kube-system` Pods (control plane components) |
-| `/var/log/syslog` (system logs) | `kubectl logs -n kube-system <pod>` |
-| Network interfaces (`ip addr`) | CNI (Container Network Interface) plugins |
-| Boot process (BIOS → GRUB → init) | Cluster bootstrap (Docker → Kind → kubelet → control plane) |
+| `/etc/hosts` (resolução de host) | `~/.kube/config` (configuração de conexão do cluster) |
+| `ssh user@server` (acesso remoto) | `kubectl` com um context (acesso ao cluster) |
+| Serviços `systemd` (`systemctl list-units`) | Pods `kube-system` (componentes do control plane) |
+| `/var/log/syslog` (logs do sistema) | `kubectl logs -n kube-system <pod>` |
+| Interfaces de rede (`ip addr`) | Plugins CNI (Container Network Interface) |
+| Processo de boot (BIOS → GRUB → init) | Bootstrap do cluster (Docker → Kind → kubelet → control plane) |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: Install Kind and create your first cluster</summary>
+<summary>Dica 1: Instalar Kind e criar seu primeiro cluster</summary>
 
 ```bash
 # Install Kind — pick one method:
@@ -94,18 +94,18 @@ kubectl cluster-info
 kubectl get nodes
 ```
 
-After creation, Kind automatically configures `kubectl` to point to your new cluster. It's like a Linux installer that not only installs the server but also sets up your SSH keys.
+Após a criação, Kind automaticamente configura `kubectl` para apontar ao seu novo cluster. É como um instalador Linux que não só instala o servidor, mas também configura suas chaves SSH.
 
 </details>
 
 <details>
-<summary>Hint 2: Explore kubeconfig</summary>
+<summary>Dica 2: Explorar kubeconfig</summary>
 
-The kubeconfig file is your cluster "address book." It contains three key sections:
+O arquivo kubeconfig é seu "catálogo de endereços" dos clusters. Ele contém três seções principais:
 
-- **clusters** — where your clusters live (API server addresses + CA certs)
-- **users** — credentials to authenticate (like SSH keys)
-- **contexts** — bindings of cluster + user + namespace (like SSH config entries)
+- **clusters** — onde seus clusters estão (endereços do API server + certificados CA)
+- **users** — credenciais para autenticar (como chaves SSH)
+- **contexts** — vínculos de cluster + user + namespace (como entradas do SSH config)
 
 ```bash
 # View the full kubeconfig (redacted secrets)
@@ -121,14 +121,14 @@ kubectl config use-context kind-k8s-lab
 cat ~/.kube/config
 ```
 
-**Linux analogy**: This is like your `~/.ssh/config` file — it maps friendly names to connection details so you don't have to type full addresses every time.
+**Analogia Linux**: Isso é como seu arquivo `~/.ssh/config` — ele mapeia nomes amigáveis para detalhes de conexão para que você não precise digitar endereços completos toda vez.
 
 </details>
 
 <details>
-<summary>Hint 3: Explore the kube-system namespace</summary>
+<summary>Dica 3: Explorar o namespace kube-system</summary>
 
-The `kube-system` namespace is where Kubernetes runs its own infrastructure — like the `/usr/lib/systemd/system/` directory where Linux keeps its core service unit files.
+O namespace `kube-system` é onde o Kubernetes executa sua própria infraestrutura — como o diretório `/usr/lib/systemd/system/` onde o Linux mantém seus arquivos de unit de serviços principais.
 
 ```bash
 # List all control plane pods
@@ -147,14 +147,14 @@ kubectl logs -n kube-system -l component=etcd
 kubectl get all -n kube-system
 ```
 
-You should see pods for: `etcd`, `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, `coredns`, and `kindnet` (Kind's CNI plugin).
+Você deve ver pods para: `etcd`, `kube-apiserver`, `kube-controller-manager`, `kube-scheduler`, `coredns` e `kindnet` (plugin CNI do Kind).
 
 </details>
 
 <details>
-<summary>Hint 4: Create a multi-node cluster with a config file</summary>
+<summary>Dica 4: Criar um cluster multi-node com arquivo de configuração</summary>
 
-Create a file named `kind-config.yaml`:
+Crie um arquivo chamado `kind-config.yaml`:
 
 ```yaml
 # kind-config.yaml
@@ -166,7 +166,7 @@ nodes:
 - role: worker
 ```
 
-Then create the cluster:
+Depois crie o cluster:
 
 ```bash
 # Delete the old single-node cluster first
@@ -185,24 +185,24 @@ kubectl get nodes
 # k8s-lab-worker2         Ready    <none>          1m    v1.33.0
 ```
 
-**Linux analogy**: This is like writing an Ansible playbook or a Terraform config to provision multiple servers at once — infrastructure as code instead of manual setup.
+**Analogia Linux**: Isso é como escrever um playbook Ansible ou uma configuração Terraform para provisionar múltiplos servidores de uma vez — infraestrutura como código em vez de setup manual.
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
-- [Kind — Quick Start Guide](https://kind.sigs.k8s.io/docs/user/quick-start/)
-- [Kind — Configuration](https://kind.sigs.k8s.io/docs/user/configuration/)
-- [Kubernetes Components Overview](https://kubernetes.io/docs/concepts/overview/components/)
-- [Organizing Cluster Access with kubeconfig](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/)
-- [Minikube — Getting Started (alternative to Kind)](https://minikube.sigs.k8s.io/docs/start/)
+- [Kind — Guia Quick Start](https://kind.sigs.k8s.io/docs/user/quick-start/)
+- [Kind — Configuração](https://kind.sigs.k8s.io/docs/user/configuration/)
+- [Visão Geral dos Componentes Kubernetes](https://kubernetes.io/docs/concepts/overview/components/)
+- [Organizando Acesso ao Cluster com kubeconfig](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/)
+- [Minikube — Primeiros Passos (alternativa ao Kind)](https://minikube.sigs.k8s.io/docs/start/)
 
 ## Break & Fix 🔧
 
-After completing the challenge, try these scenarios to deepen your understanding:
+Após completar o desafio, tente estes cenários para aprofundar seu entendimento:
 
-1. **Break the kubeconfig**: Delete (or rename) your `~/.kube/config` file and try running `kubectl get nodes`. What error do you get? How do you recover? *(Hint: `kind export kubeconfig --name k8s-lab` regenerates it — like resetting your SSH keys.)*
+1. **Quebrar o kubeconfig**: Delete (ou renomeie) seu arquivo `~/.kube/config` e tente executar `kubectl get nodes`. Que erro você recebe? Como recuperar? *(Dica: `kind export kubeconfig --name k8s-lab` regenera — como resetar suas chaves SSH.)*
 
-2. **Kill the runtime**: Create a cluster, then stop Docker (`sudo systemctl stop docker` on Linux, or quit Docker Desktop). Try `kubectl get nodes`. What happens? What does the cluster look like when you restart Docker? *(This simulates a power outage in your server room.)*
+2. **Matar o runtime**: Crie um cluster, depois pare o Docker (`sudo systemctl stop docker` no Linux, ou saia do Docker Desktop). Tente `kubectl get nodes`. O que acontece? Como fica o cluster quando você reinicia o Docker? *(Isso simula uma queda de energia no seu data center.)*
 
-3. **Name collision**: Try creating a cluster with `kind create cluster --name k8s-lab` when one already exists with that name. What error do you get? How do you resolve it? *(Like trying to create a VM with a hostname that's already taken.)*
+3. **Colisão de nome**: Tente criar um cluster com `kind create cluster --name k8s-lab` quando já existe um com esse nome. Que erro você recebe? Como resolver? *(Como tentar criar uma VM com um hostname que já está em uso.)*

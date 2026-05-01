@@ -1,18 +1,18 @@
-# Solution 06 — Ingress and Gateway API
+# Solução 06 — Ingress e Gateway API
 
-[< Back to Challenge](../Student/Challenge-06.md) | **[Home](README.md)**
+[< Voltar para o Desafio](../Student/Challenge-06.md) | **[Home](README.md)**
 
-## Prerequisites
+## Pré-requisitos
 
-This challenge requires a fresh Kind cluster with specific port mappings. Students **must** delete any existing cluster and start with the Ingress-ready config.
+Este desafio requer um cluster Kind novo com mapeamentos de porta específicos. Os alunos **devem** deletar qualquer cluster existente e iniciar com a configuração pronta para Ingress.
 
 ---
 
-## Task 1: Recreate Kind Cluster with Ingress Support
+## Tarefa 1: Recrie o Cluster Kind com Suporte a Ingress
 
-### Step-by-step
+### Passo a passo
 
-Save as `kind-ingress.yaml`:
+Salve como `kind-ingress.yaml`:
 
 ```yaml
 kind: Cluster
@@ -29,14 +29,14 @@ nodes:
 ```
 
 ```bash
-# Delete any existing cluster
+# Delete qualquer cluster existente
 kind delete cluster --name fasthack
 
-# Create the new cluster with Ingress port mappings
+# Crie o novo cluster com mapeamentos de porta para Ingress
 kind create cluster --name fasthack --config kind-ingress.yaml
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Creating cluster "fasthack" ...
@@ -44,26 +44,26 @@ Creating cluster "fasthack" ...
  ✓ Preparing nodes 📦
  ✓ Writing configuration 📜
  ✓ Starting control-plane 🕹️
- ✓ Installing CNI 🔌
+ ✓ Installing CNI ��
  ✓ Installing StorageClass 💾
 Set kubectl context to "kind-fasthack"
 ```
 
-### Verification
+### Verificação
 
 ```bash
-# Confirm the node has the ingress-ready label
+# Confirme que o nó tem o label ingress-ready
 kubectl get nodes --show-labels | grep ingress-ready
 ```
 
-Expected output: `ingress-ready=true` appears in the labels.
+Saída esperada: `ingress-ready=true` aparece nos labels.
 
 ```bash
-# Confirm port mappings from Docker side
+# Confirme os mapeamentos de porta do lado do Docker
 docker port fasthack-control-plane
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 80/tcp -> 0.0.0.0:80
@@ -71,43 +71,43 @@ Expected output:
 6443/tcp -> 127.0.0.1:XXXXX
 ```
 
-> **Coach tip:** If ports 80/443 are already in use on the host (Apache, nginx, IIS, another container), Kind cluster creation will fail. Have students stop any conflicting services first.
+> **Dica do Coach:** Se as portas 80/443 já estiverem em uso no host (Apache, nginx, IIS, outro container), a criação do cluster Kind falhará. Peça aos alunos para parar quaisquer serviços conflitantes primeiro.
 
 ---
 
-## Task 2: Install NGINX Ingress Controller
+## Tarefa 2: Instale o NGINX Ingress Controller
 
-### Step-by-step
+### Passo a passo
 
 ```bash
-# Install the Kind-specific NGINX Ingress Controller manifest
+# Instale o manifesto do NGINX Ingress Controller específico para Kind
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
 ```
 
-Expected output: multiple resources created (namespace, serviceaccount, configmap, roles, deployment, service, etc.).
+Saída esperada: múltiplos recursos criados (namespace, serviceaccount, configmap, roles, deployment, service, etc.).
 
 ```bash
-# Wait for the controller Pod to be ready
+# Aguarde o Pod do controller ficar pronto
 kubectl wait --namespace ingress-nginx \
   --for=condition=ready pod \
   --selector=app.kubernetes.io/component=controller \
   --timeout=120s
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 pod/ingress-nginx-controller-xxxxx condition met
 ```
 
-### Verification
+### Verificação
 
 ```bash
-# Confirm the controller is running
+# Confirme que o controller está em execução
 kubectl get pods -n ingress-nginx
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                                        READY   STATUS    RESTARTS   AGE
@@ -115,26 +115,26 @@ ingress-nginx-controller-xxxxxxxxxx-xxxxx   1/1     Running   0          30s
 ```
 
 ```bash
-# Confirm the IngressClass was created
+# Confirme que a IngressClass foi criada
 kubectl get ingressclass
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME    CONTROLLER                      PARAMETERS   AGE
 nginx   k8s.io/ingress-nginx            <none>       30s
 ```
 
-> **Coach tip:** The Kind-specific manifest includes a `hostPort` DaemonSet configuration instead of a LoadBalancer Service. This is what makes `localhost:80` reachable — the controller Pod binds directly to the node's ports 80 and 443 via `hostPort`.
+> **Dica do Coach:** O manifesto específico para Kind inclui uma configuração de DaemonSet com `hostPort` em vez de um Service LoadBalancer. Isso é o que torna `localhost:80` acessível — o Pod do controller se vincula diretamente às portas 80 e 443 do nó via `hostPort`.
 
 ---
 
-## Task 3: Deploy Two Backend Applications
+## Tarefa 3: Implante Duas Aplicações Backend
 
-### Step-by-step
+### Passo a passo
 
-Save as `app1.yaml`:
+Salve como `app1.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -171,7 +171,7 @@ spec:
     targetPort: 5678
 ```
 
-Save as `app2.yaml`:
+Salve como `app2.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -213,7 +213,7 @@ kubectl apply -f app1.yaml
 kubectl apply -f app2.yaml
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl wait --for=condition=ready pod -l app=app1 --timeout=60s
@@ -221,7 +221,7 @@ kubectl wait --for=condition=ready pod -l app=app2 --timeout=60s
 kubectl get pods -l 'app in (app1,app2)'
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                    READY   STATUS    RESTARTS   AGE
@@ -230,19 +230,19 @@ app2-xxxxxxxxxx-xxxxx   1/1     Running   0          15s
 ```
 
 ```bash
-# Verify the Services have Endpoints
+# Verifique se os Services têm Endpoints
 kubectl get endpoints app1-svc app2-svc
 ```
 
-Expected output: each Service shows one Pod IP on port 5678.
+Saída esperada: cada Service mostra um IP de Pod na porta 5678.
 
 ---
 
-## Task 4: Host-Based Ingress Routing
+## Tarefa 4: Roteamento Ingress Baseado em Host
 
-### Step-by-step
+### Passo a passo
 
-Save as `host-ingress.yaml`:
+Salve como `host-ingress.yaml`:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -278,34 +278,34 @@ spec:
 kubectl apply -f host-ingress.yaml
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 ingress.networking.k8s.io/host-routing created
 ```
 
-### Verification
+### Verificação
 
 ```bash
-# Check the Ingress has an ADDRESS
+# Verifique se o Ingress tem um ADDRESS
 kubectl get ingress host-routing
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME           CLASS   HOSTS                          ADDRESS     PORTS   AGE
 host-routing   nginx   app1.localhost,app2.localhost   localhost   80      10s
 ```
 
-> **Note:** The ADDRESS may take 10-30 seconds to appear. If it stays blank, check that `ingressClassName: nginx` is set.
+> **Nota:** O ADDRESS pode levar 10-30 segundos para aparecer. Se ficar em branco, verifique se `ingressClassName: nginx` está definido.
 
 ```bash
-# Test host-based routing
+# Teste roteamento baseado em host
 curl -s http://app1.localhost/
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Hello from App1
@@ -315,25 +315,25 @@ Hello from App1
 curl -s http://app2.localhost/
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Hello from App2
 ```
 
-> **Coach tip:** On most systems, `*.localhost` resolves to `127.0.0.1` automatically. If it doesn't work on a student's machine (especially Windows), they need to add entries to the hosts file:
+> **Dica do Coach:** Na maioria dos sistemas, `*.localhost` resolve para `127.0.0.1` automaticamente. Se não funcionar na máquina do aluno (especialmente Windows), eles precisam adicionar entradas no arquivo hosts:
 > - **Linux/Mac:** `echo "127.0.0.1 app1.localhost app2.localhost" | sudo tee -a /etc/hosts`
-> - **Windows:** Add `127.0.0.1 app1.localhost` and `127.0.0.1 app2.localhost` to `C:\Windows\System32\drivers\etc\hosts`
+> - **Windows:** Adicione `127.0.0.1 app1.localhost` e `127.0.0.1 app2.localhost` em `C:\Windows\System32\drivers\etc\hosts`
 >
-> Alternatively, use the `-H` flag with curl: `curl -s -H "Host: app1.localhost" http://localhost/`
+> Alternativamente, use a flag `-H` com curl: `curl -s -H "Host: app1.localhost" http://localhost/`
 
 ---
 
-## Task 5: Path-Based Ingress Routing
+## Tarefa 5: Roteamento Ingress Baseado em Path
 
-### Step-by-step
+### Passo a passo
 
-Save as `path-ingress.yaml`:
+Salve como `path-ingress.yaml`:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -366,19 +366,19 @@ spec:
 kubectl apply -f path-ingress.yaml
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 ingress.networking.k8s.io/path-routing created
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl get ingress path-routing
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME           CLASS   HOSTS       ADDRESS     PORTS   AGE
@@ -389,7 +389,7 @@ path-routing   nginx   localhost   localhost   80      10s
 curl -s http://localhost/app1
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Hello from App1
@@ -399,34 +399,34 @@ Hello from App1
 curl -s http://localhost/app2
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Hello from App2
 ```
 
-> **Coach tip:** `pathType: Prefix` means `/app1` matches `/app1`, `/app1/`, and `/app1/anything`. If students use `pathType: Exact`, only the exact path `/app1` would match (no trailing slash or sub-paths). This is a common confusion point — ask students: "What would happen if you changed to `Exact`?"
+> **Dica do Coach:** `pathType: Prefix` significa que `/app1` corresponde a `/app1`, `/app1/` e `/app1/anything`. Se os alunos usarem `pathType: Exact`, apenas o caminho exato `/app1` corresponderia (sem barra final ou sub-caminhos). Este é um ponto comum de confusão — pergunte aos alunos: "O que aconteceria se vocês mudassem para `Exact`?"
 
 ---
 
-## Task 6: Gateway API with HTTPRoute
+## Tarefa 6: Gateway API com HTTPRoute
 
-### Step-by-step
+### Passo a passo
 
-**6a. Install Gateway API CRDs**
+**6a. Instale as CRDs da Gateway API**
 
 ```bash
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
 ```
 
-Expected output: multiple CRDs created (gateways, gatewayclasses, httproutes, referencegrants, etc.).
+Saída esperada: múltiplas CRDs criadas (gateways, gatewayclasses, httproutes, referencegrants, etc.).
 
 ```bash
-# Verify CRDs are installed
+# Verifique se as CRDs estão instaladas
 kubectl get crds | grep gateway.networking.k8s.io
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 gatewayclasses.gateway.networking.k8s.io          2025-xx-xxTxx:xx:xxZ
@@ -436,43 +436,43 @@ httproutes.gateway.networking.k8s.io              2025-xx-xxTxx:xx:xxZ
 referencegrants.gateway.networking.k8s.io         2025-xx-xxTxx:xx:xxZ
 ```
 
-**6b. Install NGINX Gateway Fabric**
+**6b. Instale o NGINX Gateway Fabric**
 
 ```bash
 kubectl apply -f https://github.com/nginx/nginx-gateway-fabric/releases/download/v1.6.2/nginx-gateway-fabric.yaml
 ```
 
-Expected output: namespace, serviceaccount, clusterroles, deployment, and GatewayClass created.
+Saída esperada: namespace, serviceaccount, clusterroles, deployment e GatewayClass criados.
 
 ```bash
-# Wait for the Gateway Fabric controller to be ready
+# Aguarde o controller do Gateway Fabric ficar pronto
 kubectl wait --namespace nginx-gateway \
   --for=condition=ready pod \
   --selector=app.kubernetes.io/instance=nginx-gateway-fabric \
   --timeout=120s
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 pod/nginx-gateway-fabric-xxxxxxxxxx-xxxxx condition met
 ```
 
 ```bash
-# Verify the GatewayClass exists
+# Verifique se a GatewayClass existe
 kubectl get gatewayclass
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME    CONTROLLER                          ACCEPTED   AGE
 nginx   gateway.nginx.org/nginx-gateway-fabric-controller   True       30s
 ```
 
-**6c. Create the Gateway resource**
+**6c. Crie o recurso Gateway**
 
-Save as `gateway.yaml`:
+Salve como `gateway.yaml`:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -494,9 +494,9 @@ spec:
 kubectl apply -f gateway.yaml
 ```
 
-**6d. Create the HTTPRoute**
+**6d. Crie o HTTPRoute**
 
-Save as `httproute.yaml`:
+Salve como `httproute.yaml`:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -529,14 +529,14 @@ spec:
 kubectl apply -f httproute.yaml
 ```
 
-### Verification
+### Verificação
 
 ```bash
-# Check Gateway status — look for Accepted/Programmed
+# Verifique o status do Gateway — procure por Accepted/Programmed
 kubectl get gateway my-gateway
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME         CLASS   ADDRESS   PROGRAMMED   AGE
@@ -544,11 +544,11 @@ my-gateway   nginx   ...       True         30s
 ```
 
 ```bash
-# Check HTTPRoute status
+# Verifique o status do HTTPRoute
 kubectl get httproute app-routes
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME         HOSTNAMES            AGE
@@ -556,58 +556,57 @@ app-routes   ["demo.localhost"]   15s
 ```
 
 ```bash
-# Inspect details
+# Inspecione detalhes
 kubectl describe httproute app-routes
 ```
 
-Look for `Accepted: True` in the `parentRefs` status section.
+Procure por `Accepted: True` na seção de status dos `parentRefs`.
 
-> **Coach tip:** Testing the HTTPRoute via `curl http://demo.localhost/app1` depends on the Gateway controller's Service type and port. NGINX Gateway Fabric creates a LoadBalancer Service, which stays in `Pending` on Kind. To test, students can port-forward to the gateway:
+> **Dica do Coach:** Testar o HTTPRoute via `curl http://demo.localhost/app1` depende do tipo de Service do controller Gateway e da porta. O NGINX Gateway Fabric cria um Service LoadBalancer, que fica em `Pending` no Kind. Para testar, os alunos podem fazer port-forward para o gateway:
 >
 > ```bash
-> # Find the gateway service
+> # Encontre o service do gateway
 > kubectl -n nginx-gateway get svc
 >
-> # Port-forward to the NGINX Gateway Fabric service
+> # Port-forward para o service do NGINX Gateway Fabric
 > kubectl -n nginx-gateway port-forward svc/nginx-gateway-fabric 8080:80 &
 >
-> # Test (use -H to set the Host header since we're going via localhost:8080)
+> # Teste (use -H para definir o header Host já que estamos passando via localhost:8080)
 > curl -s -H "Host: demo.localhost" http://localhost:8080/app1
 > curl -s -H "Host: demo.localhost" http://localhost:8080/app2
 > ```
 >
-> Expected output: `Hello from App1` and `Hello from App2` respectively.
+> Saída esperada: `Hello from App1` e `Hello from App2` respectivamente.
 
 ---
 
-## Task 7: Compare Ingress vs Gateway API
+## Tarefa 7: Compare Ingress vs Gateway API
 
-This is a discussion/knowledge task. Key points students should be able to articulate:
+Esta é uma tarefa de discussão/conhecimento. Pontos-chave que os alunos devem conseguir articular:
 
-| Aspect | Ingress | Gateway API |
+| Aspecto | Ingress | Gateway API |
 |--------|---------|-------------|
-| **Role separation** | Single Ingress resource for everything | `GatewayClass` (infra provider) → `Gateway` (cluster operator) → `HTTPRoute` (app developer) |
-| **Protocol support** | HTTP/HTTPS only (by spec) | HTTP, gRPC, TCP, UDP, TLS via typed route resources |
-| **Extensibility** | Vendor-specific annotations (non-portable) | Typed, versioned policy resources (portable across implementations) |
-| **Traffic splitting** | Not built-in (annotation-dependent) | Native weight-based splitting in `backendRefs` |
-| **Header matching** | Annotation-dependent | First-class `matches` in HTTPRoute rules |
-| **Status feedback** | Minimal | Rich status conditions on every resource |
-| **Maturity** | Stable but frozen — no new features | GA since K8s 1.29, actively evolving |
+| **Separação de funções** | Recurso Ingress único para tudo | `GatewayClass` (provedor de infra) → `Gateway` (operador do cluster) → `HTTPRoute` (desenvolvedor da app) |
+| **Suporte a protocolos** | Apenas HTTP/HTTPS (pela spec) | HTTP, gRPC, TCP, UDP, TLS via recursos de rota tipados |
+| **Extensibilidade** | Annotations específicas do vendor (não portáveis) | Recursos de policy tipados e versionados (portáveis entre implementações) |
+| **Divisão de tráfego** | Não nativo (depende de annotations) | Divisão nativa baseada em peso nos `backendRefs` |
+| **Correspondência de headers** | Depende de annotations | `matches` de primeira classe nas regras do HTTPRoute |
+| **Feedback de status** | Mínimo | Condições de status ricas em cada recurso |
+| **Maturidade** | Estável mas congelado — sem novos recursos | GA desde K8s 1.29, evoluindo ativamente |
 
-> **Coach tip:** Frame it like this: "Ingress is like a single nginx.conf file that one person edits. Gateway API is like splitting that config into the infrastructure team managing the `server` block (Gateway) and the app team managing the `location` blocks (HTTPRoute). Who manages what is now explicit."
+> **Dica do Coach:** Enquadre assim: "Ingress é como um único arquivo nginx.conf que uma pessoa edita. Gateway API é como dividir essa configuração em: a equipe de infraestrutura gerenciando o bloco `server` (Gateway) e a equipe da app gerenciando os blocos `location` (HTTPRoute). Quem gerencia o quê agora é explícito."
 
 ---
 
-## Common Issues
+## Problemas Comuns
 
-| Problem | Likely Cause | Fix |
+| Problema | Causa Provável | Correção |
 |---------|-------------|-----|
-| `curl: (7) Failed to connect to localhost port 80` | Kind cluster not created with `extraPortMappings` | Delete cluster and recreate with `kind-ingress.yaml` config |
-| Ingress ADDRESS is `<none>` | Missing `ingressClassName: nginx` | Add `ingressClassName: nginx` to the Ingress spec |
-| `curl app1.localhost` returns 404 | Wrong path or host in Ingress rules | Check `kubectl describe ingress host-routing` for the rules |
-| `*.localhost` doesn't resolve | OS doesn't auto-resolve `*.localhost` | Add entries to hosts file or use `curl -H "Host: app1.localhost" http://localhost/` |
-| Gateway stays in `Pending` | GatewayClass controller not running | Check `kubectl get pods -n nginx-gateway` |
-| NGINX Gateway Fabric pod in CrashLoopBackOff | Port 80 conflict with Ingress controller | They share port 80 — either remove the Ingress controller or use a different port for Gateway |
-| Port 80/443 already in use on host | Another service (Apache, IIS, etc.) using the port | Stop the conflicting service before creating the Kind cluster |
-| Gateway API CRDs not found | `kubectl apply` for CRDs failed silently | Re-run the CRD install command and check `kubectl get crds | grep gateway` |
-
+| `curl: (7) Failed to connect to localhost port 80` | Cluster Kind não criado com `extraPortMappings` | Delete o cluster e recrie com a configuração `kind-ingress.yaml` |
+| ADDRESS do Ingress é `<none>` | `ingressClassName: nginx` ausente | Adicione `ingressClassName: nginx` à spec do Ingress |
+| `curl app1.localhost` retorna 404 | Path ou host errado nas regras do Ingress | Verifique `kubectl describe ingress host-routing` para as regras |
+| `*.localhost` não resolve | SO não faz auto-resolução de `*.localhost` | Adicione entradas no arquivo hosts ou use `curl -H "Host: app1.localhost" http://localhost/` |
+| Gateway fica em `Pending` | Controller da GatewayClass não está em execução | Verifique `kubectl get pods -n nginx-gateway` |
+| Pod do NGINX Gateway Fabric em CrashLoopBackOff | Conflito de porta 80 com o Ingress controller | Eles compartilham a porta 80 — remova o Ingress controller ou use uma porta diferente para o Gateway |
+| Porta 80/443 já em uso no host | Outro serviço (Apache, IIS, etc.) usando a porta | Pare o serviço conflitante antes de criar o cluster Kind |
+| CRDs da Gateway API não encontradas | `kubectl apply` das CRDs falhou silenciosamente | Re-execute o comando de instalação das CRDs e verifique `kubectl get crds | grep gateway` |

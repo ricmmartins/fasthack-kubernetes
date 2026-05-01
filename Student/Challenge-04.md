@@ -1,54 +1,54 @@
-# Challenge 04 — Deployments and Rolling Updates
+# Desafio 04 — Deployments e Rolling Updates
 
-[< Previous Challenge](Challenge-03.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-05.md)
+[< Desafio Anterior](Challenge-03.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-05.md)
 
-## Introduction
+## Introdução
 
-In Linux, if nginx crashes, you restart it manually (`systemctl restart nginx`). In Kubernetes, Deployments do this automatically — and more. A Deployment manages ReplicaSets, which manage Pods. It ensures the desired number of replicas are always running and handles rolling updates without downtime.
+No Linux, se o nginx trava, você reinicia manualmente (`systemctl restart nginx`). No Kubernetes, Deployments fazem isso automaticamente — e muito mais. Um Deployment gerencia ReplicaSets, que gerenciam Pods. Ele garante que o número desejado de réplicas esteja sempre em execução e realiza rolling updates sem downtime.
 
-Think of it this way:
+Pense assim:
 
-- `systemctl` → **Deployment** (manages the lifecycle of your application)
-- Process count → **replicas** (how many instances to keep running)
-- `apt upgrade` → **rolling update** (upgrade the application version with zero downtime)
-- Package rollback → **`kubectl rollout undo`** (revert to the previous version instantly)
+- `systemctl` → **Deployment** (gerencia o ciclo de vida da sua aplicação)
+- Contagem de processos → **replicas** (quantas instâncias manter em execução)
+- `apt upgrade` → **rolling update** (atualizar a versão da aplicação com zero downtime)
+- Rollback de pacote → **`kubectl rollout undo`** (reverter para a versão anterior instantaneamente)
 
-## Description
+## Descrição
 
-Your mission is to:
+Sua missão é:
 
-1. Create a Deployment with **3 replicas** of `nginx:stable`
-2. Scale the Deployment up to **5 replicas**, then back down to **3**
-3. Perform a **rolling update** from `nginx:stable` to `nginx:alpine`
-4. **Rollback** to the previous version
-5. Set **resource requests and limits** (CPU and memory) on the Deployment
+1. Criar um Deployment com **3 réplicas** de `nginx:stable`
+2. Escalar o Deployment para **5 réplicas**, depois voltar para **3**
+3. Realizar um **rolling update** de `nginx:stable` para `nginx:alpine`
+4. **Rollback** para a versão anterior
+5. Definir **resource requests e limits** (CPU e memória) no Deployment
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] A Deployment named `webapp` is running with 3 replicas and all Pods are Ready
-- [ ] You can scale the Deployment up to 5 replicas and back down to 3
-- [ ] A rolling update from `nginx:stable` to `nginx:alpine` completes with zero downtime
-- [ ] You can rollback to the previous version using `kubectl rollout undo`
-- [ ] Resource requests and limits are set on the container and visible via `kubectl describe`
+- [ ] Um Deployment chamado `webapp` está rodando com 3 réplicas e todos os Pods estão Ready
+- [ ] Você consegue escalar o Deployment para 5 réplicas e voltar para 3
+- [ ] Um rolling update de `nginx:stable` para `nginx:alpine` completa com zero downtime
+- [ ] Você consegue fazer rollback para a versão anterior usando `kubectl rollout undo`
+- [ ] Resource requests e limits estão definidos no container e visíveis via `kubectl describe`
 
-## Linux ↔ Kubernetes Reference
+## Referência Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent |
+| Conceito Linux | Equivalente Kubernetes |
 |---|---|
 | `systemctl start nginx` | `kubectl apply -f deployment.yaml` |
 | `systemctl restart nginx` | `kubectl rollout restart deployment/webapp` |
-| Process count (number of nginx workers) | `spec.replicas` |
-| `apt upgrade nginx` | Image update via `kubectl set image` (rolling) |
-| `apt rollback` / downgrade package | `kubectl rollout undo deployment/webapp` |
-| `ulimit` / cgroups resource limits | `resources.requests` / `resources.limits` |
+| Contagem de processos (número de workers nginx) | `spec.replicas` |
+| `apt upgrade nginx` | Atualização de imagem via `kubectl set image` (rolling) |
+| `apt rollback` / downgrade de pacote | `kubectl rollout undo deployment/webapp` |
+| `ulimit` / limites de recursos cgroups | `resources.requests` / `resources.limits` |
 | `systemctl status nginx` | `kubectl rollout status deployment/webapp` |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: Create the Deployment YAML</summary>
+<summary>Dica 1: Criar o YAML do Deployment</summary>
 
-Create a file named `webapp-deployment.yaml`:
+Crie um arquivo chamado `webapp-deployment.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -79,7 +79,7 @@ spec:
             memory: "128Mi"
 ```
 
-Apply it and verify:
+Aplique e verifique:
 
 ```bash
 kubectl apply -f webapp-deployment.yaml
@@ -89,7 +89,7 @@ kubectl get pods -l app=webapp
 </details>
 
 <details>
-<summary>Hint 2: Scaling up and down</summary>
+<summary>Dica 2: Escalando para cima e para baixo</summary>
 
 ```bash
 kubectl scale deployment webapp --replicas=5
@@ -99,7 +99,7 @@ kubectl scale deployment webapp --replicas=3
 </details>
 
 <details>
-<summary>Hint 3: Performing a rolling update</summary>
+<summary>Dica 3: Realizando um rolling update</summary>
 
 ```bash
 kubectl set image deployment/webapp nginx=nginx:alpine
@@ -109,7 +109,7 @@ kubectl get pods -l app=webapp  # observe old Pods terminating, new Pods startin
 </details>
 
 <details>
-<summary>Hint 4: Rolling back</summary>
+<summary>Dica 4: Fazendo rollback</summary>
 
 ```bash
 kubectl rollout history deployment/webapp
@@ -119,16 +119,16 @@ kubectl describe deployment webapp | grep Image
 ```
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
-- [Managing Resources for Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
-- [Performing a Rolling Update](https://kubernetes.io/docs/tutorials/kubernetes-basics/update/update-intro/)
+- [Gerenciando Recursos para Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+- [Realizando um Rolling Update](https://kubernetes.io/docs/tutorials/kubernetes-basics/update/update-intro/)
 
 ## Break & Fix 🔧
 
-After completing the challenge, try these scenarios:
+Após completar o desafio, tente estes cenários:
 
-1. **Bad image tag** — Set the image to a nonexistent tag (`nginx:doesnotexist`) and observe the rollout get stuck. Use `kubectl rollout status` to see it hang, then rollback with `kubectl rollout undo deployment/webapp`
-2. **OOMKilled** — Set the memory limit to `1Mi` and watch the Pod get killed with an `OOMKilled` status. Inspect it with `kubectl describe pod` and look for the `Last State` section
-3. **Self-healing** — Delete a Pod manually (`kubectl delete pod <pod-name>`) and watch the Deployment recreate it automatically. Use `kubectl get pods -w` to see the new Pod appear
+1. **Tag de imagem inválida** — Defina a imagem com uma tag inexistente (`nginx:doesnotexist`) e observe o rollout travar. Use `kubectl rollout status` para ver o travamento, depois faça rollback com `kubectl rollout undo deployment/webapp`
+2. **OOMKilled** — Defina o limite de memória para `1Mi` e observe o Pod ser morto com status `OOMKilled`. Inspecione com `kubectl describe pod` e procure a seção `Last State`
+3. **Auto-recuperação** — Delete um Pod manualmente (`kubectl delete pod <pod-name>`) e observe o Deployment recriá-lo automaticamente. Use `kubectl get pods -w` para ver o novo Pod aparecer

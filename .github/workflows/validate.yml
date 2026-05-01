@@ -2,9 +2,9 @@ name: Validate Content
 
 on:
   push:
-    branches: [main]
+    branches: [pt-br]
   pull_request:
-    branches: [main]
+    branches: [pt-br]
 
 jobs:
   validate-structure:

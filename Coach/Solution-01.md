@@ -1,16 +1,16 @@
-# Solution 01 — Your First Container
+# Solução 01 — Seu Primeiro Container
 
-[< Back to Challenge](../Student/Challenge-01.md) | **[Home](README.md)**
+[< Voltar para o Desafio](../Student/Challenge-01.md) | **[Home](README.md)**
 
-## Pre-check
+## Pré-verificação
 
-Ensure students have Docker (or Podman) installed and running:
+Certifique-se de que os alunos tenham o Docker (ou Podman) instalado e em execução:
 
 ```bash
 docker version
 ```
 
-Expected output (version numbers may differ):
+Saída esperada (os números de versão podem variar):
 
 ```
 Client:
@@ -21,21 +21,21 @@ Server:
   Version:          27.x.x
 ```
 
-If the **Server** section is missing, the Docker daemon isn't running — have the student start it (`sudo systemctl start docker` on Linux, or launch Docker Desktop on macOS/Windows).
+Se a seção **Server** estiver ausente, o daemon do Docker não está em execução — peça ao aluno para iniciá-lo (`sudo systemctl start docker` no Linux, ou inicie o Docker Desktop no macOS/Windows).
 
 ---
 
-## Task 1: Run Your First Container
+## Tarefa 1: Execute Seu Primeiro Container
 
-### Step-by-step
+### Passo a passo
 
-Pull and run an nginx container, mapping host port 8080 to container port 80:
+Baixe e execute um container nginx, mapeando a porta 8080 do host para a porta 80 do container:
 
 ```bash
 docker run -d --name web -p 8080:80 nginx
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Unable to find image 'nginx:latest' locally
@@ -45,26 +45,26 @@ Status: Downloaded newer image for nginx:latest
 a1b2c3d4e5f6...   # <- container ID
 ```
 
-Verify the container is running:
+Verifique se o container está em execução:
 
 ```bash
 docker ps
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 CONTAINER ID   IMAGE   COMMAND                  CREATED          STATUS          PORTS                  NAMES
 a1b2c3d4e5f6   nginx   "/docker-entrypoint.…"   10 seconds ago   Up 9 seconds    0.0.0.0:8080->80/tcp   web
 ```
 
-Test that nginx is serving traffic:
+Teste se o nginx está servindo tráfego:
 
 ```bash
 curl -s http://localhost:8080 | head -5
 ```
 
-Expected output:
+Saída esperada:
 
 ```html
 <!DOCTYPE html>
@@ -74,30 +74,30 @@ Expected output:
 <style>
 ```
 
-### Verification
+### Verificação
 
-- `docker ps` shows the `web` container in `Up` status
-- `curl http://localhost:8080` returns the default nginx welcome page
+- `docker ps` mostra o container `web` com status `Up`
+- `curl http://localhost:8080` retorna a página de boas-vindas padrão do nginx
 
 ---
 
-## Task 2: Build a Custom Container Image
+## Tarefa 2: Construa uma Imagem de Container Personalizada
 
-### Step-by-step
+### Passo a passo
 
-Create a project directory and the required files:
+Crie um diretório de projeto e os arquivos necessários:
 
 ```bash
 mkdir -p ~/container-lab && cd ~/container-lab
 ```
 
-Create a simple HTML file:
+Crie um arquivo HTML simples:
 
 ```bash
 echo '<h1>Hello from my container!</h1>' > index.html
 ```
 
-Create the Dockerfile:
+Crie o Dockerfile:
 
 ```bash
 cat > Dockerfile <<'EOF'
@@ -106,13 +106,13 @@ COPY index.html /usr/share/nginx/html/
 EOF
 ```
 
-Build the image:
+Construa a imagem:
 
 ```bash
 docker build -t myapp:v1 .
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 [+] Building 2.1s (7/7) FINISHED
@@ -125,63 +125,63 @@ Expected output:
  => => naming to docker.io/library/myapp:v1
 ```
 
-Run the custom image:
+Execute a imagem personalizada:
 
 ```bash
 docker run -d --name myapp -p 8081:80 myapp:v1
 ```
 
-Test it:
+Teste:
 
 ```bash
 curl -s http://localhost:8081
 ```
 
-Expected output:
+Saída esperada:
 
 ```html
 <h1>Hello from my container!</h1>
 ```
 
-Verify the image appears in the local registry:
+Verifique se a imagem aparece no registro local:
 
 ```bash
 docker images myapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 REPOSITORY   TAG   IMAGE ID       CREATED          SIZE
 myapp        v1    abc123def456   30 seconds ago   ~50MB
 ```
 
-### Verification
+### Verificação
 
-- `docker images myapp` shows `myapp:v1`
-- `curl http://localhost:8081` returns `<h1>Hello from my container!</h1>`
+- `docker images myapp` mostra `myapp:v1`
+- `curl http://localhost:8081` retorna `<h1>Hello from my container!</h1>`
 
 ---
 
-## Task 3: Inspect the Container's Processes, Network, and Filesystem
+## Tarefa 3: Inspecione os Processos, Rede e Sistema de Arquivos do Container
 
-### Step-by-step
+### Passo a passo
 
-Exec into the `web` container (the nginx one from Task 1):
+Execute um shell dentro do container `web` (o nginx da Tarefa 1):
 
 ```bash
 docker exec -it web sh
 ```
 
-Once inside the container, run these diagnostic commands:
+Uma vez dentro do container, execute estes comandos de diagnóstico:
 
-**List processes — PID 1 is the nginx master:**
+**Liste os processos — PID 1 é o processo master do nginx:**
 
 ```bash
 ps aux
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 PID   USER     TIME  COMMAND
@@ -192,15 +192,15 @@ PID   USER     TIME  COMMAND
    36 root      0:00 ps aux
 ```
 
-> **Coach note:** Point out that PID 1 is nginx — not `init` or `systemd`. The container has its own PID namespace.
+> **Nota para o Coach:** Destaque que o PID 1 é o nginx — não `init` ou `systemd`. O container possui seu próprio namespace de PID.
 
-**Check the network — the container has its own network namespace:**
+**Verifique a rede — o container tem seu próprio namespace de rede:**
 
 ```bash
 ip addr
 ```
 
-Expected output (IP will vary):
+Saída esperada (o IP pode variar):
 
 ```
 1: lo: <LOOPBACK,UP,LOWER_UP> ...
@@ -210,98 +210,98 @@ Expected output (IP will vary):
     inet 172.17.0.2/16 brd 172.17.255.255 scope global eth0
 ```
 
-**Check the hostname:**
+**Verifique o hostname:**
 
 ```bash
 cat /etc/hostname
 ```
 
-Expected output:
+Saída esperada:
 
 ```
-a1b2c3d4e5f6   # <- matches the container ID
+a1b2c3d4e5f6   # <- corresponde ao container ID
 ```
 
-**Explore the filesystem:**
+**Explore o sistema de arquivos:**
 
 ```bash
 ls /usr/share/nginx/html/
 cat /etc/os-release | head -3
 ```
 
-Exit the container shell:
+Saia do shell do container:
 
 ```bash
 exit
 ```
 
-**Inspect from the host side — view container metadata as JSON:**
+**Inspecione do lado do host — visualize os metadados do container como JSON:**
 
 ```bash
 docker inspect web --format '{{.State.Pid}}'
 ```
 
-This prints the real PID of the container's init process on the **host**. Students can verify this with:
+Isto imprime o PID real do processo init do container no **host**. Os alunos podem verificar com:
 
 ```bash
-# On Linux only:
+# Apenas no Linux:
 ps aux | grep <PID_from_above>
 ```
 
-### Verification
+### Verificação
 
-- Students can explain that PID 1 inside the container is the application process (nginx), not systemd/init
-- Students can show the container has its own IP address (not the host's)
-- Students can use `docker inspect` to view container metadata from the host
+- Os alunos conseguem explicar que o PID 1 dentro do container é o processo da aplicação (nginx), não systemd/init
+- Os alunos conseguem mostrar que o container tem seu próprio endereço IP (não o do host)
+- Os alunos conseguem usar `docker inspect` para visualizar metadados do container a partir do host
 
 ---
 
-## Task 4: Explain Linux Primitives vs Containers
+## Tarefa 4: Explique Primitivas do Linux vs Containers
 
-### Coach Talking Points
+### Pontos de Discussão do Coach
 
-Walk students through this table and have them confirm each concept:
+Conduza os alunos por esta tabela e peça que confirmem cada conceito:
 
-| Linux Primitive | What It Does | How Containers Use It |
+| Primitiva Linux | O Que Faz | Como os Containers Usam |
 |---|---|---|
-| **PID Namespace** | Isolates the process ID tree — the container sees PID 1 as its own init process | `ps aux` inside the container shows only container processes; the host sees the real PID |
-| **NET Namespace** | Gives the container its own network stack (IP, routes, iptables) | `ip addr` shows a different IP than the host; the `docker0` bridge connects them |
-| **MNT Namespace** | Isolates mount points — the container has its own root filesystem | `ls /` inside the container shows the image's filesystem, not the host's |
-| **UTS Namespace** | Isolates hostname | `hostname` inside the container shows the container ID, not the host's hostname |
-| **cgroups** | Limits CPU, memory, and I/O for a group of processes | `docker run --memory=128m --cpus=0.5` sets cgroup limits; exceeding memory → OOMKill |
+| **PID Namespace** | Isola a árvore de IDs de processo — o container vê o PID 1 como seu próprio processo init | `ps aux` dentro do container mostra apenas processos do container; o host vê o PID real |
+| **NET Namespace** | Fornece ao container sua própria pilha de rede (IP, rotas, iptables) | `ip addr` mostra um IP diferente do host; a bridge `docker0` os conecta |
+| **MNT Namespace** | Isola pontos de montagem — o container tem seu próprio sistema de arquivos raiz | `ls /` dentro do container mostra o sistema de arquivos da imagem, não o do host |
+| **UTS Namespace** | Isola o hostname | `hostname` dentro do container mostra o ID do container, não o hostname do host |
+| **cgroups** | Limita CPU, memória e I/O para um grupo de processos | `docker run --memory=128m --cpus=0.5` define limites de cgroup; exceder memória → OOMKill |
 
-**Key question to ask students:** *"What is the difference between a container and a virtual machine?"*
+**Pergunta-chave para os alunos:** *"Qual é a diferença entre um container e uma máquina virtual?"*
 
-**Expected answer:**
-- A **VM** runs a full operating system with its own kernel on a hypervisor. It's heavy (GBs of memory, minutes to boot).
-- A **container** is a regular Linux process with namespace isolation and cgroup limits. It shares the host kernel. It's lightweight (MBs of memory, milliseconds to start).
-- Containers are **not** VMs — they're processes with extra isolation boundaries.
+**Resposta esperada:**
+- Uma **VM** executa um sistema operacional completo com seu próprio kernel em um hypervisor. É pesada (GBs de memória, minutos para iniciar).
+- Um **container** é um processo Linux normal com isolamento via namespaces e limites de cgroup. Ele compartilha o kernel do host. É leve (MBs de memória, milissegundos para iniciar).
+- Containers **não** são VMs — são processos com limites extras de isolamento.
 
-**Optional demo — show cgroups in action:**
+**Demo opcional — mostrando cgroups em ação:**
 
 ```bash
 docker run -d --name limited --memory=32m --cpus=0.5 nginx
 docker stats limited --no-stream
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 CONTAINER ID   NAME      CPU %   MEM USAGE / LIMIT   MEM %   ...
 abc123def456   limited   0.00%   3.5MiB / 32MiB      10.94%  ...
 ```
 
-> The `LIMIT` column shows the cgroup memory cap.
+> A coluna `LIMIT` mostra o limite de memória do cgroup.
 
-### Verification
+### Verificação
 
-- Students can articulate that containers use namespaces (PID, NET, MNT, UTS) for isolation
-- Students can articulate that cgroups enforce resource limits
-- Students understand containers share the host kernel (unlike VMs)
+- Os alunos conseguem articular que containers usam namespaces (PID, NET, MNT, UTS) para isolamento
+- Os alunos conseguem articular que cgroups impõem limites de recursos
+- Os alunos entendem que containers compartilham o kernel do host (diferente de VMs)
 
 ---
 
-## Cleanup
+## Limpeza
 
 ```bash
 docker stop web myapp limited 2>/dev/null
@@ -311,14 +311,14 @@ docker rmi myapp:v1 2>/dev/null
 
 ---
 
-## Common Issues
+## Problemas Comuns
 
-| Issue | Symptom | Fix |
+| Problema | Sintoma | Correção |
 |---|---|---|
-| Docker daemon not running | `Cannot connect to the Docker daemon` | Start the daemon: `sudo systemctl start docker` or launch Docker Desktop |
-| Port 8080 already in use | `Bind for 0.0.0.0:8080 failed: port is already allocated` | Use a different port (`-p 9090:80`) or stop whatever is using 8080 |
-| Permission denied on Docker socket | `Got permission denied while trying to connect to the Docker daemon socket` | Add user to docker group: `sudo usermod -aG docker $USER` then log out/in |
-| `ps` command not found inside container | `sh: ps: not found` | The base image may not have procps. Install it: `apt-get update && apt-get install -y procps` (for Debian-based images) |
-| `ip` command not found inside container | `sh: ip: not found` | Some minimal images lack iproute2. Use `cat /proc/net/fib_trie` as a fallback, or install with `apt-get install -y iproute2` |
-| Students confuse images and containers | They try `docker rm myapp:v1` | Explain: an **image** is a template (like a `.iso`), a **container** is a running instance. Use `docker rmi` for images, `docker rm` for containers |
+| Daemon do Docker não está em execução | `Cannot connect to the Docker daemon` | Inicie o daemon: `sudo systemctl start docker` ou inicie o Docker Desktop |
+| Porta 8080 já em uso | `Bind for 0.0.0.0:8080 failed: port is already allocated` | Use uma porta diferente (`-p 9090:80`) ou pare o que estiver usando a 8080 |
+| Permissão negada no socket do Docker | `Got permission denied while trying to connect to the Docker daemon socket` | Adicione o usuário ao grupo docker: `sudo usermod -aG docker $USER` e faça logout/login |
+| Comando `ps` não encontrado dentro do container | `sh: ps: not found` | A imagem base pode não ter procps. Instale: `apt-get update && apt-get install -y procps` (para imagens baseadas em Debian) |
+| Comando `ip` não encontrado dentro do container | `sh: ip: not found` | Algumas imagens mínimas não incluem iproute2. Use `cat /proc/net/fib_trie` como alternativa, ou instale com `apt-get install -y iproute2` |
+| Alunos confundem imagens e containers | Eles tentam `docker rm myapp:v1` | Explique: uma **imagem** é um modelo (como um `.iso`), um **container** é uma instância em execução. Use `docker rmi` para imagens, `docker rm` para containers |
 

@@ -1,70 +1,70 @@
-# Challenge 02 — From Container to Pod
+# Desafio 02 — De Container para Pod
 
-[< Previous Challenge](Challenge-01.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-03.md)
+[< Desafio Anterior](Challenge-01.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-03.md)
 
-## Introduction
+## Introdução
 
-In Challenge 01 you built and ran containers with Docker — the equivalent of launching individual processes on a Linux box. Now it's time to hand those containers over to Kubernetes.
+No Desafio 01 você construiu e executou containers com Docker — o equivalente a iniciar processos individuais em uma máquina Linux. Agora é hora de entregar esses containers ao Kubernetes.
 
-In Linux, related processes are often grouped into a **process group** so the kernel can manage them as a unit (think of a parent process and its children sharing a session). Kubernetes has the same idea: a **Pod** is the smallest deployable unit and it wraps **one or more containers** that share:
+No Linux, processos relacionados são frequentemente agrupados em um **grupo de processos** para que o kernel possa gerenciá-los como uma unidade (pense em um processo pai e seus filhos compartilhando uma sessão). Kubernetes tem a mesma ideia: um **Pod** é a menor unidade implantável e ele envolve **um ou mais containers** que compartilham:
 
-| Shared resource | What it means |
+| Recurso compartilhado | O que significa |
 |---|---|
-| **Network namespace** | All containers in the Pod share the same IP address and port space — just like processes in the same network namespace on Linux. |
-| **Storage volumes** | Containers in a Pod can mount the same volumes — similar to processes reading/writing to the same filesystem path. |
-| **Lifecycle** | Containers in a Pod are scheduled, started, and stopped together — like a process group receiving the same signal. |
+| **Network namespace** | Todos os containers no Pod compartilham o mesmo endereço IP e espaço de portas — assim como processos no mesmo network namespace no Linux. |
+| **Volumes de armazenamento** | Containers em um Pod podem montar os mesmos volumes — similar a processos lendo/escrevendo no mesmo caminho do sistema de arquivos. |
+| **Ciclo de vida** | Containers em um Pod são agendados, iniciados e parados juntos — como um grupo de processos recebendo o mesmo sinal. |
 
-A Pod is **not** a VM and it is **not** a container. It is a thin wrapper that tells Kubernetes: *"run these containers together on the same node and let them talk over localhost."*
+Um Pod **não** é uma VM e **não** é um container. É um invólucro fino que diz ao Kubernetes: *"execute esses containers juntos no mesmo node e deixe-os se comunicar via localhost."*
 
-In this challenge you will create your first Pod using a YAML manifest, inspect it the way you would inspect a Linux process, exec into it just like you would with `docker exec`, and observe what happens when a Pod is deleted.
+Neste desafio você vai criar seu primeiro Pod usando um manifesto YAML, inspecioná-lo da mesma forma que inspecionaria um processo Linux, fazer exec nele assim como faria com `docker exec`, e observar o que acontece quando um Pod é deletado.
 
-> **Cluster requirement:** All exercises use a local [Kind](https://kind.sigs.k8s.io/) cluster — no cloud account needed. If you haven't created one yet, run:
+> **Requisito de cluster:** Todos os exercícios usam um cluster local [Kind](https://kind.sigs.k8s.io/) — nenhuma conta de nuvem necessária. Se ainda não criou um, execute:
 > ```bash
 > kind create cluster --name fasthack
 > ```
 
-## Description
+## Descrição
 
-1. **Create a Pod from a YAML manifest**
-   Write a file called `nginx-pod.yaml` that defines a single Pod running the `nginx:stable` image. Apply it to your Kind cluster with `kubectl apply`.
+1. **Criar um Pod a partir de um manifesto YAML**
+   Escreva um arquivo chamado `nginx-pod.yaml` que defina um único Pod executando a imagem `nginx:stable`. Aplique-o ao seu cluster Kind com `kubectl apply`.
 
-2. **Inspect the Pod**
-   Use `kubectl get`, `kubectl describe`, and `kubectl logs` to examine the Pod's status, events, IP address, and container output — the same way you would use `ps`, `journalctl`, or `cat /proc` on Linux.
+2. **Inspecionar o Pod**
+   Use `kubectl get`, `kubectl describe` e `kubectl logs` para examinar o status do Pod, eventos, endereço IP e saída do container — da mesma forma que você usaria `ps`, `journalctl` ou `cat /proc` no Linux.
 
-3. **Exec into the Pod**
-   Open an interactive shell inside the running container with `kubectl exec`. Compare the experience with `docker exec` from Challenge 01. Run a few diagnostic commands inside the Pod to prove the container is just a Linux process with its own namespaces.
+3. **Fazer exec no Pod**
+   Abra um shell interativo dentro do container em execução com `kubectl exec`. Compare a experiência com `docker exec` do Desafio 01. Execute alguns comandos de diagnóstico dentro do Pod para provar que o container é apenas um processo Linux com seus próprios namespaces.
 
-4. **Delete the Pod and observe the lifecycle**
-   Delete the Pod with `kubectl delete` and watch what happens. Unlike a Deployment (which you'll meet later), a bare Pod is **not** restarted automatically — just like a process you `kill` without a supervisor daemon to restart it.
+4. **Deletar o Pod e observar o ciclo de vida**
+   Delete o Pod com `kubectl delete` e observe o que acontece. Diferente de um Deployment (que você conhecerá depois), um Pod isolado **não** é reiniciado automaticamente — assim como um processo que você mata com `kill` sem um daemon supervisor para reiniciá-lo.
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] You created a Pod using a YAML manifest and it reaches the `Running` state.
-- [ ] You can retrieve Pod details with `kubectl get pods -o wide` and explain the output columns.
-- [ ] You can exec into the Pod and run commands inside the container.
-- [ ] You can view container logs with `kubectl logs`.
-- [ ] You can articulate the difference between a **container** and a **Pod** (a Pod can hold multiple containers that share network and storage; a container is a single process/image).
-- [ ] After deleting the Pod, you observe that it is **not** recreated automatically.
+- [ ] Você criou um Pod usando um manifesto YAML e ele atinge o estado `Running`.
+- [ ] Você consegue obter detalhes do Pod com `kubectl get pods -o wide` e explicar as colunas de saída.
+- [ ] Você consegue fazer exec no Pod e executar comandos dentro do container.
+- [ ] Você consegue visualizar logs do container com `kubectl logs`.
+- [ ] Você consegue articular a diferença entre um **container** e um **Pod** (um Pod pode conter múltiplos containers que compartilham rede e armazenamento; um container é um único processo/imagem).
+- [ ] Após deletar o Pod, você observa que ele **não** é recriado automaticamente.
 
-## Linux ↔ Kubernetes Reference
+## Referência Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent | Notes |
+| Conceito Linux | Equivalente Kubernetes | Notas |
 |---|---|---|
-| Process / process group | Pod | A Pod is a group of one or more containers scheduled together. |
-| PID | Pod name | The unique identifier you use to interact with the workload. |
-| `ps aux` | `kubectl get pods` | List running workloads and their status. |
-| `ps aux -o pid,stat,cmd` | `kubectl get pods -o wide` | Wider output with node, IP, and more. |
-| `kill <pid>` | `kubectl delete pod <name>` | Terminates the workload (SIGTERM → SIGKILL after grace period). |
-| `docker exec -it <ctr> sh` | `kubectl exec -it <pod> -- /bin/sh` | Open an interactive shell inside the running container. |
-| `docker logs <ctr>` | `kubectl logs <pod>` | Stream stdout/stderr from the container. |
-| `/proc/<pid>/status` | `kubectl describe pod <name>` | Detailed status, events, and resource info. |
+| Processo / grupo de processos | Pod | Um Pod é um grupo de um ou mais containers agendados juntos. |
+| PID | Nome do Pod | O identificador único usado para interagir com o workload. |
+| `ps aux` | `kubectl get pods` | Listar workloads em execução e seu status. |
+| `ps aux -o pid,stat,cmd` | `kubectl get pods -o wide` | Saída expandida com node, IP e mais. |
+| `kill <pid>` | `kubectl delete pod <name>` | Termina o workload (SIGTERM → SIGKILL após período de graça). |
+| `docker exec -it <ctr> sh` | `kubectl exec -it <pod> -- /bin/sh` | Abre um shell interativo dentro do container em execução. |
+| `docker logs <ctr>` | `kubectl logs <pod>` | Transmite stdout/stderr do container. |
+| `/proc/<pid>/status` | `kubectl describe pod <name>` | Status detalhado, eventos e informações de recursos. |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: Creating a Pod YAML manifest</summary>
+<summary>Dica 1: Criando um manifesto YAML de Pod</summary>
 
-Create a file named `nginx-pod.yaml`:
+Crie um arquivo chamado `nginx-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -81,48 +81,48 @@ spec:
         - containerPort: 80
 ```
 
-Apply it:
+Aplique-o:
 
 ```bash
 kubectl apply -f nginx-pod.yaml
 ```
 
-Verify:
+Verifique:
 
 ```bash
 kubectl get pods
 ```
 
-You should see the Pod transition from `ContainerCreating` to `Running`.
+Você deve ver o Pod transicionar de `ContainerCreating` para `Running`.
 
 </details>
 
 <details>
-<summary>Hint 2: Inspecting the Pod</summary>
+<summary>Dica 2: Inspecionando o Pod</summary>
 
-**List Pods with extra detail (like `ps aux` on Linux):**
+**Listar Pods com detalhes extras (como `ps aux` no Linux):**
 
 ```bash
 kubectl get pods -o wide
 ```
 
-This shows the Pod IP, the node it's running on, and the container status.
+Isso mostra o IP do Pod, o node onde está rodando e o status do container.
 
-**Describe the Pod (like reading `/proc/<pid>/status`):**
+**Descrever o Pod (como ler `/proc/<pid>/status`):**
 
 ```bash
 kubectl describe pod nginx
 ```
 
-Look for the **Events** section at the bottom — it shows the scheduler assigning the Pod to a node, the kubelet pulling the image, and the container starting.
+Procure a seção **Events** na parte inferior — ela mostra o scheduler atribuindo o Pod a um node, o kubelet puxando a imagem e o container iniciando.
 
-**View container logs (like `docker logs` or `journalctl`):**
+**Visualizar logs do container (como `docker logs` ou `journalctl`):**
 
 ```bash
 kubectl logs nginx
 ```
 
-To follow logs in real time (like `tail -f`):
+Para seguir logs em tempo real (como `tail -f`):
 
 ```bash
 kubectl logs nginx --follow
@@ -131,15 +131,15 @@ kubectl logs nginx --follow
 </details>
 
 <details>
-<summary>Hint 3: Exec into the Pod</summary>
+<summary>Dica 3: Fazer exec no Pod</summary>
 
-Open a shell inside the running container:
+Abra um shell dentro do container em execução:
 
 ```bash
 kubectl exec -it nginx -- /bin/sh
 ```
 
-Once inside, explore — just like you would on any Linux box:
+Uma vez dentro, explore — assim como faria em qualquer máquina Linux:
 
 ```bash
 # What processes are running? (PID 1 is nginx master)
@@ -158,45 +158,45 @@ curl -s http://localhost:80 | head -5
 exit
 ```
 
-Compare this with `docker exec -it <container_id> /bin/sh` from Challenge 01 — the experience is almost identical because under the hood, `kubectl exec` is doing the same thing: attaching to the container's namespaces.
+Compare isso com `docker exec -it <container_id> /bin/sh` do Desafio 01 — a experiência é quase idêntica porque por baixo dos panos, `kubectl exec` faz a mesma coisa: conecta-se aos namespaces do container.
 
 </details>
 
 <details>
-<summary>Hint 4: Deleting a Pod and observing the lifecycle</summary>
+<summary>Dica 4: Deletando um Pod e observando o ciclo de vida</summary>
 
-Delete the Pod:
+Delete o Pod:
 
 ```bash
 kubectl delete pod nginx
 ```
 
-Watch it disappear:
+Observe-o desaparecer:
 
 ```bash
 kubectl get pods --watch
 ```
 
-The Pod goes through `Terminating` and then is removed. **It does not come back** — there is no controller (like a Deployment) watching for it. This is equivalent to running `kill <pid>` on a process that has no systemd unit or supervisor to restart it.
+O Pod passa por `Terminating` e depois é removido. **Ele não volta** — não há um controller (como um Deployment) monitorando-o. Isso é equivalente a executar `kill <pid>` em um processo que não tem unit do systemd ou supervisor para reiniciá-lo.
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
-- [Pods — Kubernetes official docs](https://kubernetes.io/docs/concepts/workloads/pods/)
-- [kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/)
+- [Pods — Documentação oficial Kubernetes](https://kubernetes.io/docs/concepts/workloads/pods/)
+- [Referência Rápida kubectl](https://kubernetes.io/docs/reference/kubectl/)
 - [kubectl exec](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_exec/)
 - [kubectl logs](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_logs/)
-- [Pod Lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
+- [Ciclo de Vida do Pod](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
 - [Kind — Quick Start](https://kind.sigs.k8s.io/docs/user/quick-start/)
 
 ## Break & Fix 🔧
 
-Try each scenario, diagnose the problem, and fix it.
+Tente cada cenário, diagnostique o problema e corrija-o.
 
-### Scenario 1 — ImagePullBackOff
+### Cenário 1 — ImagePullBackOff
 
-Create a Pod with a deliberately wrong image name:
+Crie um Pod com um nome de imagem deliberadamente incorreto:
 
 ```yaml
 apiVersion: v1
@@ -214,17 +214,17 @@ kubectl apply -f broken-image.yaml
 kubectl get pods --watch
 ```
 
-**What you'll see:** The Pod stays in `ErrImagePull` and then `ImagePullBackOff`.
+**O que você verá:** O Pod fica em `ErrImagePull` e depois `ImagePullBackOff`.
 
-**Diagnose:** `kubectl describe pod broken-image` — look at the Events section for the pull error.
+**Diagnostique:** `kubectl describe pod broken-image` — procure na seção Events o erro de pull.
 
-**Fix:** Edit the YAML to use a valid tag (e.g., `nginx:stable`), delete the broken Pod, and re-apply.
+**Corrija:** Edite o YAML para usar uma tag válida (ex: `nginx:stable`), delete o Pod quebrado e re-aplique.
 
 ---
 
-### Scenario 2 — CrashLoopBackOff
+### Cenário 2 — CrashLoopBackOff
 
-Create a Pod whose command exits immediately:
+Crie um Pod cujo comando termina imediatamente:
 
 ```yaml
 apiVersion: v1
@@ -243,26 +243,26 @@ kubectl apply -f crash-loop.yaml
 kubectl get pods --watch
 ```
 
-**What you'll see:** The Pod enters `CrashLoopBackOff` — Kubernetes keeps restarting the container, with increasing back-off delays.
+**O que você verá:** O Pod entra em `CrashLoopBackOff` — o Kubernetes continua reiniciando o container, com intervalos de back-off crescentes.
 
-**Diagnose:** `kubectl logs crash-loop` shows the output before the crash. `kubectl describe pod crash-loop` shows the restart count climbing.
+**Diagnostique:** `kubectl logs crash-loop` mostra a saída antes do crash. `kubectl describe pod crash-loop` mostra a contagem de reinicializações subindo.
 
-**Linux analogy:** This is like a process that segfaults on startup while systemd keeps trying to restart it (`Restart=always`).
+**Analogia Linux:** Isso é como um processo que dá segfault na inicialização enquanto o systemd continua tentando reiniciá-lo (`Restart=always`).
 
-**Fix:** Change the command to something that stays running (e.g., `["sh", "-c", "echo 'hello'; sleep 3600"]`), delete the Pod, and re-apply.
+**Corrija:** Mude o comando para algo que continue rodando (ex: `["sh", "-c", "echo 'hello'; sleep 3600"]`), delete o Pod e re-aplique.
 
 ---
 
-### Scenario 3 — Duplicate Pod name
+### Cenário 3 — Nome de Pod duplicado
 
-Try to create two Pods with the same name:
+Tente criar dois Pods com o mesmo nome:
 
 ```bash
 kubectl apply -f nginx-pod.yaml
 kubectl apply -f nginx-pod.yaml
 ```
 
-**What you'll see:** The second `apply` does **not** fail — it updates the existing Pod (idempotent operation). Now try with `kubectl create`:
+**O que você verá:** O segundo `apply` **não** falha — ele atualiza o Pod existente (operação idempotente). Agora tente com `kubectl create`:
 
 ```bash
 kubectl delete pod nginx
@@ -270,8 +270,8 @@ kubectl create -f nginx-pod.yaml
 kubectl create -f nginx-pod.yaml
 ```
 
-**What you'll see:** The second `create` fails with: `Error from server (AlreadyExists): pods "nginx" already exists`.
+**O que você verá:** O segundo `create` falha com: `Error from server (AlreadyExists): pods "nginx" already exists`.
 
-**Lesson:** `kubectl apply` is declarative and idempotent (like `ansible`). `kubectl create` is imperative and fails if the resource already exists. In practice, prefer `apply`.
+**Lição:** `kubectl apply` é declarativo e idempotente (como `ansible`). `kubectl create` é imperativo e falha se o recurso já existe. Na prática, prefira `apply`.
 
-**Linux analogy:** It's like the difference between `mkdir -p /data` (idempotent, no error if exists) and `mkdir /data` (fails if already exists).
+**Analogia Linux:** É como a diferença entre `mkdir -p /data` (idempotente, sem erro se já existe) e `mkdir /data` (falha se já existe).

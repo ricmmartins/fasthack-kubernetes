@@ -1,23 +1,23 @@
-# Solution 02 — From Container to Pod
+# Solução 02 — Do Container ao Pod
 
-[< Back to Challenge](../Student/Challenge-02.md) | **[Home](README.md)**
+[< Voltar para o Desafio](../Student/Challenge-02.md) | **[Home](README.md)**
 
-## Pre-check
+## Pré-verificação
 
-Ensure students have a running Kind cluster and `kubectl` configured:
+Certifique-se de que os alunos tenham um cluster Kind em execução e o `kubectl` configurado:
 
 ```bash
 kubectl cluster-info
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Kubernetes control plane is running at https://127.0.0.1:XXXXX
 CoreDNS is running at https://127.0.0.1:XXXXX/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
 ```
 
-If the cluster doesn't exist, create one:
+Se o cluster não existir, crie um:
 
 ```bash
 kind create cluster --name fasthack
@@ -25,11 +25,11 @@ kind create cluster --name fasthack
 
 ---
 
-## Task 1: Create a Pod from a YAML Manifest
+## Tarefa 1: Crie um Pod a partir de um Manifesto YAML
 
-### Step-by-step
+### Passo a passo
 
-Create the Pod manifest file `nginx-pod.yaml`:
+Crie o arquivo de manifesto do Pod `nginx-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -46,25 +46,25 @@ spec:
         - containerPort: 80
 ```
 
-Apply it to the cluster:
+Aplique ao cluster:
 
 ```bash
 kubectl apply -f nginx-pod.yaml
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 pod/nginx created
 ```
 
-Watch the Pod reach `Running` status:
+Acompanhe o Pod até atingir o status `Running`:
 
 ```bash
 kubectl get pods -w
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME    READY   STATUS              RESTARTS   AGE
@@ -72,54 +72,54 @@ nginx   0/1     ContainerCreating   0          2s
 nginx   1/1     Running             0          5s
 ```
 
-Press `Ctrl+C` to stop watching.
+Pressione `Ctrl+C` para parar de acompanhar.
 
-### Verification
+### Verificação
 
 ```bash
 kubectl get pods
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME    READY   STATUS    RESTARTS   AGE
 nginx   1/1     Running   0          30s
 ```
 
-The Pod shows `1/1` Ready and `Running` status.
+O Pod mostra `1/1` Ready e status `Running`.
 
 ---
 
-## Task 2: Inspect the Pod
+## Tarefa 2: Inspecione o Pod
 
-### Step-by-step
+### Passo a passo
 
-**List Pods with extended details:**
+**Liste os Pods com detalhes estendidos:**
 
 ```bash
 kubectl get pods -o wide
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME    READY   STATUS    RESTARTS   AGE   IP           NODE                     NOMINATED NODE   READINESS GATES
 nginx   1/1     Running   0          1m    10.244.0.5   fasthack-control-plane   <none>           <none>
 ```
 
-> **Coach note:** Explain each column:
-> - `READY` — containers ready / total containers (1/1 means 1 container, 1 ready)
-> - `IP` — the Pod's cluster-internal IP (not reachable from the host, only from within the cluster)
-> - `NODE` — which cluster node the Pod was scheduled on
+> **Nota para o Coach:** Explique cada coluna:
+> - `READY` — containers prontos / total de containers (1/1 significa 1 container, 1 pronto)
+> - `IP` — o IP interno do Pod no cluster (não acessível do host, apenas de dentro do cluster)
+> - `NODE` — em qual nó do cluster o Pod foi agendado
 
-**Describe the Pod in detail:**
+**Descreva o Pod em detalhes:**
 
 ```bash
 kubectl describe pod nginx
 ```
 
-Expected output (key sections):
+Saída esperada (seções principais):
 
 ```
 Name:             nginx
@@ -151,15 +151,15 @@ Events:
   Normal  Started    55s   kubelet            Started container nginx
 ```
 
-> **Coach note:** The **Events** section at the bottom is the most important diagnostic tool. Walk students through the lifecycle: Scheduled → Pulling → Pulled → Created → Started.
+> **Nota para o Coach:** A seção **Events** na parte inferior é a ferramenta de diagnóstico mais importante. Conduza os alunos pelo ciclo de vida: Scheduled → Pulling → Pulled → Created → Started.
 
-**View container logs:**
+**Visualize os logs do container:**
 
 ```bash
 kubectl logs nginx
 ```
 
-Expected output (nginx access log may be empty if nothing has hit it yet):
+Saída esperada (o log de acesso do nginx pode estar vazio se nada o acessou ainda):
 
 ```
 /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
@@ -167,43 +167,43 @@ Expected output (nginx access log may be empty if nothing has hit it yet):
 ...
 ```
 
-To follow logs in real time (like `tail -f`):
+Para acompanhar os logs em tempo real (como `tail -f`):
 
 ```bash
 kubectl logs nginx --follow
 ```
 
-Press `Ctrl+C` to stop following.
+Pressione `Ctrl+C` para parar de acompanhar.
 
-### Verification
+### Verificação
 
-- `kubectl get pods -o wide` shows IP, node, and status
-- `kubectl describe pod nginx` shows the full event lifecycle
-- `kubectl logs nginx` shows container stdout
+- `kubectl get pods -o wide` mostra IP, nó e status
+- `kubectl describe pod nginx` mostra o ciclo de vida completo nos eventos
+- `kubectl logs nginx` mostra o stdout do container
 
 ---
 
-## Task 3: Exec into the Pod
+## Tarefa 3: Exec no Pod
 
-### Step-by-step
+### Passo a passo
 
-Open an interactive shell inside the container:
+Abra um shell interativo dentro do container:
 
 ```bash
 kubectl exec -it nginx -- /bin/sh
 ```
 
-> **Coach note:** The `--` separates kubectl arguments from the command to run inside the container. This is the same pattern as `docker exec`.
+> **Nota para o Coach:** O `--` separa os argumentos do kubectl do comando a ser executado dentro do container. É o mesmo padrão do `docker exec`.
 
-Once inside, run diagnostic commands:
+Uma vez dentro, execute comandos de diagnóstico:
 
-**List processes (PID 1 is nginx master):**
+**Liste os processos (PID 1 é o master do nginx):**
 
 ```bash
 ps aux
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 PID   USER     TIME  COMMAND
@@ -212,42 +212,42 @@ PID   USER     TIME  COMMAND
    ...
 ```
 
-> If `ps` is not found, use: `apt-get update && apt-get install -y procps` then retry.
+> Se `ps` não for encontrado, use: `apt-get update && apt-get install -y procps` e tente novamente.
 
-**Check the Pod's IP address:**
+**Verifique o endereço IP do Pod:**
 
 ```bash
 ip addr
 ```
 
-Or if `ip` is not available:
+Ou se `ip` não estiver disponível:
 
 ```bash
 cat /proc/net/fib_trie | head -20
 hostname -i
 ```
 
-**Check the hostname (matches the Pod name):**
+**Verifique o hostname (corresponde ao nome do Pod):**
 
 ```bash
 cat /etc/hostname
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 nginx
 ```
 
-**Verify localhost serves traffic:**
+**Verifique se o localhost está servindo tráfego:**
 
 ```bash
 curl -s http://localhost:80 | head -5
 ```
 
-> If `curl` is not installed: `apt-get update && apt-get install -y curl`
+> Se `curl` não estiver instalado: `apt-get update && apt-get install -y curl`
 
-Expected output:
+Saída esperada:
 
 ```html
 <!DOCTYPE html>
@@ -257,45 +257,45 @@ Expected output:
 <style>
 ```
 
-Exit the shell:
+Saia do shell:
 
 ```bash
 exit
 ```
 
-### Verification
+### Verificação
 
-- Students successfully exec into the Pod and run commands
-- They can confirm the hostname matches the Pod name
-- They can compare the experience with `docker exec` from Challenge 01
+- Os alunos conseguem executar exec no Pod e rodar comandos
+- Eles conseguem confirmar que o hostname corresponde ao nome do Pod
+- Eles conseguem comparar a experiência com `docker exec` do Desafio 01
 
 ---
 
-## Task 4: Delete the Pod and Observe the Lifecycle
+## Tarefa 4: Delete o Pod e Observe o Ciclo de Vida
 
-### Step-by-step
+### Passo a passo
 
-Delete the Pod:
+Delete o Pod:
 
 ```bash
 kubectl delete pod nginx
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 pod "nginx" deleted
 ```
 
-> This may take a few seconds — Kubernetes sends SIGTERM, waits for the grace period (default 30s), then sends SIGKILL.
+> Isso pode levar alguns segundos — o Kubernetes envia SIGTERM, aguarda o período de graça (padrão 30s) e então envia SIGKILL.
 
-In a **separate terminal** (before deleting), you can watch the lifecycle:
+Em um **terminal separado** (antes de deletar), você pode acompanhar o ciclo de vida:
 
 ```bash
 kubectl get pods -w
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME    READY   STATUS        RESTARTS   AGE
@@ -303,39 +303,39 @@ nginx   1/1     Terminating   0          5m
 nginx   0/1     Terminating   0          5m
 ```
 
-After a few seconds, the Pod disappears completely.
+Após alguns segundos, o Pod desaparece completamente.
 
-Confirm it's gone:
+Confirme que ele foi removido:
 
 ```bash
 kubectl get pods
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 No resources found in default namespace.
 ```
 
-> **Coach note — Key teaching moment:** The Pod is **not** recreated. This is because a bare Pod has no controller managing it. It's like running `kill <pid>` on a process that has no systemd unit to restart it. In Challenge 04, students will learn about Deployments, which **do** restart Pods automatically.
+> **Nota para o Coach — Momento-chave de ensino:** O Pod **não** é recriado. Isso porque um Pod sem controller não tem nada gerenciando-o. É como executar `kill <pid>` em um processo que não tem uma unit do systemd para reiniciá-lo. No Desafio 04, os alunos aprenderão sobre Deployments, que **reiniciam** Pods automaticamente.
 
-### Verification
+### Verificação
 
-- The Pod transitions through `Terminating` and is fully removed
-- `kubectl get pods` shows no resources in the default namespace
-- Students understand that bare Pods are not self-healing
+- O Pod passa por `Terminating` e é completamente removido
+- `kubectl get pods` não mostra recursos no namespace default
+- Os alunos entendem que Pods sem controller não se auto-recuperam
 
 ---
 
-## Common Issues
+## Problemas Comuns
 
-| Issue | Symptom | Fix |
+| Problema | Sintoma | Correção |
 |---|---|---|
-| No cluster running | `The connection to the server localhost:8080 was refused` | Create a cluster: `kind create cluster --name fasthack` |
-| Wrong context selected | kubectl talks to wrong cluster | Check: `kubectl config current-context` — switch: `kubectl config use-context kind-fasthack` |
-| ImagePullBackOff | Pod stuck in `ErrImagePull` or `ImagePullBackOff` | Check image name/tag: `kubectl describe pod nginx` → look at Events. Common cause: typo in image name |
-| `exec` fails with "pod not found" | Student deleted the Pod before exec | Recreate: `kubectl apply -f nginx-pod.yaml` |
-| `ps` or `curl` not found inside container | Minimal base image | Install tools: `apt-get update && apt-get install -y procps curl iproute2` |
-| Students use `kubectl create` and get "AlreadyExists" | They applied the YAML twice with `create` | Explain: use `kubectl apply` (idempotent) instead of `kubectl create`. Or delete first: `kubectl delete pod nginx` |
-| Students expect Pod to restart after delete | They think Pods are self-healing | Explain: bare Pods are like processes without a supervisor. Deployments (Challenge 04) provide self-healing |
+| Nenhum cluster em execução | `The connection to the server localhost:8080 was refused` | Crie um cluster: `kind create cluster --name fasthack` |
+| Contexto errado selecionado | kubectl se comunica com o cluster errado | Verifique: `kubectl config current-context` — mude: `kubectl config use-context kind-fasthack` |
+| ImagePullBackOff | Pod preso em `ErrImagePull` ou `ImagePullBackOff` | Verifique o nome/tag da imagem: `kubectl describe pod nginx` → veja os Events. Causa comum: erro de digitação no nome da imagem |
+| `exec` falha com "pod not found" | O aluno deletou o Pod antes do exec | Recrie: `kubectl apply -f nginx-pod.yaml` |
+| `ps` ou `curl` não encontrados dentro do container | Imagem base mínima | Instale as ferramentas: `apt-get update && apt-get install -y procps curl iproute2` |
+| Alunos usam `kubectl create` e recebem "AlreadyExists" | Eles aplicaram o YAML duas vezes com `create` | Explique: use `kubectl apply` (idempotente) em vez de `kubectl create`. Ou delete primeiro: `kubectl delete pod nginx` |
+| Alunos esperam que o Pod reinicie após deletar | Eles acham que Pods se auto-recuperam | Explique: Pods sem controller são como processos sem supervisor. Deployments (Desafio 04) fornecem auto-recuperação |
 

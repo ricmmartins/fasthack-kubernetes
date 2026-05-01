@@ -1,58 +1,58 @@
-# Kubernetes Concepts for Linux Professionals
+# Conceitos Kubernetes para Profissionais Linux
 
-This document maps Linux concepts you already know to their Kubernetes equivalents.
+Este documento mapeia conceitos Linux que você já conhece para seus equivalentes em Kubernetes.
 
-## Architecture Comparison
+## Comparação de Arquitetura
 
-### Linux Server
+### Servidor Linux
 ```
-Hardware → Kernel → Processes → Services → Users
+Hardware → Kernel → Processos → Serviços → Usuários
 ```
 
-### Kubernetes Cluster
+### Cluster Kubernetes
 ```
 Nodes → Control Plane → Pods → Services → RBAC
 ```
 
-## The Two Planes
+## Os Dois Planos
 
-| Plane | Purpose | Components |
+| Plano | Propósito | Componentes |
 |-------|---------|------------|
-| **Control Plane** | The brain — decides what should run and where | API Server, etcd, Scheduler, Controller Manager |
-| **Data Plane** | The body — executes workloads | kubelet, kube-proxy, Container Runtime |
+| **Control Plane** | O cérebro — decide o que deve rodar e onde | API Server, etcd, Scheduler, Controller Manager |
+| **Data Plane** | O corpo — executa os workloads | kubelet, kube-proxy, Container Runtime |
 
-## Key Analogies
+## Analogias Principais
 
-### Process Management
-- **Linux**: `systemctl start nginx` → starts a process
-- **Kubernetes**: `kubectl apply -f deployment.yaml` → creates Pods managed by the cluster
+### Gerenciamento de Processos
+- **Linux**: `systemctl start nginx` → inicia um processo
+- **Kubernetes**: `kubectl apply -f deployment.yaml` → cria Pods gerenciados pelo cluster
 
-### Networking
+### Rede
 - **Linux**: `iptables`, `ip route`, `/etc/resolv.conf`
-- **Kubernetes**: `kube-proxy` (iptables rules), CNI plugins, CoreDNS
+- **Kubernetes**: `kube-proxy` (regras iptables), plugins CNI, CoreDNS
 
-### Storage
+### Armazenamento
 - **Linux**: `mount /dev/sdb1 /data`, `/etc/fstab`
 - **Kubernetes**: PersistentVolume + PersistentVolumeClaim + StorageClass
 
-### Security
+### Segurança
 - **Linux**: `chmod`, `chown`, `sudoers`, `iptables`
 - **Kubernetes**: RBAC (Roles + RoleBindings), Pod Security Admission, NetworkPolicies
 
-### Package Management
-- **Linux**: `apt install nginx` or `yum install httpd`
+### Gerenciamento de Pacotes
+- **Linux**: `apt install nginx` ou `yum install httpd`
 - **Kubernetes**: `helm install my-app bitnami/nginx`
 
-### Monitoring
+### Monitoramento
 - **Linux**: `top`, `htop`, `vmstat`, `journalctl`
 - **Kubernetes**: `kubectl top`, Metrics Server, Prometheus, Grafana
 
-## Declarative vs Imperative
+## Declarativo vs Imperativo
 
-The biggest mindset shift:
+A maior mudança de mentalidade:
 
-- **Linux (imperative)**: "Do this step, then this step, then this step"
-- **Kubernetes (declarative)**: "This is the state I want — make it happen and keep it that way"
+- **Linux (imperativo)**: "Faça este passo, depois este passo, depois este passo"
+- **Kubernetes (declarativo)**: "Este é o estado que eu quero — faça acontecer e mantenha assim"
 
 ```yaml
 # I want 3 nginx replicas running at all times
@@ -75,4 +75,4 @@ spec:
         image: nginx:stable
 ```
 
-The cluster continuously reconciles: if a Pod dies, it creates a new one automatically.
+O cluster reconcilia continuamente: se um Pod morre, ele cria um novo automaticamente.

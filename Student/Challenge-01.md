@@ -1,65 +1,65 @@
-# Challenge 01 — Your First Container
+# Desafio 01 — Seu Primeiro Container
 
-[< Previous Challenge](../README.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-02.md)
+[< Desafio Anterior](../README.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-02.md)
 
-## Introduction
+## Introdução
 
-Before you can understand Kubernetes, you need to understand what it manages: **containers**.
+Antes de entender Kubernetes, você precisa entender o que ele gerencia: **containers**.
 
-As a Linux professional, you already know about processes, namespaces, and cgroups. A container is simply a process with extra isolation — not a mini virtual machine.
+Como profissional Linux, você já conhece processos, namespaces e cgroups. Um container é simplesmente um processo com isolamento extra — não é uma mini máquina virtual.
 
-In this challenge, you'll build, run, and inspect containers to understand the foundation that Kubernetes orchestrates.
+Neste desafio, você vai construir, executar e inspecionar containers para entender a fundação que o Kubernetes orquestra.
 
-## Description
+## Descrição
 
-Your mission is to:
+Sua missão é:
 
-1. Run your first container from a public image
-2. Build a custom container image from a Dockerfile
-3. Inspect the container's processes, network, and filesystem
-4. Understand the relationship between Linux primitives and container isolation
+1. Executar seu primeiro container a partir de uma imagem pública
+2. Construir uma imagem de container customizada a partir de um Dockerfile
+3. Inspecionar os processos, rede e sistema de arquivos do container
+4. Entender a relação entre primitivas Linux e o isolamento de containers
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] You can run an `nginx` container and access it on `http://localhost:8080`
-- [ ] You built a custom image from a Dockerfile and ran it
-- [ ] You can exec into a running container and list its processes (`ps aux`)
-- [ ] You can explain the difference between a container and a virtual machine
-- [ ] You understand how Linux namespaces and cgroups relate to container isolation
+- [ ] Você consegue executar um container `nginx` e acessá-lo em `http://localhost:8080`
+- [ ] Você construiu uma imagem customizada a partir de um Dockerfile e a executou
+- [ ] Você consegue fazer exec em um container em execução e listar seus processos (`ps aux`)
+- [ ] Você consegue explicar a diferença entre um container e uma máquina virtual
+- [ ] Você entende como namespaces e cgroups do Linux se relacionam com o isolamento de containers
 
-## Linux ↔ Container Reference
+## Referência Linux ↔ Container
 
-| Linux Concept | Container Equivalent |
+| Conceito Linux | Equivalente Container |
 |---|---|
-| Process (`ps aux`) | Container process (PID 1) |
-| `chroot` | Container filesystem (rootfs) |
-| Namespaces (PID, NET, MNT) | Container isolation |
-| cgroups | Resource limits (CPU, memory) |
-| `/etc/hosts`, DNS | Container network bridge |
-| `apt` / `yum` repos | Container registries (Docker Hub, GHCR) |
+| Processo (`ps aux`) | Processo do container (PID 1) |
+| `chroot` | Sistema de arquivos do container (rootfs) |
+| Namespaces (PID, NET, MNT) | Isolamento do container |
+| cgroups | Limites de recursos (CPU, memória) |
+| `/etc/hosts`, DNS | Bridge de rede do container |
+| Repositórios `apt` / `yum` | Registries de containers (Docker Hub, GHCR) |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: Running a container</summary>
+<summary>Dica 1: Executando um container</summary>
 
 ```bash
 docker run -d --name web -p 8080:80 nginx
 ```
 
-This maps port 8080 on your host to port 80 inside the container.
+Isso mapeia a porta 8080 do seu host para a porta 80 dentro do container.
 </details>
 
 <details>
-<summary>Hint 2: Building a custom image</summary>
+<summary>Dica 2: Construindo uma imagem customizada</summary>
 
-Create a file named `Dockerfile`:
+Crie um arquivo chamado `Dockerfile`:
 ```dockerfile
 FROM nginx:alpine
 COPY index.html /usr/share/nginx/html/
 ```
 
-Build it:
+Construa:
 ```bash
 echo "<h1>Hello from my container!</h1>" > index.html
 docker build -t myapp:v1 .
@@ -68,7 +68,7 @@ docker run -d -p 8081:80 myapp:v1
 </details>
 
 <details>
-<summary>Hint 3: Inspecting processes inside a container</summary>
+<summary>Dica 3: Inspecionando processos dentro de um container</summary>
 
 ```bash
 docker exec -it web sh
@@ -78,20 +78,20 @@ cat /etc/hostname
 exit
 ```
 
-Notice: PID 1 is nginx — the container has its own process namespace.
+Observe: PID 1 é o nginx — o container tem seu próprio namespace de processos.
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
-- [Docker Documentation — Getting Started](https://docs.docker.com/get-started/)
-- [What is a Container? (Docker)](https://www.docker.com/resources/what-container/)
+- [Documentação Docker — Primeiros Passos](https://docs.docker.com/get-started/)
+- [O que é um Container? (Docker)](https://www.docker.com/resources/what-container/)
 - [Linux Namespaces — man7.org](https://man7.org/linux/man-pages/man7/namespaces.7.html)
-- [cgroups — Kernel Documentation](https://docs.kernel.org/admin-guide/cgroup-v2.html)
+- [cgroups — Documentação do Kernel](https://docs.kernel.org/admin-guide/cgroup-v2.html)
 
 ## Break & Fix 🔧
 
-After completing the challenge, try this:
+Após completar o desafio, tente isto:
 
-1. Run a container with `--memory=32m` and see what happens when the process exceeds it
-2. Run a container with `--read-only` and try to write a file inside it
-3. Run two containers and try to `ping` between them — what network do they share?
+1. Execute um container com `--memory=32m` e veja o que acontece quando o processo ultrapassa esse limite
+2. Execute um container com `--read-only` e tente escrever um arquivo dentro dele
+3. Execute dois containers e tente fazer `ping` entre eles — qual rede eles compartilham?

@@ -1,6 +1,6 @@
 # 🚀 FastHack Kubernetes
 
-### From Server to Cluster — A Hands-on Hackathon for Linux Professionals
+### Do Servidor ao Cluster — Um Hackathon Hands-on para Profissionais Linux
 
 [![Validate Content](https://github.com/ricmmartins/fasthack-kubernetes/actions/workflows/validate.yml/badge.svg)](https://github.com/ricmmartins/fasthack-kubernetes/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -11,218 +11,220 @@
 [![CKAD](https://img.shields.io/badge/CKAD-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
 [![CKS](https://img.shields.io/badge/CKS-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
 
-## Introduction
+🇺🇸 **Este hackathon também está disponível em Inglês!** Confira o branch [`en-us`](https://github.com/ricmmartins/fasthack-kubernetes/tree/en-us) para a versão em inglês de todos os desafios, guias do coach e documentação.
 
-This is a hands-on learning resource designed for **Linux professionals** who want to master Kubernetes. If you already understand processes, networking, storage, and security in Linux — you're ready to orchestrate all of that at scale.
+## Introdução
 
-This hackathon bridges the gap between traditional Linux system administration and modern cloud-native infrastructure. Every concept is taught through the lens of what you already know.
+Este é um recurso de aprendizado hands-on projetado para **profissionais Linux** que desejam dominar Kubernetes. Se você já entende processos, rede, armazenamento e segurança em Linux — você está pronto para orquestrar tudo isso em escala.
 
-> **"You don't need to start from zero. You need to evolve."**
+Este hackathon preenche a lacuna entre a administração tradicional de sistemas Linux e a infraestrutura moderna cloud-native. Cada conceito é ensinado através da perspectiva do que você já conhece.
 
-> Note: This Hackathon follows the same format as the [Linux FUNdamentals Hackathon](https://linuxhackathon.com/) — the 1st Linux Hackathon by Microsoft, part of [What The Hack](http://aka.ms/wth).
+> **"Você não precisa começar do zero. Você precisa evoluir."**
 
-## Learning Path
+> Nota: Este Hackathon segue o mesmo formato do [Linux FUNdamentals Hackathon](https://linuxhackathon.com/) — o 1º Linux Hackathon da Microsoft, parte do [What The Hack](http://aka.ms/wth).
 
-This hackathon is the natural next step after the [Linux FUNdamentals Hackathon](https://linuxhackathon.com/):
+## Trilha de Aprendizado
+
+Este hackathon é o próximo passo natural após o [Linux FUNdamentals Hackathon](https://linuxhackathon.com/):
 
 ```
 Linux FUNdamentals → From Server to Cluster → Kubernetes Hackathon → AI for Infra Pros
 (linuxhackathon.com)  (fromservertocluster.com)  (this hackathon)       (ai4infra.com)
 ```
 
-## Learning Objectives
+## Objetivos de Aprendizado
 
-In this hackathon, you will be challenged with real-world tasks that Linux professionals face when transitioning to Kubernetes:
+Neste hackathon, você será desafiado com tarefas do mundo real que profissionais Linux enfrentam na transição para Kubernetes:
 
-1. Understand containers as Linux processes with isolation
-2. Create and manage Kubernetes clusters locally
-3. Deploy, scale, and update applications declaratively
-4. Configure networking, DNS, and traffic routing
-5. Implement persistent storage for stateful workloads
-6. Secure clusters with RBAC, Pod Security Admission, and Network Policies
-7. Set up monitoring with Prometheus and Grafana
-8. Automate deployments with Helm and Kustomize
-9. Diagnose and fix real-world Kubernetes failures
-10. Deploy to managed Kubernetes services (AKS, EKS, GKE)
+1. Entender containers como processos Linux com isolamento
+2. Criar e gerenciar clusters Kubernetes localmente
+3. Implantar, escalar e atualizar aplicações de forma declarativa
+4. Configurar rede, DNS e roteamento de tráfego
+5. Implementar armazenamento persistente para workloads stateful
+6. Proteger clusters com RBAC, Pod Security Admission e Network Policies
+7. Configurar monitoramento com Prometheus e Grafana
+8. Automatizar deployments com Helm e Kustomize
+9. Diagnosticar e corrigir falhas reais em Kubernetes
+10. Fazer deploy em serviços gerenciados de Kubernetes (AKS, EKS, GKE)
 
-## Challenges
+## Desafios
 
-Each challenge builds on the previous one, but can also be done independently after Challenge 03. The complexity increases progressively.
+Cada desafio se baseia no anterior, mas também pode ser feito de forma independente após o Desafio 03. A complexidade aumenta progressivamente.
 
-- Challenge 01: **[Your First Container](Student/Challenge-01.md)**
-  - Understand containers as isolated Linux processes. Build, run, and inspect containers with Docker or Podman.
+- Desafio 01: **[Seu Primeiro Container](Student/Challenge-01.md)**
+  - Entenda containers como processos Linux isolados. Construa, execute e inspecione containers com Docker ou Podman.
 
-- Challenge 02: **[From Container to Pod](Student/Challenge-02.md)**
-  - Create your first Kubernetes Pod and understand how it relates to Linux processes and containers.
+- Desafio 02: **[De Container para Pod](Student/Challenge-02.md)**
+  - Crie seu primeiro Pod Kubernetes e entenda como ele se relaciona com processos e containers Linux.
 
-- Challenge 03: **[Creating a Local Cluster](Student/Challenge-03.md)**
-  - Set up a Kubernetes cluster with Kind or Minikube. Explore kubeconfig, contexts, and the kube-system namespace.
+- Desafio 03: **[Criando um Cluster Local](Student/Challenge-03.md)**
+  - Configure um cluster Kubernetes com Kind ou Minikube. Explore kubeconfig, contexts e o namespace kube-system.
 
-- Challenge 04: **[Deployments and Rolling Updates](Student/Challenge-04.md)**
-  - Deploy applications with replicas, perform rolling updates and rollbacks. Understand resource requests and limits.
+- Desafio 04: **[Deployments e Rolling Updates](Student/Challenge-04.md)**
+  - Implante aplicações com réplicas, realize rolling updates e rollbacks. Entenda resource requests e limits.
 
-- Challenge 05: **[Services and Networking](Student/Challenge-05.md)**
-  - Expose applications with Services (ClusterIP, NodePort). Understand Pod-to-Pod communication and CoreDNS.
+- Desafio 05: **[Services e Rede](Student/Challenge-05.md)**
+  - Exponha aplicações com Services (ClusterIP, NodePort). Entenda comunicação Pod-a-Pod e CoreDNS.
 
-- Challenge 06: **[Ingress and Gateway API](Student/Challenge-06.md)**
-  - Route external HTTP traffic into your cluster using Ingress Controllers and the new Gateway API.
+- Desafio 06: **[Ingress e Gateway API](Student/Challenge-06.md)**
+  - Roteie tráfego HTTP externo para dentro do seu cluster usando Ingress Controllers e a nova Gateway API.
 
-- Challenge 07: **[Volumes and Persistence](Student/Challenge-07.md)**
-  - Configure persistent storage with PV, PVC, and StorageClass. Understand the difference between ephemeral and persistent data.
+- Desafio 07: **[Volumes e Persistência](Student/Challenge-07.md)**
+  - Configure armazenamento persistente com PV, PVC e StorageClass. Entenda a diferença entre dados efêmeros e persistentes.
 
-- Challenge 08: **[ConfigMaps and Secrets](Student/Challenge-08.md)**
-  - Externalize application configuration. Manage sensitive data with Secrets and understand encryption at rest.
+- Desafio 08: **[ConfigMaps e Secrets](Student/Challenge-08.md)**
+  - Externalize a configuração da aplicação. Gerencie dados sensíveis com Secrets e entenda criptografia em repouso.
 
-- Challenge 09: **[Security: RBAC and Pod Security](Student/Challenge-09.md)**
-  - Control access with ServiceAccounts, Roles, and RoleBindings. Apply Pod Security Admission and Network Policies.
+- Desafio 09: **[Segurança: RBAC e Pod Security](Student/Challenge-09.md)**
+  - Controle o acesso com ServiceAccounts, Roles e RoleBindings. Aplique Pod Security Admission e Network Policies.
 
-- Challenge 10: **[Autoscaling and Resource Management](Student/Challenge-10.md)**
-  - Configure Horizontal Pod Autoscaler, Metrics Server, and Probes (liveness, readiness, startup).
+- Desafio 10: **[Autoscaling e Gerenciamento de Recursos](Student/Challenge-10.md)**
+  - Configure Horizontal Pod Autoscaler, Metrics Server e Probes (liveness, readiness, startup).
 
-- Challenge 11: **[Helm, Kustomize, and GitOps](Student/Challenge-11.md)**
-  - Package applications with Helm charts. Customize deployments with Kustomize overlays. Introduction to GitOps.
+- Desafio 11: **[Helm, Kustomize e GitOps](Student/Challenge-11.md)**
+  - Empacote aplicações com Helm charts. Personalize deployments com Kustomize overlays. Introdução ao GitOps.
 
-- Challenge 12: **[Observability: Prometheus and Grafana](Student/Challenge-12.md)**
-  - Deploy a monitoring stack. Query metrics with PromQL. Build dashboards and configure alerts.
+- Desafio 12: **[Observabilidade: Prometheus e Grafana](Student/Challenge-12.md)**
+  - Implante uma stack de monitoramento. Consulte métricas com PromQL. Construa dashboards e configure alertas.
 
-- Challenge 13: **[Troubleshooting: Break and Fix](Student/Challenge-13.md)**
-  - Diagnose and resolve 5 real-world failure scenarios: CrashLoopBackOff, DNS failures, storage issues, and more.
+- Desafio 13: **[Troubleshooting: Break and Fix](Student/Challenge-13.md)**
+  - Diagnostique e resolva 5 cenários de falha do mundo real: CrashLoopBackOff, falhas de DNS, problemas de armazenamento e mais.
 
-- Challenge 14: **[Deploy to the Cloud](Student/Challenge-14.md)**
-  - Deploy your application to a managed Kubernetes service. Compare AKS (Azure), EKS (AWS), and GKE (Google Cloud).
+- Desafio 14: **[Deploy na Nuvem](Student/Challenge-14.md)**
+  - Faça deploy da sua aplicação em um serviço gerenciado de Kubernetes. Compare AKS (Azure), EKS (AWS) e GKE (Google Cloud).
 
-- Challenge 15: **[Pod Scheduling & Resource Management](Student/Challenge-15.md)**
-  - Master taints, tolerations, node/pod affinity, topology spread, static Pods, ResourceQuotas, LimitRanges, and PodDisruptionBudgets.
+- Desafio 15: **[Agendamento de Pods e Gerenciamento de Recursos](Student/Challenge-15.md)**
+  - Domine taints, tolerations, afinidade de node/pod, topology spread, static Pods, ResourceQuotas, LimitRanges e PodDisruptionBudgets.
 
-- Challenge 16: **[Container Image Engineering](Student/Challenge-16.md)**
-  - Build optimized container images with Dockerfiles, multi-stage builds, registries, and Podman.
+- Desafio 16: **[Engenharia de Imagens de Container](Student/Challenge-16.md)**
+  - Construa imagens de container otimizadas com Dockerfiles, multi-stage builds, registries e Podman.
 
-- Challenge 17: **[Advanced Deployment Strategies](Student/Challenge-17.md)**
-  - Implement blue/green, canary, and recreate deployments. Handle API deprecations.
+- Desafio 17: **[Estratégias Avançadas de Deployment](Student/Challenge-17.md)**
+  - Implemente deployments blue/green, canary e recreate. Lide com deprecações de API.
 
-- Challenge 18: **[kubeadm Cluster Administration](Student/Challenge-18.md)** ⚠️ *Requires VMs*
-  - Bootstrap clusters with kubeadm, perform upgrades, backup/restore etcd, explore CRDs and Operators.
+- Desafio 18: **[Administração de Cluster com kubeadm](Student/Challenge-18.md)** ⚠️ *Requer VMs*
+  - Bootstrap de clusters com kubeadm, realize upgrades, backup/restore do etcd, explore CRDs e Operators.
 
-- Challenge 19: **[Cluster Security & Hardening](Student/Challenge-19.md)** ⚠️ *Requires VMs*
-  - CIS benchmarks, audit logging, TLS Ingress, ServiceAccount hardening, Secrets encryption at rest.
+- Desafio 19: **[Segurança e Hardening de Cluster](Student/Challenge-19.md)** ⚠️ *Requer VMs*
+  - CIS benchmarks, audit logging, TLS Ingress, hardening de ServiceAccount, criptografia de Secrets em repouso.
 
-- Challenge 20: **[Supply Chain & Runtime Security](Student/Challenge-20.md)** ⚠️ *Mixed (Kind + VMs)*
-  - Image scanning (Trivy), SBOM, cosign, AppArmor, seccomp, Falco, static analysis, container immutability.
+- Desafio 20: **[Supply Chain e Segurança em Runtime](Student/Challenge-20.md)** ⚠️ *Misto (Kind + VMs)*
+  - Escaneamento de imagens (Trivy), SBOM, cosign, AppArmor, seccomp, Falco, análise estática, imutabilidade de containers.
 
-## Certification Coverage
+## Cobertura de Certificação
 
-This hackathon covers **100% of CKA, CKAD, and CKS exam domains**:
+Este hackathon cobre **100% dos domínios dos exames CKA, CKAD e CKS**:
 
-| Certification | Challenges | Lab Environment |
+| Certificação | Desafios | Ambiente de Lab |
 |---|---|---|
 | **CKA** (Certified Kubernetes Administrator) | 01–15, 18 | Kind + VMs |
 | **CKAD** (Certified Kubernetes Application Developer) | 01–12, 16–17 | Kind |
 | **CKS** (Certified Kubernetes Security Specialist) | 09, 18–20 | Kind + VMs |
 
-> 📝 See the [CNCF Curriculum](https://github.com/cncf/curriculum) for official exam domains. Practice exams available at [Killer.sh](https://killer.sh/).
+> 📝 Consulte o [CNCF Curriculum](https://github.com/cncf/curriculum) para os domínios oficiais dos exames. Simulados disponíveis em [Killer.sh](https://killer.sh/).
 
-## Linux ↔ Kubernetes Quick Reference
+## Referência Rápida Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent | Description |
+| Conceito Linux | Equivalente Kubernetes | Descrição |
 |---|---|---|
-| Process (PID) | Pod | Unit of execution |
-| `systemctl` / `init.d` | Controller Manager / Scheduler | Lifecycle management |
-| `iptables` / `firewalld` | NetworkPolicy / CNI | Traffic control |
-| `/etc/fstab` / `mount` | PersistentVolume / PVC | Storage and persistence |
-| `root` / `sudoers` | ClusterRole / RoleBinding | Access control |
-| `top` / `ps` / `vmstat` | `kubectl top` / Metrics Server | Resource monitoring |
-| `journalctl` / `syslog` | `kubectl logs` / Prometheus | Log collection |
-| `crontab` | CronJob / Job | Scheduled tasks |
-| `yum` / `apt` | Helm / Kustomize | Package management |
-| `hostname` / DNS | CoreDNS / Pod IP | Name resolution |
-| Namespaces / cgroups | Container Runtime / Pods | Isolation |
+| Processo (PID) | Pod | Unidade de execução |
+| `systemctl` / `init.d` | Controller Manager / Scheduler | Gerenciamento de ciclo de vida |
+| `iptables` / `firewalld` | NetworkPolicy / CNI | Controle de tráfego |
+| `/etc/fstab` / `mount` | PersistentVolume / PVC | Armazenamento e persistência |
+| `root` / `sudoers` | ClusterRole / RoleBinding | Controle de acesso |
+| `top` / `ps` / `vmstat` | `kubectl top` / Metrics Server | Monitoramento de recursos |
+| `journalctl` / `syslog` | `kubectl logs` / Prometheus | Coleta de logs |
+| `crontab` | CronJob / Job | Tarefas agendadas |
+| `yum` / `apt` | Helm / Kustomize | Gerenciamento de pacotes |
+| `hostname` / DNS | CoreDNS / Pod IP | Resolução de nomes |
+| Namespaces / cgroups | Container Runtime / Pods | Isolamento |
 
-## Prerequisites
+## Pré-requisitos
 
-- **Complete the [Linux FUNdamentals Hackathon](https://linuxhackathon.com/)** or have equivalent Linux experience (processes, networking, storage, permissions, shell scripting)
-- **Docker or Podman** installed and running (`docker ps` or `podman ps` should work)
-- **kubectl** installed ([install guide](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/))
-- **Kind** installed ([install guide](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)) — used as the default cluster for all challenges
-- **Helm** installed ([install guide](https://helm.sh/docs/intro/install/))
-- A terminal with bash or zsh (Linux, macOS, or Windows with WSL2)
-- 4 GB of free RAM (recommended)
-- No cloud account required for Challenges 01–13 and 15–17 (Challenge 14 requires a cloud provider; Challenges 18–20 require VMs)
+- **Completar o [Linux FUNdamentals Hackathon](https://linuxhackathon.com/)** ou ter experiência equivalente em Linux (processos, rede, armazenamento, permissões, shell scripting)
+- **Docker ou Podman** instalado e funcionando (`docker ps` ou `podman ps` deve funcionar)
+- **kubectl** instalado ([guia de instalação](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/))
+- **Kind** instalado ([guia de instalação](https://kind.sigs.k8s.io/docs/user/quick-start/#installation)) — usado como cluster padrão para todos os desafios
+- **Helm** instalado ([guia de instalação](https://helm.sh/docs/intro/install/))
+- Um terminal com bash ou zsh (Linux, macOS, ou Windows com WSL2)
+- 4 GB de RAM livre (recomendado)
+- Nenhuma conta de nuvem é necessária para os Desafios 01–13 e 15–17 (Desafio 14 requer um provedor de nuvem; Desafios 18–20 requerem VMs)
 
-### Tested Versions
+### Versões Testadas
 
-| Tool | Version | Notes |
+| Ferramenta | Versão | Notas |
 |------|---------|-------|
 | Kubernetes | v1.36 | Via Kind |
-| kubectl | v1.36 | Match cluster version |
-| Kind | v0.27+ | Default cluster tool |
-| Helm | v3.17+ | For Challenge 11-12 |
+| kubectl | v1.36 | Corresponder à versão do cluster |
+| Kind | v0.27+ | Ferramenta padrão de cluster |
+| Helm | v3.17+ | Para Desafios 11-12 |
 | Docker | 27.x+ | Container runtime |
 
-> ⚠️ **Accuracy Commitment**: Every command, YAML manifest, and lab in this hackathon has been tested end-to-end. If you find any issues, please [open an issue](https://github.com/ricmmartins/fasthack-kubernetes/issues).
+> ⚠️ **Compromisso com a Precisão**: Cada comando, manifesto YAML e laboratório neste hackathon foi testado de ponta a ponta. Se encontrar algum problema, por favor [abra uma issue](https://github.com/ricmmartins/fasthack-kubernetes/issues).
 
-## Cloud-Agnostic Approach
+## Abordagem Agnóstica de Nuvem
 
-This hackathon teaches **Kubernetes-native concepts first** — all core challenges (01–13) run on a local cluster with Kind. No cloud account or credit card needed.
+Este hackathon ensina **conceitos nativos de Kubernetes primeiro** — todos os desafios principais (01–13) rodam em um cluster local com Kind. Nenhuma conta de nuvem ou cartão de crédito necessário.
 
-Challenge 14 provides multi-cloud deployment variants:
+O Desafio 14 fornece variantes de deploy multi-cloud:
 
-| Provider | CLI | Managed Service |
+| Provedor | CLI | Serviço Gerenciado |
 |----------|-----|-----------------|
 | Azure | `az aks` | AKS |
 | AWS | `eksctl` | EKS |
 | Google Cloud | `gcloud container` | GKE |
 
-## Learning Resources
+## Recursos de Aprendizado
 
-- [Kubernetes Official Documentation](https://kubernetes.io/docs/)
-- [Kubernetes Blog](https://kubernetes.io/blog/)
-- [CNCF Training & Certifications](https://www.cncf.io/training/)
-- [Killer.sh](https://killer.sh/) — CKA/CKAD exam simulator
-- [Killercoda](https://killercoda.com/) — Interactive scenarios in browser
-- [KodeKloud](https://kodekloud.com/) — Guided practice and labs
-- [Play with Kubernetes](https://labs.play-with-k8s.com/) — Temporary online cluster
+- [Documentação Oficial do Kubernetes](https://kubernetes.io/docs/)
+- [Blog do Kubernetes](https://kubernetes.io/blog/)
+- [Treinamento e Certificações CNCF](https://www.cncf.io/training/)
+- [Killer.sh](https://killer.sh/) — Simulador de exames CKA/CKAD
+- [Killercoda](https://killercoda.com/) — Cenários interativos no navegador
+- [KodeKloud](https://kodekloud.com/) — Prática guiada e laboratórios
+- [Play with Kubernetes](https://labs.play-with-k8s.com/) — Cluster online temporário
 - [The Kubernetes Book](https://www.amazon.com/Kubernetes-Book-Nigel-Poulton-ebook/dp/B072TS9ZQZ) — Nigel Poulton
 - [Kubernetes Up & Running](https://www.oreilly.com/library/view/kubernetes-up-and/9781098110192/) — Kelsey Hightower, Brendan Burns
 
-## Certification Path
+## Trilha de Certificação
 
-After completing this hackathon, you'll be well-prepared for:
+Após completar este hackathon, você estará bem preparado para:
 
 ```
 KCNA → CKA → CKAD → CKS
-(Fundamentals)  (Admin)  (Developer)  (Security)
+(Fundamentos)  (Admin)  (Developer)  (Segurança)
 ```
 
-## Coach's Guide
+## Guia do Coach
 
-In the [Coach](./Coach/) directory you'll find guidelines for running this Hackathon as an event, plus solutions for all challenges. If you're doing this as a student, **don't look at the solutions** — go learn something. 🙂
+No diretório [Coach](./Coach/) você encontrará diretrizes para conduzir este Hackathon como evento, além de soluções para todos os desafios. Se você está fazendo como estudante, **não olhe as soluções** — vá aprender algo. 🙂
 
-## Contributions
+## Contribuições
 
-Contributions in the form of bug reports, feature requests, and PRs are always welcome. Please follow these steps before submitting a PR:
+Contribuições na forma de relatórios de bugs, solicitações de funcionalidades e PRs são sempre bem-vindas. Por favor, siga estes passos antes de enviar um PR:
 
-1. Create an issue describing the bug or feature request
-2. Clone the repository and create a topic branch
-3. Make changes, testing all commands and manifests
-4. Submit a PR
+1. Crie uma issue descrevendo o bug ou a funcionalidade solicitada
+2. Clone o repositório e crie um branch de tópico
+3. Faça as alterações, testando todos os comandos e manifestos
+4. Envie um PR
 
-## Related Projects
+## Projetos Relacionados
 
-- 🐧 [Linux FUNdamentals Hackathon](https://linuxhackathon.com/) — Master Linux basics first
-- 📖 [From Server to Cluster](https://fromservertocluster.com/) — Kubernetes book for Linux professionals
-- 🤖 [AI for Infrastructure Professionals](https://ai4infra.com/) — AI workloads on infrastructure you build
-- ☁️ [Azure Governance Made Simple](https://book.azgovernance.com/) — Cloud governance handbook
+- 🐧 [Linux FUNdamentals Hackathon](https://linuxhackathon.com/) — Domine os fundamentos de Linux primeiro
+- 📖 [From Server to Cluster](https://fromservertocluster.com/) — Livro de Kubernetes para profissionais Linux
+- 🤖 [AI for Infrastructure Professionals](https://ai4infra.com/) — Workloads de IA na infraestrutura que você constrói
+- ☁️ [Azure Governance Made Simple](https://book.azgovernance.com/) — Manual de governança em nuvem
 
-## 🌐 Portuguese Content
+## 🌐 English Content
 
-Looking for content in Portuguese? Visit **[ricardomartins.com.br](https://ricardomartins.com.br)** for articles, tutorials, and resources on Linux, Kubernetes, and Cloud Infrastructure.
+Looking for content in English? Check out the [`en-us`](https://github.com/ricmmartins/fasthack-kubernetes/tree/en-us) branch for the English version of all challenges, coach guides, and documentation.
 
-## Show Your Support
+## Mostre seu Apoio
 
-Give a ⭐️ if this content helped you!
+Dê uma ⭐️ se este conteúdo te ajudou!
 
 ---
 
-**Disclaimer:** This is an independent, personal project — not an official Microsoft publication. The views and content are solely the author's own. The concepts, architectures, and operational practices in this hackathon apply to any Kubernetes distribution — AKS, EKS, GKE, k3s, or bare-metal.
+**Aviso:** Este é um projeto pessoal e independente — não é uma publicação oficial da Microsoft. As opiniões e o conteúdo são exclusivamente do autor. Os conceitos, arquiteturas e práticas operacionais neste hackathon se aplicam a qualquer distribuição Kubernetes — AKS, EKS, GKE, k3s ou bare-metal.
 
-Created by **[Ricardo Martins](https://rmmartins.com)** — Principal Solutions Engineer @ Microsoft
+Criado por **[Ricardo Martins](https://rmmartins.com)** — Principal Solutions Engineer @ Microsoft
