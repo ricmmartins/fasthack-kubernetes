@@ -1,25 +1,25 @@
-# Solution 11 — Helm and Kustomize
+# Solução 11 — Helm e Kustomize
 
-[< Back to Challenge](../Student/Challenge-11.md) | **[Home](README.md)**
+[< Voltar ao Desafio](../Student/Challenge-11.md) | **[Home](README.md)**
 
 ---
 
-## Task 1: Install Helm and Add the Bitnami Repository
+## Tarefa 1: Instalar o Helm e Adicionar o Repositório Bitnami
 
-### Step-by-step
+### Passo a passo
 
 ```bash
 # Verify Helm is installed
 helm version
 ```
 
-Expected output (version will vary):
+Saída esperada (a versão pode variar):
 
 ```
 version.BuildInfo{Version:"v3.17.x", ...}
 ```
 
-If Helm is not installed:
+Se o Helm não estiver instalado:
 
 ```bash
 # Linux / macOS
@@ -29,14 +29,14 @@ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 # Or: sudo snap install helm --classic  (Ubuntu)
 ```
 
-Add the Bitnami repo and update:
+Adicione o repositório Bitnami e atualize:
 
 ```bash
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 "bitnami" has been added to your repositories
@@ -45,41 +45,41 @@ Hang tight while we grab the latest from your chart repositories...
 Update Complete. ⎈Happy Helming!⎈
 ```
 
-Explore available charts:
+Explore os charts disponíveis:
 
 ```bash
 helm search repo bitnami | head -20
 helm search repo bitnami/nginx
 ```
 
-### Verification
+### Verificação
 
 ```bash
 helm repo list
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME    URL
 bitnami https://charts.bitnami.com/bitnami
 ```
 
-> **Coach tip:** If students already have Helm and the Bitnami repo, they can skip straight to Task 2. The `helm repo update` command is the equivalent of `apt update` — always run it before installing.
+> **Dica para o Coach:** Se os alunos já tiverem o Helm e o repositório Bitnami, podem pular direto para a Tarefa 2. O comando `helm repo update` é o equivalente ao `apt update` — sempre execute antes de instalar.
 
 ---
 
-## Task 2: Deploy a Chart with Default Values
+## Tarefa 2: Implantar um Chart com Valores Padrão
 
-### Step-by-step
+### Passo a passo
 
 ```bash
 helm install my-nginx bitnami/nginx
 ```
 
-> **⚠️ Kind gotcha:** The Bitnami nginx chart defaults to `service.type=LoadBalancer`. On Kind there is no cloud load balancer, so the Service will stay in `Pending` state forever. The install will still succeed, but the Service won't get an external IP.
+> **⚠️ Pegadinha do Kind:** O chart Bitnami do nginx usa `service.type=LoadBalancer` por padrão. No Kind não existe load balancer de nuvem, então o Service ficará em estado `Pending` para sempre. A instalação ainda será bem-sucedida, mas o Service não receberá um IP externo.
 
-Check what was created:
+Verifique o que foi criado:
 
 ```bash
 helm list
@@ -87,29 +87,29 @@ helm status my-nginx
 kubectl get all -l app.kubernetes.io/instance=my-nginx
 ```
 
-Expected output shows a Deployment, ReplicaSet, Pod(s), and a Service. The Service `EXTERNAL-IP` will show `<pending>` on Kind — this is expected.
+A saída esperada mostra um Deployment, ReplicaSet, Pod(s) e um Service. O `EXTERNAL-IP` do Service mostrará `<pending>` no Kind — isso é esperado.
 
-View the default values:
+Visualize os valores padrão:
 
 ```bash
 helm show values bitnami/nginx | head -50
 ```
 
-### Verification
+### Verificação
 
 ```bash
-# Pods should be Running
+# Os Pods devem estar Running
 kubectl get pods -l app.kubernetes.io/instance=my-nginx
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME                        READY   STATUS    RESTARTS   AGE
 my-nginx-xxxxxxxxx-xxxxx    1/1     Running   0          60s
 ```
 
-To actually reach the nginx service on Kind, use port-forward:
+Para realmente acessar o serviço nginx no Kind, use port-forward:
 
 ```bash
 kubectl port-forward svc/my-nginx 8080:80
@@ -117,15 +117,15 @@ kubectl port-forward svc/my-nginx 8080:80
 curl http://localhost:8080
 ```
 
-> **Coach tip:** If the install hangs, students likely hit the LoadBalancer issue. Tell them to Ctrl+C and either add `--set service.type=ClusterIP` or use `--wait=false`.
+> **Dica para o Coach:** Se a instalação travar, provavelmente os alunos encontraram o problema do LoadBalancer. Diga para pressionarem Ctrl+C e adicionarem `--set service.type=ClusterIP` ou usarem `--wait=false`.
 
 ---
 
-## Task 3: Customize a Release with `--set` and `values.yaml`
+## Tarefa 3: Personalizar um Release com `--set` e `values.yaml`
 
-### Step-by-step
+### Passo a passo
 
-**Method 1 — Inline `--set`:**
+**Método 1 — Inline `--set`:**
 
 ```bash
 helm upgrade my-nginx bitnami/nginx \
@@ -133,15 +133,15 @@ helm upgrade my-nginx bitnami/nginx \
   --set service.type=ClusterIP
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Release "my-nginx" has been upgraded. Happy Helming!
 ```
 
-**Method 2 — Values file:**
+**Método 2 — Arquivo de valores:**
 
-Create `my-nginx-values.yaml`:
+Crie o arquivo `my-nginx-values.yaml`:
 
 ```yaml
 replicaCount: 2
@@ -150,43 +150,43 @@ service:
   port: 8080
 ```
 
-Apply it:
+Aplique-o:
 
 ```bash
 helm upgrade my-nginx bitnami/nginx -f my-nginx-values.yaml
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl get pods -l app.kubernetes.io/instance=my-nginx
 ```
 
-Expected: 2 pods running (matching `replicaCount: 2`).
+Esperado: 2 pods em execução (correspondendo a `replicaCount: 2`).
 
 ```bash
 kubectl get svc -l app.kubernetes.io/instance=my-nginx
 ```
 
-Expected: Service type is `ClusterIP` and port is `8080`.
+Esperado: O tipo do Service é `ClusterIP` e a porta é `8080`.
 
-> **Coach tip:** Explain that `--set` is for quick one-off changes (like command-line flags), while `values.yaml` is the version-controllable, repeatable approach (like editing `/etc/default/nginx`).
+> **Dica para o Coach:** Explique que `--set` é para mudanças rápidas e pontuais (como flags de linha de comando), enquanto `values.yaml` é a abordagem versionável e repetível (como editar `/etc/default/nginx`).
 
 ---
 
-## Task 4: Upgrade and Rollback a Helm Release
+## Tarefa 4: Upgrade e Rollback de um Release Helm
 
-### Step-by-step
+### Passo a passo
 
-Check the current release history:
+Verifique o histórico atual do release:
 
 ```bash
 helm history my-nginx
 ```
 
-Expected output shows revisions 1, 2, 3 (from Tasks 2 and 3).
+A saída esperada mostra as revisões 1, 2, 3 (das Tarefas 2 e 3).
 
-Perform another upgrade:
+Execute outro upgrade:
 
 ```bash
 helm upgrade my-nginx bitnami/nginx \
@@ -194,53 +194,53 @@ helm upgrade my-nginx bitnami/nginx \
   --set service.type=ClusterIP
 ```
 
-Verify the new revision:
+Verifique a nova revisão:
 
 ```bash
 helm history my-nginx
 ```
 
-Expected: A new revision appears with status `deployed`.
+Esperado: Uma nova revisão aparece com status `deployed`.
 
-Now rollback:
+Agora faça o rollback:
 
 ```bash
 helm rollback my-nginx 1
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Rollback was a success! Happy Helming!
 ```
 
-### Verification
+### Verificação
 
 ```bash
 helm history my-nginx
 ```
 
-Expected: A new revision is created (rollback creates a forward revision, not a reverse). The description says "Rollback to 1".
+Esperado: Uma nova revisão é criada (o rollback cria uma revisão futura, não reversa). A descrição diz "Rollback to 1".
 
 ```bash
 kubectl get pods -l app.kubernetes.io/instance=my-nginx
 ```
 
-Expected: Pod count matches the original revision 1 configuration.
+Esperado: A quantidade de Pods corresponde à configuração original da revisão 1.
 
-> **Coach tip:** Emphasize that `helm rollback` creates a **new** revision — revision numbers always increase. This is different from `git revert` which creates a new commit.
+> **Dica para o Coach:** Enfatize que `helm rollback` cria uma **nova** revisão — os números de revisão sempre aumentam. Isso é diferente do `git revert`, que cria um novo commit.
 
 ---
 
-## Task 5: Create a Helm Chart from Scratch
+## Tarefa 5: Criar um Chart Helm do Zero
 
-### Step-by-step
+### Passo a passo
 
 ```bash
 helm create myapp
 ```
 
-Expected directory structure:
+Estrutura de diretórios esperada:
 
 ```
 myapp/
@@ -260,7 +260,7 @@ myapp/
 └── .helmignore
 ```
 
-Edit `myapp/values.yaml` to customize defaults:
+Edite `myapp/values.yaml` para personalizar os valores padrão:
 
 ```yaml
 replicaCount: 2
@@ -283,7 +283,7 @@ resources:
     memory: 128Mi
 ```
 
-Lint, dry-run, and install:
+Lint, dry-run e instalação:
 
 ```bash
 # Lint the chart
@@ -296,13 +296,13 @@ helm install myapp-release myapp/ --dry-run
 helm install myapp-release myapp/
 ```
 
-### Verification
+### Verificação
 
 ```bash
 helm list
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME            NAMESPACE  REVISION  STATUS    CHART        APP VERSION
@@ -314,29 +314,29 @@ myapp-release   default    1         deployed  myapp-0.1.0  1.16.0
 kubectl get all -l app.kubernetes.io/instance=myapp-release
 ```
 
-Expected: 2 pods running (from `replicaCount: 2`), a Service, a Deployment, and a ReplicaSet.
+Esperado: 2 pods em execução (de `replicaCount: 2`), um Service, um Deployment e um ReplicaSet.
 
-Clean up:
+Limpeza:
 
 ```bash
 helm uninstall myapp-release
 ```
 
-> **Coach tip:** Walk students through the `templates/deployment.yaml` file and show how `{{ .Values.replicaCount }}` maps to `values.yaml`. This is the key insight — Helm templates are Go templates that render into Kubernetes YAML.
+> **Dica para o Coach:** Guie os alunos pelo arquivo `templates/deployment.yaml` e mostre como `{{ .Values.replicaCount }}` mapeia para `values.yaml`. Este é o insight principal — templates Helm são templates Go que são renderizados em YAML do Kubernetes.
 
 ---
 
-## Task 6: Kustomize Base + Overlays
+## Tarefa 6: Kustomize Base + Overlays
 
-### Step-by-step
+### Passo a passo
 
-Create the directory structure:
+Crie a estrutura de diretórios:
 
 ```bash
 mkdir -p kustom-demo/base kustom-demo/overlays/dev kustom-demo/overlays/prod
 ```
 
-Create `kustom-demo/base/deployment.yaml`:
+Crie `kustom-demo/base/deployment.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -364,7 +364,7 @@ spec:
               memory: 64Mi
 ```
 
-Create `kustom-demo/base/service.yaml`:
+Crie `kustom-demo/base/service.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -379,7 +379,7 @@ spec:
       targetPort: 80
 ```
 
-Create `kustom-demo/base/kustomization.yaml`:
+Crie `kustom-demo/base/kustomization.yaml`:
 
 ```yaml
 resources:
@@ -387,7 +387,7 @@ resources:
   - service.yaml
 ```
 
-Create `kustom-demo/overlays/dev/kustomization.yaml`:
+Crie `kustom-demo/overlays/dev/kustomization.yaml`:
 
 ```yaml
 resources:
@@ -404,7 +404,7 @@ replicas:
     count: 1
 ```
 
-Create `kustom-demo/overlays/prod/kustomization.yaml`:
+Crie `kustom-demo/overlays/prod/kustomization.yaml`:
 
 ```yaml
 resources:
@@ -421,16 +421,16 @@ replicas:
     count: 3
 ```
 
-Preview the rendered output:
+Visualize a saída renderizada:
 
 ```bash
 kubectl kustomize kustom-demo/overlays/dev/
 kubectl kustomize kustom-demo/overlays/prod/
 ```
 
-Expected: Dev output shows `dev-web-app` with 1 replica and `env: dev` label. Prod output shows `prod-web-app` with 3 replicas and `env: prod` label.
+Esperado: A saída de dev mostra `dev-web-app` com 1 réplica e label `env: dev`. A saída de prod mostra `prod-web-app` com 3 réplicas e label `env: prod`.
 
-Deploy both overlays:
+Implante ambos os overlays:
 
 ```bash
 kubectl create namespace dev
@@ -440,29 +440,29 @@ kubectl apply -k kustom-demo/overlays/dev/ -n dev
 kubectl apply -k kustom-demo/overlays/prod/ -n prod
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl get all -n dev
 ```
 
-Expected: `dev-web-app` deployment with 1 replica.
+Esperado: deployment `dev-web-app` com 1 réplica.
 
 ```bash
 kubectl get all -n prod
 ```
 
-Expected: `prod-web-app` deployment with 3 replicas.
+Esperado: deployment `prod-web-app` com 3 réplicas.
 
 ```bash
-# Verify the labels
+# Verifique as labels
 kubectl get pods -n dev --show-labels
 kubectl get pods -n prod --show-labels
 ```
 
-Expected: Dev pods have `env=dev`, prod pods have `env=prod`.
+Esperado: Os pods de dev têm `env=dev`, os pods de prod têm `env=prod`.
 
-Clean up:
+Limpeza:
 
 ```bash
 kubectl delete -k kustom-demo/overlays/dev/ -n dev
@@ -470,33 +470,33 @@ kubectl delete -k kustom-demo/overlays/prod/ -n prod
 kubectl delete namespace dev prod
 ```
 
-> **Coach tip:** The key insight is that Kustomize never modifies the base files. The base is the "upstream default" and overlays are your "local overrides." This is the `/etc/default/nginx` analogy.
+> **Dica para o Coach:** O insight principal é que o Kustomize nunca modifica os arquivos base. A base é o "padrão upstream" e os overlays são suas "sobreposições locais." É a analogia com `/etc/default/nginx`.
 
 ---
 
-## Task 7: Helm vs Kustomize Comparison
+## Tarefa 7: Comparação Helm vs Kustomize
 
-This is a discussion/conceptual task. Ensure students can articulate:
+Esta é uma tarefa de discussão/conceitual. Garanta que os alunos consigam articular:
 
-| Aspect | Helm | Kustomize |
+| Aspecto | Helm | Kustomize |
 |---|---|---|
-| **Approach** | Templating (`{{ .Values.x }}`) | Patching (overlays on plain YAML) |
-| **Packaging** | Charts (versioned, distributable archives) | Directories of YAML files |
-| **Distribution** | Chart repositories (like `apt` repos) | Git repositories |
-| **Lifecycle** | Install, upgrade, rollback, uninstall | Apply only (use Git for rollback) |
-| **Dependencies** | Built-in sub-chart support | Manual (list in `resources`) |
-| **Learning curve** | Steeper (Go templates, chart structure) | Gentler (plain YAML + patches) |
-| **Best for** | Third-party apps; complex parameterization | Internal apps; environment promotion |
-| **Built into kubectl** | No (separate binary) | Yes (`kubectl apply -k`) |
+| **Abordagem** | Templating (`{{ .Values.x }}`) | Patching (overlays sobre YAML puro) |
+| **Empacotamento** | Charts (arquivos versionados e distribuíveis) | Diretórios de arquivos YAML |
+| **Distribuição** | Repositórios de charts (como repositórios `apt`) | Repositórios Git |
+| **Ciclo de vida** | Install, upgrade, rollback, uninstall | Apenas apply (use Git para rollback) |
+| **Dependências** | Suporte nativo a sub-charts | Manual (listar em `resources`) |
+| **Curva de aprendizado** | Mais íngreme (templates Go, estrutura de charts) | Mais suave (YAML puro + patches) |
+| **Melhor para** | Apps de terceiros; parametrização complexa | Apps internas; promoção entre ambientes |
+| **Integrado ao kubectl** | Não (binário separado) | Sim (`kubectl apply -k`) |
 
-**Rule of thumb:**
-- **Helm** → consuming third-party apps (databases, monitoring stacks) or distributing your own app to others
-- **Kustomize** → you own the manifests, want plain YAML, and need dev→staging→prod promotion
-- **Both together** → install a Helm chart, then apply Kustomize patches on the rendered output
+**Regra geral:**
+- **Helm** → consumir apps de terceiros (bancos de dados, stacks de monitoramento) ou distribuir seu próprio app para outros
+- **Kustomize** → você é dono dos manifests, quer YAML puro e precisa de promoção dev→staging→prod
+- **Ambos juntos** → instale um chart Helm, depois aplique patches do Kustomize sobre a saída renderizada
 
 ---
 
-## Final Cleanup
+## Limpeza Final
 
 ```bash
 helm uninstall my-nginx 2>/dev/null
@@ -508,13 +508,13 @@ rm -rf myapp/ kustom-demo/ my-nginx-values.yaml
 
 ---
 
-## Common Issues
+## Problemas Comuns
 
-| Problem | Cause | Fix |
+| Problema | Causa | Correção |
 |---------|-------|-----|
-| `helm install` hangs forever | Chart defaults to `LoadBalancer` Service; Kind has no LB provider | Add `--set service.type=ClusterIP` or use `--wait=false` |
-| `helm search repo` returns nothing | Repo cache is stale | Run `helm repo update` first |
-| `kubectl kustomize` says "accumulating resources" | Wrong relative path in `kustomization.yaml` | Paths are relative to the `kustomization.yaml` file — check `../../base` is correct |
-| Pods stuck in `Pending` after chart install | Insufficient resources on Kind node | Check `kubectl describe pod` events; reduce resource requests in values |
-| `helm create` chart fails lint | Leftover template variables referencing undefined values | Edit `values.yaml` to match what the templates expect |
-| Kustomize overlay not changing replicas | `replicas` field uses the Deployment `metadata.name`, not the overlay name | Ensure the name in the `replicas` block matches the **base** Deployment name (before any prefix) |
+| `helm install` trava indefinidamente | O chart usa `LoadBalancer` por padrão; Kind não tem provedor de LB | Adicione `--set service.type=ClusterIP` ou use `--wait=false` |
+| `helm search repo` não retorna nada | O cache do repositório está desatualizado | Execute `helm repo update` primeiro |
+| `kubectl kustomize` diz "accumulating resources" | Caminho relativo errado em `kustomization.yaml` | Os caminhos são relativos ao arquivo `kustomization.yaml` — verifique se `../../base` está correto |
+| Pods presos em `Pending` após instalação do chart | Recursos insuficientes no nó do Kind | Verifique os eventos com `kubectl describe pod`; reduza os requests de recursos nos values |
+| Chart criado com `helm create` falha no lint | Variáveis de template remanescentes referenciando valores indefinidos | Edite `values.yaml` para corresponder ao que os templates esperam |
+| Overlay do Kustomize não altera réplicas | O campo `replicas` usa o `metadata.name` do Deployment, não o nome do overlay | Garanta que o nome no bloco `replicas` corresponda ao nome do Deployment **base** (antes de qualquer prefixo) |

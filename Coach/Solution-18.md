@@ -1,41 +1,41 @@
-# Solution 18 — kubeadm Cluster Administration
+# Solução 18 — Administração de Cluster com kubeadm
 
-[< Previous Solution](Solution-17.md) - **[Home](README.md)** - [Next Solution >](Solution-19.md)
-
----
-
-> **Coach note:** This is the most CKA-critical challenge. It requires real VMs — not Kind or Minikube. Help students choose a lab environment (cloud VMs, Vagrant, or Killercoda). Tasks 1-3 are the core bootstrap sequence. Tasks 4-5 (upgrade + etcd) are the highest-exam-weight topics. Tasks 6-7 are conceptual with hands-on exploration. If time is limited, prioritize Tasks 1-5.
-
-Estimated time: **90–120 minutes**
+[< Solução Anterior](Solution-17.md) - **[Home](README.md)** - [Próxima Solução >](Solution-19.md)
 
 ---
 
-## Task 1: Prepare VM Prerequisites
+> **Nota do Coach:** Este é o desafio mais crítico para o CKA. Requer VMs reais — não Kind ou Minikube. Ajude os alunos a escolher um ambiente de laboratório (VMs na nuvem, Vagrant ou Killercoda). As Tarefas 1-3 são a sequência principal de bootstrap. As Tarefas 4-5 (upgrade + etcd) são os tópicos com maior peso no exame. As Tarefas 6-7 são conceituais com exploração prática. Se o tempo for limitado, priorize as Tarefas 1-5.
 
-### Step-by-step (ALL 3 NODES)
+Tempo estimado: **90–120 minutos**
 
-> **Coach tip:** Walk through this with students on the control-plane first, then have them repeat on both workers. The most common mistake is forgetting a step on one node.
+---
 
-**Disable swap:**
+## Tarefa 1: Preparar Pré-requisitos das VMs
+
+### Passo a passo (TODOS OS 3 NODES)
+
+> **Dica para o Coach:** Faça o passo a passo com os alunos no control-plane primeiro, depois peça que repitam nos dois workers. O erro mais comum é esquecer um passo em um dos nodes.
+
+**Desabilitar swap:**
 
 ```bash
 sudo swapoff -a
 sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
 ```
 
-### Verification — Swap disabled
+### Verificação — Swap desabilitado
 
 ```bash
 free -h | grep Swap
 ```
 
-Expected:
+Esperado:
 
 ```
 Swap:            0B          0B          0B
 ```
 
-**Load kernel modules:**
+**Carregar módulos do kernel:**
 
 ```bash
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
@@ -47,20 +47,20 @@ sudo modprobe overlay
 sudo modprobe br_netfilter
 ```
 
-### Verification — Modules loaded
+### Verificação — Módulos carregados
 
 ```bash
 lsmod | grep -E "overlay|br_netfilter"
 ```
 
-Expected (both modules listed):
+Esperado (ambos os módulos listados):
 
 ```
 br_netfilter           32768  0
 overlay               212992  0
 ```
 
-**Set sysctl parameters:**
+**Configurar parâmetros sysctl:**
 
 ```bash
 cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
@@ -72,13 +72,13 @@ EOF
 sudo sysctl --system
 ```
 
-### Verification — Sysctl parameters
+### Verificação — Parâmetros sysctl
 
 ```bash
 sysctl net.bridge.bridge-nf-call-iptables net.ipv4.ip_forward net.bridge.bridge-nf-call-ip6tables
 ```
 
-Expected:
+Esperado:
 
 ```
 net.bridge.bridge-nf-call-iptables = 1
@@ -86,7 +86,7 @@ net.ipv4.ip_forward = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 ```
 
-**Install and configure containerd:**
+**Instalar e configurar o containerd:**
 
 ```bash
 sudo apt-get update
@@ -99,27 +99,27 @@ sudo systemctl restart containerd
 sudo systemctl enable containerd
 ```
 
-### Verification — containerd running with systemd cgroup
+### Verificação — containerd em execução com systemd cgroup
 
 ```bash
 sudo systemctl status containerd --no-pager
 ```
 
-Expected: `Active: active (running)`
+Esperado: `Active: active (running)`
 
 ```bash
 sudo containerd config dump | grep SystemdCgroup
 ```
 
-Expected:
+Esperado:
 
 ```
             SystemdCgroup = true
 ```
 
-> **Coach tip:** The `SystemdCgroup = true` setting is the #1 missed step. If students skip it, kubelet will fail to start with cgroup driver mismatch errors. The symptom is kubelet crashing in a loop — check `journalctl -u kubelet`.
+> **Dica para o Coach:** A configuração `SystemdCgroup = true` é o passo nº 1 mais esquecido. Se os alunos pularem, o kubelet falhará ao iniciar com erros de incompatibilidade do driver de cgroup. O sintoma é o kubelet entrando em loop de crash — verifique com `journalctl -u kubelet`.
 
-**Install kubeadm, kubelet, kubectl:**
+**Instalar kubeadm, kubelet, kubectl:**
 
 ```bash
 sudo apt-get install -y apt-transport-https ca-certificates curl gpg
@@ -135,7 +135,7 @@ sudo apt-mark hold kubelet kubeadm kubectl
 sudo systemctl enable --now kubelet
 ```
 
-### Verification — Packages installed
+### Verificação — Pacotes instalados
 
 ```bash
 kubeadm version -o short
@@ -143,13 +143,13 @@ kubelet --version
 kubectl version --client --short 2>/dev/null || kubectl version --client
 ```
 
-Expected: All show `v1.36.x`.
+Esperado: Todos mostram `v1.36.x`.
 
 ```bash
 apt-mark showhold
 ```
 
-Expected:
+Esperado:
 
 ```
 kubeadm
@@ -157,17 +157,17 @@ kubectl
 kubelet
 ```
 
-> **Coach tip:** If `apt-get install` fails with "package not found", the student likely has the wrong repo URL. Verify with:
+> **Dica para o Coach:** Se o `apt-get install` falhar com "package not found", o aluno provavelmente está com a URL do repositório errada. Verifique com:
 > ```bash
 > cat /etc/apt/sources.list.d/kubernetes.list
 > ```
-> It should contain `https://pkgs.k8s.io/core:/stable:/v1.36/deb/`.
+> Deve conter `https://pkgs.k8s.io/core:/stable:/v1.36/deb/`.
 
 ---
 
-## Task 2: Initialize the Control Plane
+## Tarefa 2: Inicializar o Control Plane
 
-### Step-by-step (CONTROL-PLANE ONLY)
+### Passo a passo (SOMENTE NO CONTROL-PLANE)
 
 ```bash
 sudo kubeadm init \
@@ -175,7 +175,7 @@ sudo kubeadm init \
   --kubernetes-version=v1.36.0
 ```
 
-Expected output (end of output):
+Saída esperada (final da saída):
 
 ```
 Your Kubernetes control-plane has initialized successfully!
@@ -194,9 +194,9 @@ kubeadm join <IP>:6443 --token <TOKEN> \
         --discovery-token-ca-cert-hash sha256:<HASH>
 ```
 
-> **Coach tip:** Tell students to **copy and save the `kubeadm join` command immediately**. It's easy to lose in scroll-back. They can also regenerate it later with `kubeadm token create --print-join-command`, but that adds unnecessary troubleshooting time.
+> **Dica para o Coach:** Diga aos alunos para **copiar e salvar o comando `kubeadm join` imediatamente**. É fácil perder no scroll. Eles também podem regenerá-lo depois com `kubeadm token create --print-join-command`, mas isso adiciona tempo desnecessário de troubleshooting.
 
-**Set up kubeconfig:**
+**Configurar o kubeconfig:**
 
 ```bash
 mkdir -p $HOME/.kube
@@ -204,18 +204,13 @@ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ```
 
-### Verification — Control plane running
+### Verificação — Control plane em execução
 
 ```bash
 kubectl get nodes
 ```
 
-Expected:
-
-```
-NAME            STATUS     ROLES           AGE   VERSION
-control-plane   NotReady   control-plane   30s   v1.36.0
-```
+Esperado:
 
 `NotReady` is correct at this point — no CNI plugin installed yet.
 
@@ -223,7 +218,7 @@ control-plane   NotReady   control-plane   30s   v1.36.0
 kubectl get pods -n kube-system
 ```
 
-Expected (all Running or Pending for coredns):
+Esperado (todos Running ou Pending para coredns):
 
 ```
 NAME                                    READY   STATUS    RESTARTS   AGE
@@ -236,7 +231,7 @@ kube-proxy-xxxxx                        1/1     Running   0          30s
 kube-scheduler-control-plane            1/1     Running   0          40s
 ```
 
-> **Coach tip:** CoreDNS will be Pending until a CNI is installed — this is expected. If `kube-apiserver` or `etcd` aren't Running, check:
+> **Dica para o Coach:** O CoreDNS ficará Pending até que um CNI seja instalado — isso é esperado. Se `kube-apiserver` ou `etcd` não estiverem Running, verifique:
 > ```bash
 > sudo crictl ps
 > sudo journalctl -u kubelet --no-pager | tail -30
@@ -244,44 +239,44 @@ kube-scheduler-control-plane            1/1     Running   0          40s
 
 ---
 
-## Task 3: Install Calico CNI and Join Workers
+## Tarefa 3: Instalar Calico CNI e Adicionar Workers
 
-### Step-by-step
+### Passo a passo
 
-**Install Calico (on control-plane):**
+**Instalar Calico (no control-plane):**
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/calico.yaml
 ```
 
-### Verification — Calico running
+### Verificação — Calico em execução
 
 ```bash
 kubectl get pods -n kube-system -l k8s-app=calico-node --watch
 ```
 
-Wait until all show `Running` (may take 1-2 minutes), then Ctrl+C.
+Aguarde até que todos mostrem `Running` (pode levar 1-2 minutos), depois Ctrl+C.
 
 ```bash
 kubectl get nodes
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME            STATUS   ROLES           AGE    VERSION
 control-plane   Ready    control-plane   2m     v1.36.0
 ```
 
-The node should now be `Ready`.
+O node agora deve estar `Ready`.
 
 ```bash
 kubectl get pods -n kube-system
 ```
 
-CoreDNS should now also be Running.
+O CoreDNS agora também deve estar Running.
 
-**Join worker nodes (on each worker):**
+**Adicionar worker nodes (em cada worker):**
 
 ```bash
 sudo kubeadm join <CONTROL-PLANE-IP>:6443 \
@@ -289,7 +284,7 @@ sudo kubeadm join <CONTROL-PLANE-IP>:6443 \
   --discovery-token-ca-cert-hash sha256:<HASH>
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 This node has joined the cluster:
@@ -299,20 +294,20 @@ This node has joined the cluster:
 Run 'kubectl get nodes' on the control-plane node to see this node join the cluster.
 ```
 
-> **Coach tip:** If the token expired:
+> **Dica para o Coach:** Se o token expirou:
 > ```bash
-> # On control-plane
+> # No control-plane
 > kubeadm token create --print-join-command
 > ```
-> Common mistakes: running `kubeadm join` without `sudo`, or running it on the control-plane instead of the worker.
+> Erros comuns: executar `kubeadm join` sem `sudo`, ou executá-lo no control-plane ao invés do worker.
 
-### Verification — All nodes Ready (on control-plane)
+### Verificação — Todos os nodes Ready (no control-plane)
 
 ```bash
 kubectl get nodes -o wide
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME            STATUS   ROLES           AGE    VERSION   INTERNAL-IP      OS-IMAGE           KERNEL-VERSION    CONTAINER-RUNTIME
@@ -321,54 +316,54 @@ worker-1        Ready    <none>          1m     v1.36.0   192.168.56.11    Ubunt
 worker-2        Ready    <none>          30s    v1.36.0   192.168.56.12    Ubuntu 24.04 LTS   6.x.x-xx-generic  containerd://1.7.x
 ```
 
-**Test the cluster with a workload:**
+**Testar o cluster com uma carga de trabalho:**
 
 ```bash
 kubectl create deployment nginx-test --image=nginx --replicas=3
 kubectl get pods -o wide
 ```
 
-Pods should be distributed across all 3 nodes.
+Os Pods devem ser distribuídos entre os 3 nodes.
 
 ```bash
 kubectl delete deployment nginx-test
 ```
 
-> **Coach tip:** If workers show `NotReady`, the most likely cause is Calico not deploying on the worker nodes yet. Check:
+> **Dica para o Coach:** Se os workers mostrarem `NotReady`, a causa mais provável é o Calico ainda não ter sido implantado nos worker nodes. Verifique:
 > ```bash
 > kubectl get pods -n kube-system -o wide | grep calico
 > ```
-> Each node should have a `calico-node` Pod running on it. If a worker's calico-node is in CrashLoopBackOff, check the logs:
+> Cada node deve ter um Pod `calico-node` em execução. Se o calico-node de um worker estiver em CrashLoopBackOff, verifique os logs:
 > ```bash
 > kubectl logs -n kube-system <calico-node-pod-on-worker> -c calico-node
 > ```
 
 ---
 
-## Task 4: Cluster Upgrade
+## Tarefa 4: Upgrade do Cluster
 
-### Step-by-step
+### Passo a passo
 
-> **Coach tip:** This is the most CKA-relevant task. Students must understand the exact sequence: drain → upgrade kubeadm → `kubeadm upgrade plan/apply` → upgrade kubelet/kubectl → restart kubelet → uncordon. The order matters.
+> **Dica para o Coach:** Esta é a tarefa mais relevante para o CKA. Os alunos devem entender a sequência exata: drain → upgrade kubeadm → `kubeadm upgrade plan/apply` → upgrade kubelet/kubectl → restart kubelet → uncordon. A ordem importa.
 
-**Check available upgrades (on control-plane):**
+**Verificar upgrades disponíveis (no control-plane):**
 
 ```bash
 sudo kubeadm upgrade plan
 ```
 
-Expected output shows current version and available upgrade targets.
+A saída esperada mostra a versão atual e os alvos de upgrade disponíveis.
 
-> **Coach tip:** If students installed the latest patch already and there's no newer version available, that's OK. Have them practice the drain/uncordon workflow anyway — it's the muscle memory that matters. They can also set up the v1.35 repo initially and upgrade to v1.36 for a real minor version upgrade.
+> **Dica para o Coach:** Se os alunos já instalaram o patch mais recente e não há versão mais nova disponível, tudo bem. Peça que pratiquem o fluxo de drain/uncordon de qualquer forma — é a memória muscular que importa. Eles também podem configurar o repositório v1.35 inicialmente e fazer upgrade para v1.36 para um upgrade real de versão minor.
 
-**Upgrade the control-plane:**
+**Fazer upgrade do control-plane:**
 
 ```bash
 # Step 1: Drain
 kubectl drain $(hostname) --ignore-daemonsets --delete-emptydir-data
 ```
 
-Expected:
+Esperado:
 
 ```
 node/control-plane cordoned
@@ -385,10 +380,10 @@ sudo apt-mark hold kubeadm
 
 # Step 3: Plan and apply
 sudo kubeadm upgrade plan
-sudo kubeadm upgrade apply v1.36.0  # Use the version shown by 'kubeadm upgrade plan'
+sudo kubeadm upgrade apply v1.36.0  # Use a versão mostrada por 'kubeadm upgrade plan'
 ```
 
-Expected (end of output):
+Esperado (final da saída):
 
 ```
 [upgrade/successful] SUCCESS! Your cluster was upgraded to "v1.36.x". Enjoy!
@@ -408,23 +403,23 @@ sudo systemctl restart kubelet
 kubectl uncordon $(hostname)
 ```
 
-### Verification — Control-plane upgraded
+### Verificação — Control-plane atualizado
 
 ```bash
 kubectl get nodes
 ```
 
-The control-plane should show the new version and `Ready` status.
+O control-plane deve mostrar a nova versão e o status `Ready`.
 
-**Upgrade a worker node:**
+**Fazer upgrade de um worker node:**
 
-On the **control-plane**:
+No **control-plane**:
 
 ```bash
 kubectl drain worker-1 --ignore-daemonsets --delete-emptydir-data
 ```
 
-On **worker-1**:
+No **worker-1**:
 
 ```bash
 sudo apt-mark unhold kubeadm kubelet kubectl
@@ -432,49 +427,49 @@ sudo apt-get update
 sudo apt-get install -y kubeadm kubelet kubectl
 sudo apt-mark hold kubeadm kubelet kubectl
 
-# Workers use "upgrade node" (not "upgrade apply")
+# Workers usam "upgrade node" (não "upgrade apply")
 sudo kubeadm upgrade node
 
 sudo systemctl daemon-reload
 sudo systemctl restart kubelet
 ```
 
-Back on the **control-plane**:
+De volta no **control-plane**:
 
 ```bash
 kubectl uncordon worker-1
 ```
 
-> **Coach tip — why `upgrade node` vs `upgrade apply`?**
-> - `kubeadm upgrade apply` is for the **first control-plane node** — it upgrades the cluster-wide components (API server, controller manager, scheduler, etcd, CoreDNS).
-> - `kubeadm upgrade node` is for **additional control-plane nodes** and **all worker nodes** — it upgrades only the local kubelet configuration.
-> This distinction is a common CKA exam question.
+> **Dica para o Coach — por que `upgrade node` vs `upgrade apply`?**
+> - `kubeadm upgrade apply` é para o **primeiro node control-plane** — ele atualiza os componentes do cluster inteiro (API server, controller manager, scheduler, etcd, CoreDNS).
+> - `kubeadm upgrade node` é para **nodes control-plane adicionais** e **todos os worker nodes** — ele atualiza apenas a configuração local do kubelet.
+> Essa distinção é uma pergunta comum no exame CKA.
 
-### Verification — All nodes upgraded
+### Verificação — Todos os nodes atualizados
 
-Repeat for worker-2, then verify:
+Repita para o worker-2, depois verifique:
 
 ```bash
 kubectl get nodes -o wide
 ```
 
-All nodes should show the target version.
+Todos os nodes devem mostrar a versão alvo.
 
 ---
 
-## Task 5: etcd Snapshot and Restore
+## Tarefa 5: Snapshot e Restauração do etcd
 
-### Step-by-step
+### Passo a passo
 
-> **Coach tip:** This is the second most CKA-tested topic (after upgrades). Students must memorize the etcdctl syntax with TLS flags. On the exam, they'll need to figure out the cert paths from the etcd Pod manifest.
+> **Dica para o Coach:** Este é o segundo tópico mais cobrado no CKA (depois de upgrades). Os alunos devem memorizar a sintaxe do etcdctl com as flags TLS. No exame, eles precisarão descobrir os caminhos dos certificados a partir do manifesto do Pod etcd.
 
-**Find certificate paths:**
+**Encontrar caminhos dos certificados:**
 
 ```bash
 sudo cat /etc/kubernetes/manifests/etcd.yaml | grep -E "cert-file|key-file|trusted-ca-file"
 ```
 
-Expected:
+Esperado:
 
 ```
     - --cert-file=/etc/kubernetes/pki/etcd/server.crt
@@ -484,9 +479,9 @@ Expected:
     - --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
 ```
 
-> **Coach tip:** On the CKA exam, you won't be told the cert paths — you'll need to look them up from the etcd manifest or etcd Pod spec. Teach students to always check `/etc/kubernetes/manifests/etcd.yaml` first.
+> **Dica para o Coach:** No exame CKA, os caminhos dos certificados não serão informados — você precisará procurá-los no manifesto do etcd ou na spec do Pod etcd. Ensine os alunos a sempre verificar `/etc/kubernetes/manifests/etcd.yaml` primeiro.
 
-**Take the snapshot:**
+**Criar o snapshot:**
 
 ```bash
 sudo ETCDCTL_API=3 etcdctl snapshot save /opt/etcd-backup.db \
@@ -496,19 +491,19 @@ sudo ETCDCTL_API=3 etcdctl snapshot save /opt/etcd-backup.db \
   --key=/etc/kubernetes/pki/etcd/server.key
 ```
 
-Expected:
+Esperado:
 
 ```
 Snapshot saved at /opt/etcd-backup.db
 ```
 
-### Verification — Snapshot created
+### Verificação — Snapshot criado
 
 ```bash
 sudo ETCDCTL_API=3 etcdctl snapshot status /opt/etcd-backup.db --write-table
 ```
 
-Expected (table with hash, revision, total keys, total size):
+Esperado (tabela com hash, revisão, total de chaves, tamanho total):
 
 ```
 +---------+----------+------------+------------+
@@ -518,38 +513,38 @@ Expected (table with hash, revision, total keys, total size):
 +---------+----------+------------+------------+
 ```
 
-(Values will vary.)
+(Os valores irão variar.)
 
-**Create a test namespace, then delete it (simulating disaster):**
+**Criar um namespace de teste, depois deletá-lo (simulando um desastre):**
 
 ```bash
 kubectl create namespace snapshot-test
 kubectl get namespace snapshot-test
 kubectl delete namespace snapshot-test
-kubectl get namespace snapshot-test  # Should say "not found"
+kubectl get namespace snapshot-test  # Deve dizer "not found"
 ```
 
-**Restore from snapshot:**
+**Restaurar a partir do snapshot:**
 
 ```bash
 # Stop API server and etcd
 sudo mv /etc/kubernetes/manifests/etcd.yaml /etc/kubernetes/etcd.yaml.bak
 sudo mv /etc/kubernetes/manifests/kube-apiserver.yaml /etc/kubernetes/kube-apiserver.yaml.bak
 
-# Wait for them to stop
+# Aguardar a parada
 sleep 15
 
-# Remove old data and restore
+# Remover dados antigos e restaurar
 sudo rm -rf /var/lib/etcd
 sudo ETCDCTL_API=3 etcdctl snapshot restore /opt/etcd-backup.db \
   --data-dir=/var/lib/etcd
 
-# Restore static Pod manifests
+# Restaurar manifestos de static Pod
 sudo mv /etc/kubernetes/etcd.yaml.bak /etc/kubernetes/manifests/etcd.yaml
 sudo mv /etc/kubernetes/kube-apiserver.yaml.bak /etc/kubernetes/manifests/kube-apiserver.yaml
 ```
 
-### Verification — Restore successful
+### Verificação — Restauração bem-sucedida
 
 ```bash
 # Wait for API server to come back
@@ -557,30 +552,30 @@ sleep 60
 kubectl get namespace snapshot-test
 ```
 
-If the snapshot was taken while `snapshot-test` existed, it should be back.
+Se o snapshot foi tirado enquanto `snapshot-test` existia, ele deve estar de volta.
 
 ```bash
 kubectl get nodes
 kubectl get pods -n kube-system
 ```
 
-The cluster should be fully functional.
+O cluster deve estar totalmente funcional.
 
-> **Coach tip — common restore mistakes:**
-> 1. Forgetting to remove `/var/lib/etcd` before restoring — the restore won't overwrite existing data
-> 2. Restoring to a different `--data-dir` but not updating the etcd manifest — etcd starts with old data
-> 3. Not waiting long enough for the API server to restart — it can take 30-60 seconds
-> 4. Forgetting `ETCDCTL_API=3` — etcdctl defaults to API v2, which doesn't support `snapshot`
+> **Dica para o Coach — erros comuns na restauração:**
+> 1. Esquecer de remover `/var/lib/etcd` antes de restaurar — a restauração não sobrescreve dados existentes
+> 2. Restaurar em um `--data-dir` diferente mas não atualizar o manifesto do etcd — o etcd inicia com dados antigos
+> 3. Não esperar tempo suficiente para o API server reiniciar — pode levar 30-60 segundos
+> 4. Esquecer `ETCDCTL_API=3` — etcdctl usa API v2 por padrão, que não suporta `snapshot`
 
 ---
 
-## Task 6: CRDs and Operators
+## Tarefa 6: CRDs e Operators
 
-### Step-by-step
+### Passo a passo
 
-**Create the CRD:**
+**Criar o CRD:**
 
-Save `backupschedule-crd.yaml`:
+Salve `backupschedule-crd.yaml`:
 
 ```yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -625,19 +620,19 @@ spec:
       - bs
 ```
 
-Apply:
+Aplique:
 
 ```bash
 kubectl apply -f backupschedule-crd.yaml
 ```
 
-### Verification — CRD registered
+### Verificação — CRD registrado
 
 ```bash
 kubectl get crds | grep fasthack
 ```
 
-Expected:
+Esperado:
 
 ```
 backupschedules.fasthack.io   2025-xx-xxTxx:xx:xxZ
@@ -647,15 +642,15 @@ backupschedules.fasthack.io   2025-xx-xxTxx:xx:xxZ
 kubectl api-resources | grep backupschedule
 ```
 
-Expected:
+Esperado:
 
 ```
 backupschedules   bs   fasthack.io/v1   true   BackupSchedule
 ```
 
-**Create a custom resource instance:**
+**Criar uma instância de custom resource:**
 
-Save `my-backup.yaml`:
+Salve `my-backup.yaml`:
 
 ```yaml
 apiVersion: fasthack.io/v1
@@ -668,19 +663,19 @@ spec:
   target: production-database
 ```
 
-Apply:
+Aplique:
 
 ```bash
 kubectl apply -f my-backup.yaml
 ```
 
-### Verification — Custom resource created
+### Verificação — Custom resource criado
 
 ```bash
 kubectl get backupschedules
 ```
 
-Expected (additionalPrinterColumns in action):
+Esperado (additionalPrinterColumns em ação):
 
 ```
 NAME                SCHEDULE      RETENTION   TARGET
@@ -688,26 +683,26 @@ nightly-db-backup   0 2 * * *     30          production-database
 ```
 
 ```bash
-kubectl get bs  # Short name works
+kubectl get bs  # Nome curto funciona
 kubectl describe backupschedule nightly-db-backup
 ```
 
-> **Coach tip:** Point out the `additionalPrinterColumns` feature — it's what makes `kubectl get` show useful columns instead of just the name and age. This is how real Operators provide user-friendly output.
+> **Dica para o Coach:** Destaque a funcionalidade `additionalPrinterColumns` — é o que faz o `kubectl get` mostrar colunas úteis ao invés de apenas nome e idade. É assim que Operators reais fornecem saída amigável ao usuário.
 
-**Deploy cert-manager Operator:**
+**Implantar o Operator cert-manager:**
 
 ```bash
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=120s
 ```
 
-### Verification — cert-manager running
+### Verificação — cert-manager em execução
 
 ```bash
 kubectl get pods -n cert-manager
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME                                       READY   STATUS    RESTARTS   AGE
@@ -720,7 +715,7 @@ cert-manager-webhook-xxxxxxxxx-xxxxx       1/1     Running   0          30s
 kubectl get crds | grep cert-manager
 ```
 
-Expected (6+ CRDs):
+Esperado (6+ CRDs):
 
 ```
 certificaterequests.cert-manager.io    2025-xx-xxTxx:xx:xxZ
@@ -731,42 +726,42 @@ issuers.cert-manager.io               2025-xx-xxTxx:xx:xxZ
 orders.acme.cert-manager.io           2025-xx-xxTxx:xx:xxZ
 ```
 
-> **Coach tip — CRDs vs Operators:**
-> - A **CRD** just defines a new resource type (schema). By itself, it doesn't do anything — it's like creating a new systemd unit type definition.
-> - An **Operator** is a controller (Deployment + RBAC + CRDs) that watches for instances of those custom resources and acts on them. cert-manager watches for `Certificate` resources and actually provisions TLS certificates.
-> - The BackupSchedule CRD we created has no Operator watching it — creating instances does nothing. In production, you'd write (or install) a controller that watches BackupSchedule resources and triggers actual backups.
+> **Dica para o Coach — CRDs vs Operators:**
+> - Um **CRD** apenas define um novo tipo de recurso (schema). Por si só, ele não faz nada — é como criar uma nova definição de tipo de unit no systemd.
+> - Um **Operator** é um controller (Deployment + RBAC + CRDs) que observa instâncias desses custom resources e age sobre eles. O cert-manager observa recursos `Certificate` e efetivamente provisiona certificados TLS.
+> - O CRD BackupSchedule que criamos não tem nenhum Operator observando-o — criar instâncias não faz nada. Em produção, você escreveria (ou instalaria) um controller que observa recursos BackupSchedule e dispara backups reais.
 
 ---
 
-## Task 7: Extension Interfaces (CNI, CSI, CRI)
+## Tarefa 7: Interfaces de Extensão (CNI, CSI, CRI)
 
-### Step-by-step
+### Passo a passo
 
-**Identify CRI:**
+**Identificar CRI:**
 
 ```bash
 kubectl get nodes -o wide
 ```
 
-Look at the `CONTAINER-RUNTIME` column — should show `containerd://1.7.x`.
+Observe a coluna `CONTAINER-RUNTIME` — deve mostrar `containerd://1.7.x`.
 
 ```bash
 sudo cat /var/lib/kubelet/kubeadm-flags.env
 ```
 
-Expected (contains the CRI socket path):
+Esperado (contém o caminho do socket CRI):
 
 ```
 KUBELET_KUBEADM_ARGS="--container-runtime-endpoint=unix:///var/run/containerd/containerd.sock ..."
 ```
 
-**Identify CNI:**
+**Identificar CNI:**
 
 ```bash
 ls /etc/cni/net.d/
 ```
 
-Expected:
+Esperado:
 
 ```
 10-calico.conflist  calico-kubeconfig
@@ -776,21 +771,21 @@ Expected:
 cat /etc/cni/net.d/10-calico.conflist | head -20
 ```
 
-Shows the Calico CNI configuration with type `calico` and IPAM settings.
+Mostra a configuração CNI do Calico com o tipo `calico` e configurações de IPAM.
 
 ```bash
 kubectl get pods -n kube-system -l k8s-app=calico-node -o wide
 ```
 
-Expected: One `calico-node` Pod per node (DaemonSet).
+Esperado: Um Pod `calico-node` por node (DaemonSet).
 
-**Explore CSI:**
+**Explorar CSI:**
 
 ```bash
 kubectl get csidrivers
 ```
 
-Expected on a bare kubeadm cluster:
+Esperado em um cluster kubeadm puro:
 
 ```
 No resources found
@@ -800,135 +795,135 @@ No resources found
 kubectl get storageclasses
 ```
 
-Expected: Empty or `No resources found` — a bare kubeadm cluster doesn't come with a CSI driver or StorageClass.
+Esperado: Vazio ou `No resources found` — um cluster kubeadm puro não vem com um driver CSI ou StorageClass.
 
-> **Coach tip:** This is a great teaching moment:
-> - **Kind/Minikube** come with a built-in storage provisioner — that's why PVCs "just work" in those environments.
-> - **kubeadm** gives you a bare cluster — you must install a CSI driver for dynamic provisioning.
-> - On cloud providers, the CSI driver is usually pre-installed (aws-ebs-csi, azuredisk-csi, gce-pd-csi).
-> - For bare metal, options include `nfs-subdir-external-provisioner`, `local-path-provisioner`, or `longhorn`.
+> **Dica para o Coach:** Este é um ótimo momento de aprendizado:
+> - **Kind/Minikube** vêm com um provisionador de storage embutido — é por isso que PVCs "simplesmente funcionam" nesses ambientes.
+> - **kubeadm** te dá um cluster puro — você deve instalar um driver CSI para provisionamento dinâmico.
+> - Em provedores de nuvem, o driver CSI geralmente vem pré-instalado (aws-ebs-csi, azuredisk-csi, gce-pd-csi).
+> - Para bare metal, as opções incluem `nfs-subdir-external-provisioner`, `local-path-provisioner` ou `longhorn`.
 
-**Linux kernel module comparison:**
+**Comparação de módulos do kernel Linux:**
 
 ```bash
-# Linux modules — extend the kernel
+# Módulos Linux — estendem o kernel
 lsmod | head -10
 modinfo br_netfilter
 
-# Kubernetes CRI — extend container runtime support
+# Kubernetes CRI — estende suporte a container runtime
 kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.nodeInfo.containerRuntimeVersion}{"\n"}{end}'
 
-# Kubernetes CNI — extend networking
+# Kubernetes CNI — estende networking
 kubectl get ds -n kube-system
 
-# Kubernetes CSI — extend storage (none installed on bare kubeadm)
+# Kubernetes CSI — estende storage (nenhum instalado em kubeadm puro)
 kubectl get csidrivers
 ```
 
-> **Coach reference — Extension Interface Summary:**
+> **Referência do Coach — Resumo das Interfaces de Extensão:**
 >
-> | Interface | Purpose | Linux Analogy | Our Cluster | Alternatives |
+> | Interface | Propósito | Analogia Linux | Nosso Cluster | Alternativas |
 > |---|---|---|---|---|
-> | **CRI** | Container runtime | PAM modules | containerd | CRI-O |
-> | **CNI** | Pod networking | Kernel network modules | Calico | Cilium, Flannel, Weave |
-> | **CSI** | Persistent storage | Block device drivers | (none) | aws-ebs-csi, nfs-csi, longhorn |
+> | **CRI** | Container runtime | Módulos PAM | containerd | CRI-O |
+> | **CNI** | Networking de Pods | Módulos de rede do kernel | Calico | Cilium, Flannel, Weave |
+> | **CSI** | Storage persistente | Drivers de dispositivo de bloco | (nenhum) | aws-ebs-csi, nfs-csi, longhorn |
 
 ---
 
-## Break & Fix Solutions
+## Soluções de Break & Fix
 
-### Scenario 1: kubeadm init fails — swap not disabled
+### Cenário 1: kubeadm init falha — swap não desabilitado
 
-**Diagnosis path for students:**
+**Caminho de diagnóstico para os alunos:**
 
 ```bash
-# Read the error message carefully — it says "Swap"
+# Leia a mensagem de erro com atenção — ela diz "Swap"
 free -h | grep Swap
-# If Swap total > 0, swap is on
+# Se o Swap total > 0, o swap está ligado
 ```
 
-**Solution:**
+**Solução:**
 
 ```bash
 sudo swapoff -a
 sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
-# Retry kubeadm init
+# Tente novamente o kubeadm init
 sudo kubeadm init --pod-network-cidr=192.168.0.0/16
 ```
 
-> **Coach tip:** The preflight error is very clear. This scenario teaches students to read error messages carefully rather than immediately googling.
+> **Dica para o Coach:** O erro de preflight é muito claro. Este cenário ensina os alunos a ler mensagens de erro cuidadosamente ao invés de sair pesquisando no Google imediatamente.
 
 ---
 
-### Scenario 2: Worker node can't join — bad CA cert hash
+### Cenário 2: Worker node não consegue entrar — hash do certificado CA incorreto
 
-**Diagnosis path for students:**
+**Caminho de diagnóstico para os alunos:**
 
 ```bash
-# The error message mentions "certificate authority" or "unable to fetch kubeadm-config"
-# Compare the hash they used with the real one:
+# A mensagem de erro menciona "certificate authority" ou "unable to fetch kubeadm-config"
+# Compare o hash usado com o real:
 openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | \
   openssl rsa -pubin -outform der 2>/dev/null | \
   openssl dgst -sha256 -hex | sed 's/^.* //'
 ```
 
-**Solution:**
+**Solução:**
 
 ```bash
-# On the control-plane, regenerate the join command
+# No control-plane, regenere o comando de join
 kubeadm token create --print-join-command
-# Copy the full output and run it on the worker
+# Copie a saída completa e execute no worker
 ```
 
-> **Coach tip:** This teaches the security model — `kubeadm join` validates the API server's identity via the CA cert hash. It's the Kubernetes equivalent of SSH host key verification.
+> **Dica para o Coach:** Isso ensina o modelo de segurança — `kubeadm join` valida a identidade do API server via o hash do certificado CA. É o equivalente Kubernetes da verificação de chave de host do SSH.
 
 ---
 
-### Scenario 3: etcd restore — namespace not coming back
+### Cenário 3: Restauração do etcd — namespace não retorna
 
-**Diagnosis path for students:**
+**Caminho de diagnóstico para os alunos:**
 
 ```bash
-# Check where etcd looks for its data
+# Verifique onde o etcd procura seus dados
 sudo grep "data-dir" /etc/kubernetes/manifests/etcd.yaml
-# Compare with where the restore went
+# Compare com onde a restauração foi direcionada
 ls -la /var/lib/etcd*
 ```
 
-**Solution:**
+**Solução:**
 
 ```bash
-# Either restore to the correct directory:
+# Ou restaure para o diretório correto:
 sudo rm -rf /var/lib/etcd
 sudo ETCDCTL_API=3 etcdctl snapshot restore /opt/etcd-backup.db \
   --data-dir=/var/lib/etcd
 
-# Or update the etcd manifest:
+# Ou atualize o manifesto do etcd:
 sudo sed -i 's|/var/lib/etcd|/var/lib/etcd-new|g' /etc/kubernetes/manifests/etcd.yaml
 ```
 
-> **Coach tip:** This is a realistic CKA scenario. The key insight: `--data-dir` in the restore command must match what etcd is configured to use. Always check the static Pod manifest.
+> **Dica para o Coach:** Este é um cenário realista do CKA. O insight chave: `--data-dir` no comando de restauração deve corresponder ao que o etcd está configurado para usar. Sempre verifique o manifesto do static Pod.
 
 ---
 
-### Scenario 4: CRD instance rejected — schema validation
+### Cenário 4: Instância de CRD rejeitada — validação de schema
 
-**Diagnosis path for students:**
+**Caminho de diagnóstico para os alunos:**
 
 ```bash
-# The error message says "must be of type integer"
-# Look at the YAML — retentionDays: "thirty" is a string
+# A mensagem de erro diz "must be of type integer"
+# Olhe o YAML — retentionDays: "thirty" é uma string
 kubectl get crd backupschedules.fasthack.io -o jsonpath='{.spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.retentionDays}'
 # Shows: {"type":"integer"}
 ```
 
-**Solution:** Fix the YAML to use `retentionDays: 30` (integer, not string).
+**Solução:** Corrija o YAML para usar `retentionDays: 30` (inteiro, não string).
 
-> **Coach tip:** CRD schema validation is enforced server-side. Unlike plain ConfigMaps where any string goes, CRDs enforce type safety. This is a feature, not a bug — it catches errors early, just like type checking in systemd unit files.
+> **Dica para o Coach:** A validação de schema do CRD é aplicada no lado do servidor. Diferente de ConfigMaps simples onde qualquer string é aceita, CRDs impõem segurança de tipos. Isso é uma funcionalidade, não um bug — captura erros cedo, assim como verificação de tipos em arquivos unit do systemd.
 
 ---
 
-## Coach Quick Reference — Key Commands Cheat Sheet
+## Referência Rápida do Coach — Folha de Consulta de Comandos Principais
 
 ```bash
 # Bootstrap
@@ -936,15 +931,15 @@ kubeadm init --pod-network-cidr=192.168.0.0/16
 kubeadm token create --print-join-command
 kubeadm join <IP>:6443 --token <TOKEN> --discovery-token-ca-cert-hash sha256:<HASH>
 
-# Upgrade sequence (MEMORIZE for CKA)
+# Sequência de upgrade (MEMORIZE para o CKA)
 kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
-# ... upgrade packages ...
-sudo kubeadm upgrade apply v1.36.x    # first control-plane
-sudo kubeadm upgrade node              # additional CP + workers
+# ... upgrade dos pacotes ...
+sudo kubeadm upgrade apply v1.36.x    # primeiro control-plane
+sudo kubeadm upgrade node              # CP adicional + workers
 sudo systemctl daemon-reload && sudo systemctl restart kubelet
 kubectl uncordon <node>
 
-# etcd backup/restore (MEMORIZE for CKA)
+# Backup/restore do etcd (MEMORIZE para o CKA)
 ETCDCTL_API=3 etcdctl snapshot save /opt/backup.db \
   --endpoints=https://127.0.0.1:2379 \
   --cacert=/etc/kubernetes/pki/etcd/ca.crt \
@@ -958,8 +953,8 @@ kubectl get crds
 kubectl api-resources | grep <group>
 kubectl get <custom-resource>
 
-# Extensions
-kubectl get nodes -o wide                    # CRI info
-ls /etc/cni/net.d/                           # CNI config
-kubectl get csidrivers                       # CSI drivers
+# Extensões
+kubectl get nodes -o wide                    # Informações de CRI
+ls /etc/cni/net.d/                           # Configuração CNI
+kubectl get csidrivers                       # Drivers CSI
 ```

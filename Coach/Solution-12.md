@@ -1,14 +1,14 @@
-# Solution 12 — Observability
+# Solução 12 — Observability
 
-[< Back to Challenge](../Student/Challenge-12.md) | **[Home](README.md)**
+[< Voltar ao Desafio](../Student/Challenge-12.md) | **[Home](README.md)**
 
 ---
 
-## Task 1: Container Logs with `kubectl logs`
+## Tarefa 1: Logs de Container com `kubectl logs`
 
-### Step-by-step
+### Passo a passo
 
-**1a.** Deploy the multi-container logging Pod:
+**1a.** Implante o Pod multi-container de logging:
 
 ```yaml
 # Save as logging-pod.yaml
@@ -47,14 +47,14 @@ kubectl apply -f logging-pod.yaml
 kubectl wait --for=condition=Ready pod/logging-demo --timeout=60s
 ```
 
-**1b.** Practice every log retrieval pattern:
+**1b.** Pratique todos os padrões de recuperação de logs:
 
 ```bash
 # Single container
 kubectl logs pod/logging-demo -c webapp
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 [webapp] Request 0 handled successfully
@@ -84,7 +84,7 @@ kubectl create deployment nginx-log-test --image=nginx:stable --replicas=2
 kubectl logs deployment/nginx-log-test
 ```
 
-**1c.** View previous container logs (critical for debugging crashes):
+**1c.** Visualize logs de containers anteriores (essencial para depurar crashes):
 
 ```bash
 # Force the webapp container to crash
@@ -97,34 +97,34 @@ sleep 5
 kubectl logs pod/logging-demo -c webapp --previous
 ```
 
-Expected: You see the log output from the **terminated** container instance — this is like reading a rotated log file.
+Esperado: Você verá a saída de logs da instância **terminada** do container — é como ler um arquivo de log rotacionado.
 
-### Verification
+### Verificação
 
 ```bash
 # Confirm the container restarted
 kubectl get pod logging-demo
 ```
 
-Expected: `RESTARTS` count ≥ 1, status `Running`.
+Esperado: Contagem de `RESTARTS` ≥ 1, status `Running`.
 
-> **Coach tip:** The `--previous` flag is the #1 most useful debugging tool for CrashLoopBackOff. Make sure students understand this — it retrieves logs from the last terminated container instance.
+> **Dica para o Coach:** A flag `--previous` é a ferramenta de depuração nº 1 mais útil para CrashLoopBackOff. Certifique-se de que os alunos entendam isso — ela recupera os logs da última instância terminada do container.
 
 ---
 
-## Task 2: Resource Metrics with `kubectl top`
+## Tarefa 2: Métricas de Recursos com `kubectl top`
 
-### Step-by-step
+### Passo a passo
 
-Verify Metrics Server is running (installed in Challenge 10):
+Verifique se o Metrics Server está em execução (instalado no Desafio 10):
 
 ```bash
 kubectl -n kube-system get pods -l k8s-app=metrics-server
 ```
 
-Expected: A `metrics-server-xxxx` pod in `Running` state.
+Esperado: Um pod `metrics-server-xxxx` no estado `Running`.
 
-If Metrics Server is NOT running, install and patch it for Kind:
+Se o Metrics Server NÃO estiver em execução, instale e aplique o patch para Kind:
 
 ```bash
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
@@ -134,16 +134,16 @@ kubectl patch -n kube-system deployment metrics-server \
 kubectl -n kube-system rollout status deployment metrics-server
 ```
 
-> **Why the patch?** Kind uses self-signed kubelet certificates. Without `--kubelet-insecure-tls`, Metrics Server refuses to scrape and `kubectl top` fails.
+> **Por que o patch?** O Kind usa certificados kubelet auto-assinados. Sem `--kubelet-insecure-tls`, o Metrics Server se recusa a coletar métricas e o `kubectl top` falha.
 
-Now run metrics commands:
+Agora execute os comandos de métricas:
 
 ```bash
 # Node-level metrics — like running top on each server
 kubectl top nodes
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                     CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
@@ -164,23 +164,23 @@ kubectl top pods -A --sort-by=memory
 kubectl top pods -n kube-system
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl top nodes && kubectl top pods -A --sort-by=memory | head -10
 ```
 
-Both commands should return data without errors.
+Ambos os comandos devem retornar dados sem erros.
 
-> **Coach tip:** If `kubectl top` returns `error: Metrics API not available`, the Metrics Server either isn't installed or failed to start. Check logs: `kubectl -n kube-system logs deployment/metrics-server --tail=20`. The most common issue on Kind is the missing `--kubelet-insecure-tls` flag.
+> **Dica para o Coach:** Se `kubectl top` retornar `error: Metrics API not available`, o Metrics Server não está instalado ou falhou ao iniciar. Verifique os logs: `kubectl -n kube-system logs deployment/metrics-server --tail=20`. O problema mais comum no Kind é a ausência da flag `--kubelet-insecure-tls`.
 
 ---
 
-## Task 3: Deploy Prometheus and Grafana with Helm
+## Tarefa 3: Implantar Prometheus e Grafana com Helm
 
-### Step-by-step
+### Passo a passo
 
-**3a.** Add the Helm repo and install:
+**3a.** Adicione o repositório Helm e instale:
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -194,15 +194,15 @@ helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
   --wait --timeout 5m
 ```
 
-> **Why the two `--set` flags?** They tell Prometheus to discover **all** ServiceMonitors and PodMonitors in the cluster, not just those labeled with the Helm release. Without them, Prometheus misses monitors created outside the Helm release.
+> **Por que as duas flags `--set`?** Elas instruem o Prometheus a descobrir **todos** os ServiceMonitors e PodMonitors no cluster, não apenas aqueles rotulados com o release do Helm. Sem elas, o Prometheus não encontra monitors criados fora do release do Helm.
 
-**3b.** Verify everything is running:
+**3b.** Verifique se tudo está em execução:
 
 ```bash
 kubectl -n monitoring get pods
 ```
 
-Expected output (names will vary):
+Saída esperada (nomes podem variar):
 
 ```
 NAME                                                      READY   STATUS    RESTARTS   AGE
@@ -214,54 +214,54 @@ kube-prometheus-stack-prometheus-node-exporter-xxxxx       1/1     Running   0  
 prometheus-kube-prometheus-stack-prometheus-0              2/2     Running   0          2m
 ```
 
-All pods should be `Running`. This may take 2-5 minutes on Kind.
+Todos os pods devem estar `Running`. Isso pode levar de 2 a 5 minutos no Kind.
 
-**3c.** Retrieve the Grafana admin password:
+**3c.** Recupere a senha admin do Grafana:
 
 ```bash
 kubectl -n monitoring get secret kube-prometheus-stack-grafana \
   -o jsonpath="{.data.admin-password}" | base64 --decode; echo
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 prom-operator
 ```
 
-Username is `admin`.
+O nome de usuário é `admin`.
 
-**3d.** Access Grafana via port-forward:
+**3d.** Acesse o Grafana via port-forward:
 
 ```bash
 kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and log in with `admin` / `prom-operator`.
+Abra [http://localhost:3000](http://localhost:3000) e faça login com `admin` / `prom-operator`.
 
-### Verification
+### Verificação
 
-- Grafana login page loads at localhost:3000
-- Login succeeds with `admin` / `prom-operator`
-- Dashboards menu shows pre-configured dashboards
+- A página de login do Grafana carrega em localhost:3000
+- O login funciona com `admin` / `prom-operator`
+- O menu de Dashboards mostra dashboards pré-configurados
 
-> **Coach tip:** If pods are stuck in `Pending`, it's likely resource pressure on the Kind node. Check `kubectl -n monitoring describe pod <name>` for scheduling failures. You can reduce requests with `helm upgrade ... --set prometheus.prometheusSpec.resources.requests.memory=256Mi --reuse-values`.
+> **Dica para o Coach:** Se os pods estiverem presos em `Pending`, provavelmente há pressão de recursos no node do Kind. Verifique com `kubectl -n monitoring describe pod <name>` para falhas de agendamento. Você pode reduzir os requests com `helm upgrade ... --set prometheus.prometheusSpec.resources.requests.memory=256Mi --reuse-values`.
 
 ---
 
-## Task 4: Explore Built-in Grafana Dashboards
+## Tarefa 4: Explorar Dashboards Nativos do Grafana
 
-### Step-by-step
+### Passo a passo
 
-**4a.** In Grafana, navigate to **Dashboards** → **Browse**. Look for these dashboards:
+**4a.** No Grafana, navegue até **Dashboards** → **Browse**. Procure por estes dashboards:
 
-- **Kubernetes / Compute Resources / Cluster** — overall CPU and memory usage
-- **Kubernetes / Compute Resources / Namespace (Pods)** — per-namespace breakdown
-- **Kubernetes / Compute Resources / Pod** — drill into a specific Pod
-- **Node Exporter / Nodes** — node-level OS metrics (like `sar` on Linux)
-- **CoreDNS** — DNS query rates and latency
+- **Kubernetes / Compute Resources / Cluster** — uso geral de CPU e memória
+- **Kubernetes / Compute Resources / Namespace (Pods)** — detalhamento por namespace
+- **Kubernetes / Compute Resources / Pod** — visualização detalhada de um Pod específico
+- **Node Exporter / Nodes** — métricas de SO no nível do node (como `sar` no Linux)
+- **CoreDNS** — taxas de consultas DNS e latência
 
-**4b.** Generate load to see dashboards populate:
+**4b.** Gere carga para ver os dashboards se popularem:
 
 ```bash
 # Create a CPU load generator
@@ -269,49 +269,49 @@ kubectl run metrics-load --image=busybox:stable --restart=Never \
   -- /bin/sh -c "while true; do echo 'working'; done"
 ```
 
-Watch the **Kubernetes / Compute Resources / Cluster** dashboard — CPU usage should climb.
+Observe o dashboard **Kubernetes / Compute Resources / Cluster** — o uso de CPU deve subir.
 
 ```bash
 # Clean up when done observing
 kubectl delete pod metrics-load
 ```
 
-**4c.** (Optional) Access Prometheus UI directly:
+**4c.** (Opcional) Acesse a UI do Prometheus diretamente:
 
 ```bash
 kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090:9090
 ```
 
-Open [http://localhost:9090](http://localhost:9090) → **Status → Targets** to see what Prometheus is scraping.
+Abra [http://localhost:9090](http://localhost:9090) → **Status → Targets** para ver o que o Prometheus está coletando.
 
-### Verification
+### Verificação
 
-- At least 2 Grafana dashboards show real data (CPU, memory graphs)
-- Prometheus Targets page shows healthy scrape targets (green "UP" status)
+- Pelo menos 2 dashboards do Grafana mostram dados reais (gráficos de CPU, memória)
+- A página de Targets do Prometheus mostra alvos de coleta saudáveis (status "UP" em verde)
 
-> **Coach tip:** Students often struggle to find dashboards. In newer Grafana versions, navigate to the hamburger menu → Dashboards. The pre-installed dashboards are in a "General" folder or searchable by name.
+> **Dica para o Coach:** Os alunos frequentemente têm dificuldade para encontrar os dashboards. Em versões mais novas do Grafana, navegue pelo menu hamburger → Dashboards. Os dashboards pré-instalados estão na pasta "General" ou podem ser encontrados pela busca por nome.
 
 ---
 
-## Task 5: The Three Pillars — Logs, Metrics, Traces
+## Tarefa 5: Os Três Pilares — Logs, Métricas, Traces
 
-This is a conceptual checkpoint. Ensure students can explain:
+Este é um checkpoint conceitual. Certifique-se de que os alunos consigam explicar:
 
-| Pillar | Question it answers | Kubernetes tools | Linux analogy |
+| Pilar | Pergunta que responde | Ferramentas Kubernetes | Analogia Linux |
 |---|---|---|---|
-| **Logs** | What discrete events happened? | `kubectl logs`, Fluentd/Fluent Bit, Loki | `journalctl`, `/var/log`, rsyslog |
-| **Metrics** | How are numeric indicators trending? | Metrics Server, Prometheus, Grafana | `sar`, `vmstat`, `top`, collectd |
-| **Traces** | How does a request flow across services? | OpenTelemetry, Jaeger, Zipkin | `strace`, application APM agents |
+| **Logs** | Quais eventos discretos aconteceram? | `kubectl logs`, Fluentd/Fluent Bit, Loki | `journalctl`, `/var/log`, rsyslog |
+| **Métricas** | Como os indicadores numéricos estão evoluindo? | Metrics Server, Prometheus, Grafana | `sar`, `vmstat`, `top`, collectd |
+| **Traces** | Como uma requisição flui entre serviços? | OpenTelemetry, Jaeger, Zipkin | `strace`, agentes APM de aplicação |
 
-> **Coach tip:** Traces are concept-only in this lab. No hands-on tracing setup is required. The key point is understanding where tracing fits — it answers "where did the time go?" for a single request across multiple microservices.
+> **Dica para o Coach:** Traces são apenas conceituais neste laboratório. Não é necessária nenhuma configuração prática de tracing. O ponto-chave é entender onde o tracing se encaixa — ele responde "onde o tempo foi gasto?" para uma única requisição atravessando múltiplos microsserviços.
 
 ---
 
-## Task 6: Liveness, Readiness, and Startup Probes
+## Tarefa 6: Probes de Liveness, Readiness e Startup
 
-### Step-by-step
+### Passo a passo
 
-**6a.** Deploy a Pod with all three probes:
+**6a.** Implante um Pod com os três probes:
 
 ```yaml
 # Save as probed-app.yaml
@@ -372,15 +372,15 @@ kubectl apply -f probed-app.yaml
 kubectl rollout status deployment probed-app
 ```
 
-**6b.** Verify the probes are configured:
+**6b.** Verifique se os probes estão configurados:
 
 ```bash
 kubectl describe pod -l app=probed-app | grep -A 5 "Liveness\|Readiness\|Startup"
 ```
 
-Expected: All three probes listed with their HTTP GET paths and timing parameters.
+Esperado: Todos os três probes listados com seus caminhos HTTP GET e parâmetros de temporização.
 
-**6c.** Observe liveness probe failure — simulate a stuck process:
+**6c.** Observe a falha do liveness probe — simule um processo travado:
 
 ```bash
 # Delete the default nginx page to make the liveness probe fail
@@ -391,21 +391,21 @@ kubectl exec "$POD_NAME" -- rm /usr/share/nginx/html/index.html
 kubectl get pods -l app=probed-app --watch
 ```
 
-Expected: Within ~30 seconds, `RESTARTS` count increases. The probe returned 404 (not 2xx), Kubernetes killed and restarted the container, which restored the default `index.html`.
+Esperado: Em aproximadamente 30 segundos, a contagem de `RESTARTS` aumenta. O probe retornou 404 (não 2xx), o Kubernetes matou e reiniciou o container, o que restaurou o `index.html` padrão.
 
 ```bash
 # Check events for proof
 kubectl describe pod "$POD_NAME" | tail -20
 ```
 
-Expected events:
+Eventos esperados:
 
 ```
 Warning  Unhealthy  Liveness probe failed: HTTP probe failed with statuscode: 404
 Normal   Killing    Container webapp failed liveness probe, will be restarted
 ```
 
-**6d.** Observe readiness probe failure:
+**6d.** Observe a falha do readiness probe:
 
 ```yaml
 # Save as unready-app.yaml
@@ -453,28 +453,28 @@ sleep 10
 kubectl get pods -l app=unready-app
 ```
 
-Expected: Pod shows `0/1 READY` — the `/ready` path doesn't exist in nginx, so the readiness probe fails. The Pod stays running but receives **no traffic**.
+Esperado: O Pod mostra `0/1 READY` — o caminho `/ready` não existe no nginx, então o readiness probe falha. O Pod continua em execução mas **não recebe tráfego**.
 
 ```bash
 kubectl get endpoints unready-app
 ```
 
-Expected: `ENDPOINTS: <none>` — the Service has zero backends.
+Esperado: `ENDPOINTS: <none>` — o Service não tem backends.
 
-### Verification
+### Verificação
 
-- Probed-app: container restarted after liveness failure (RESTARTS ≥ 1)
-- Unready-app: Pod is `0/1 READY`, endpoints list is empty
-- Students can explain: liveness → restart, readiness → remove from endpoints, startup → gate liveness/readiness
+- Probed-app: container reiniciou após falha de liveness (RESTARTS ≥ 1)
+- Unready-app: Pod está `0/1 READY`, lista de endpoints está vazia
+- Os alunos conseguem explicar: liveness → reinicia, readiness → remove dos endpoints, startup → bloqueia liveness/readiness
 
-> **Coach tip:** The key mental model:
-> - **Startup probe** = "Is it done booting?" (gates the other probes)
-> - **Liveness probe** = "Is it still alive?" (like systemd Restart=always)
-> - **Readiness probe** = "Can it serve traffic?" (like Nagios health check driving LB)
+> **Dica para o Coach:** O modelo mental principal:
+> - **Startup probe** = "Ele terminou de inicializar?" (bloqueia os outros probes)
+> - **Liveness probe** = "Ele ainda está vivo?" (como systemd Restart=always)
+> - **Readiness probe** = "Ele pode atender tráfego?" (como health check do Nagios controlando o LB)
 
 ---
 
-## Cleanup
+## Limpeza
 
 ```bash
 kubectl delete -f logging-pod.yaml 2>/dev/null
@@ -488,13 +488,13 @@ kubectl delete pod metrics-load 2>/dev/null
 
 ---
 
-## Common Issues
+## Problemas Comuns
 
-| Problem | Cause | Fix |
+| Problema | Causa | Correção |
 |---------|-------|-----|
-| `kubectl top` returns "Metrics API not available" | Metrics Server not installed or not running | Install and patch for Kind with `--kubelet-insecure-tls` (see Task 2) |
-| kube-prometheus-stack pods stuck in `Pending` | Insufficient resources on Kind node | Reduce resource requests via `helm upgrade ... --set prometheus.prometheusSpec.resources.requests.memory=256Mi --reuse-values` |
-| Grafana port-forward disconnects | Idle timeout or Pod restart | Re-run the `kubectl port-forward` command |
-| Can't find dashboards in Grafana | UI navigation changed in newer versions | Use the search bar (magnifying glass) and type "Kubernetes" |
-| `--previous` flag returns "previous terminated container not found" | Container hasn't crashed yet | Force a crash first with `kubectl exec <pod> -- kill 1`, wait, then retry |
-| Helm install times out | The `--wait` flag waits for all pods to be Ready; resource-heavy on Kind | Add `--timeout 10m` or remove `--wait` and manually verify |
+| `kubectl top` retorna "Metrics API not available" | Metrics Server não instalado ou não está em execução | Instale e aplique o patch para Kind com `--kubelet-insecure-tls` (veja Tarefa 2) |
+| Pods do kube-prometheus-stack presos em `Pending` | Recursos insuficientes no node do Kind | Reduza os resource requests via `helm upgrade ... --set prometheus.prometheusSpec.resources.requests.memory=256Mi --reuse-values` |
+| Port-forward do Grafana desconecta | Timeout por inatividade ou reinício do Pod | Execute novamente o comando `kubectl port-forward` |
+| Não encontra dashboards no Grafana | Navegação da UI mudou em versões mais novas | Use a barra de busca (lupa) e digite "Kubernetes" |
+| Flag `--previous` retorna "previous terminated container not found" | O container ainda não teve crash | Force um crash primeiro com `kubectl exec <pod> -- kill 1`, aguarde e tente novamente |
+| Instalação do Helm excede o timeout | A flag `--wait` aguarda todos os pods ficarem Ready; pesado no Kind | Adicione `--timeout 10m` ou remova `--wait` e verifique manualmente |

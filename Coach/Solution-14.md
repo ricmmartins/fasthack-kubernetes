@@ -1,19 +1,19 @@
-# Solution 14 — Deploy to the Cloud
+# Solução 14 — Deploy na Cloud
 
-[< Back to Challenge](../Student/Challenge-14.md) | **[Home](README.md)**
+[< Voltar para o Desafio](../Student/Challenge-14.md) | **[Home](README.md)**
 
 ---
 
-> **Coach note:** This challenge is **OPTIONAL**. Students need a cloud account with billing enabled. The most critical part of this challenge is the **cleanup** — students MUST delete all cloud resources when done. Monitor this actively.
+> **Nota do Coach:** Este desafio é **OPCIONAL**. Os alunos precisam de uma conta na cloud com faturamento ativado. A parte mais crítica deste desafio é a **limpeza** — os alunos DEVEM excluir todos os recursos da cloud ao finalizar. Monitore isso ativamente.
 
-## Task 0: Prerequisites
+## Tarefa 0: Pré-requisitos
 
-Ensure students have:
-- An active account on their chosen cloud provider
-- The provider's CLI installed and authenticated
-- `kubectl` installed (from previous challenges)
+Certifique-se de que os alunos possuem:
+- Uma conta ativa no provedor de cloud escolhido
+- A CLI do provedor instalada e autenticada
+- `kubectl` instalado (dos desafios anteriores)
 
-### Verify CLI Authentication
+### Verificar Autenticação da CLI
 
 **Azure:**
 
@@ -22,7 +22,7 @@ az login
 az account show
 ```
 
-Expected: Shows subscription name, ID, and tenant.
+Esperado: Exibe o nome da assinatura, ID e tenant.
 
 **AWS:**
 
@@ -30,7 +30,7 @@ Expected: Shows subscription name, ID, and tenant.
 aws sts get-caller-identity
 ```
 
-Expected: Shows Account ID, ARN, and UserID.
+Esperado: Exibe Account ID, ARN e UserID.
 
 **Google Cloud:**
 
@@ -40,15 +40,15 @@ gcloud config set project YOUR_PROJECT_ID
 gcloud config get-value project
 ```
 
-Expected: Shows the configured project ID.
+Esperado: Exibe o ID do projeto configurado.
 
-> **Coach tip:** If students don't have a cloud account, they can pair with someone who does, or skip this challenge entirely — all core learning is in Challenges 01–13.
+> **Dica para o Coach:** Se os alunos não tiverem uma conta na cloud, eles podem fazer par com alguém que tenha, ou pular este desafio completamente — todo o aprendizado essencial está nos Desafios 01–13.
 
 ---
 
-## Task 1: Create a Managed Kubernetes Cluster
+## Tarefa 1: Criar um Cluster Kubernetes Gerenciado
 
-### Step-by-step
+### Passo a passo
 
 #### Azure (AKS)
 
@@ -57,7 +57,7 @@ Expected: Shows the configured project ID.
 az group create --name fasthack-rg --location eastus
 ```
 
-Expected:
+Esperado:
 
 ```json
 {
@@ -78,9 +78,9 @@ az aks create \
   --generate-ssh-keys
 ```
 
-Takes 5–10 minutes. Expected: JSON output with `"provisioningState": "Succeeded"`.
+Leva de 5 a 10 minutos. Esperado: Saída JSON com `"provisioningState": "Succeeded"`.
 
-> 💰 **AKS Free tier:** The control plane is free. You pay only for the 2× Standard_B2s worker nodes (~$0.042/hour each).
+> 💰 **AKS Free tier:** O control plane é gratuito. Você paga apenas pelos 2× Standard_B2s worker nodes (~$0.042/hora cada).
 
 #### AWS (EKS)
 
@@ -93,15 +93,15 @@ eksctl create cluster \
   --nodes 2
 ```
 
-Takes 10–15 minutes. `eksctl` creates the VPC, subnets, security groups, IAM roles, and node group automatically.
+Leva de 10 a 15 minutos. O `eksctl` cria a VPC, subnets, security groups, IAM roles e node group automaticamente.
 
-Expected output ends with:
+A saída esperada termina com:
 
 ```
 EKS cluster "fasthack-eks" in "us-east-1" region is ready
 ```
 
-> 💰 **EKS pricing:** The control plane costs $0.10/hour (~$73/month). Worker nodes are 2× t3.small (~$0.021/hour each). Delete promptly!
+> 💰 **Preço do EKS:** O control plane custa $0.10/hora (~$73/mês). Worker nodes são 2× t3.small (~$0.021/hora cada). Delete prontamente!
 
 #### Google Cloud (GKE)
 
@@ -113,30 +113,30 @@ gcloud container clusters create fasthack-gke \
   --release-channel regular
 ```
 
-Takes 5–10 minutes. Expected:
+Leva de 5 a 10 minutos. Esperado:
 
 ```
 NAME           LOCATION       MASTER_VERSION  NUM_NODES  STATUS
 fasthack-gke   us-central1-a  1.XX.XX-gke.XX  2          RUNNING
 ```
 
-> 💰 **GKE Free tier:** One zonal cluster per billing account gets $74.40/month in free credits. You still pay for node compute (2× e2-small ~$0.017/hour each).
+> 💰 **GKE Free tier:** Um cluster zonal por conta de faturamento recebe $74.40/mês em créditos gratuitos. Você ainda paga pelo compute dos nodes (2× e2-small ~$0.017/hora cada).
 
-### Verification
+### Verificação
 
-After cluster creation:
+Após a criação do cluster:
 
 ```bash
 kubectl get nodes -o wide
 ```
 
-Expected: 2 nodes with cloud provider names (not `kind-control-plane`).
+Esperado: 2 nodes com nomes do provedor de cloud (não `kind-control-plane`).
 
 ---
 
-## Task 2: Connect kubectl to Your Cloud Cluster
+## Tarefa 2: Conectar o kubectl ao Cluster na Cloud
 
-### Step-by-step
+### Passo a passo
 
 #### Azure (AKS)
 
@@ -144,7 +144,7 @@ Expected: 2 nodes with cloud provider names (not `kind-control-plane`).
 az aks get-credentials --resource-group fasthack-rg --name fasthack-aks
 ```
 
-Expected:
+Esperado:
 
 ```
 Merged "fasthack-aks" as current context in /home/user/.kube/config
@@ -156,13 +156,13 @@ Merged "fasthack-aks" as current context in /home/user/.kube/config
 aws eks update-kubeconfig --name fasthack-eks --region us-east-1
 ```
 
-Expected:
+Esperado:
 
 ```
 Updated context arn:aws:eks:us-east-1:XXXX:cluster/fasthack-eks in /home/user/.kube/config
 ```
 
-> Note: `eksctl create cluster` auto-configures kubectl, so this step may already be done.
+> Nota: O `eksctl create cluster` configura o kubectl automaticamente, então este passo pode já estar concluído.
 
 #### Google Cloud (GKE)
 
@@ -170,36 +170,36 @@ Updated context arn:aws:eks:us-east-1:XXXX:cluster/fasthack-eks in /home/user/.k
 gcloud container clusters get-credentials fasthack-gke --zone us-central1-a
 ```
 
-Expected:
+Esperado:
 
 ```
 Fetching cluster endpoint and auth data.
 kubeconfig entry generated for fasthack-gke.
 ```
 
-### Verification
+### Verificação
 
 ```bash
 # Confirm you're connected to the cloud cluster (not Kind)
 kubectl config current-context
 ```
 
-Expected: Context name includes the cloud cluster name (e.g., `fasthack-aks`, `arn:aws:eks:...`, `gke_project_zone_fasthack-gke`).
+Esperado: O nome do contexto inclui o nome do cluster na cloud (ex.: `fasthack-aks`, `arn:aws:eks:...`, `gke_project_zone_fasthack-gke`).
 
 ```bash
 # Verify cloud nodes
 kubectl get nodes -o wide
 ```
 
-Expected: Nodes show cloud-provider instance names and external IPs.
+Esperado: Os nodes mostram nomes de instância do provedor de cloud e IPs externos.
 
 ---
 
-## Task 3: Deploy the Multi-Tier App
+## Tarefa 3: Fazer Deploy da Aplicação Multi-Tier
 
-### Step-by-step
+### Passo a passo
 
-Create `cloud-app.yaml`:
+Crie o arquivo `cloud-app.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -289,27 +289,27 @@ kubectl apply -f cloud-app.yaml
 kubectl get pods --watch
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl get pods
 ```
 
-Expected: 2 backend pods and 2 frontend pods, all `1/1 Running`.
+Esperado: 2 Pods de backend e 2 Pods de frontend, todos `1/1 Running`.
 
 ```bash
 kubectl get svc
 ```
 
-Expected: `backend-svc` with `ClusterIP`, `kubernetes` with `ClusterIP`.
+Esperado: `backend-svc` com `ClusterIP`, `kubernetes` com `ClusterIP`.
 
 ---
 
-## Task 4: Expose the App with a Cloud LoadBalancer
+## Tarefa 4: Expor a Aplicação com um LoadBalancer na Cloud
 
-### Step-by-step
+### Passo a passo
 
-Create `frontend-lb.yaml`:
+Crie o arquivo `frontend-lb.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -333,48 +333,48 @@ kubectl apply -f frontend-lb.yaml
 kubectl get svc frontend-lb --watch
 ```
 
-Expected: `EXTERNAL-IP` transitions from `<pending>` to a real IP address (or hostname on AWS).
+Esperado: O `EXTERNAL-IP` transiciona de `<pending>` para um endereço IP real (ou hostname na AWS).
 
-> **AWS note:** On EKS, the `EXTERNAL-IP` is a DNS hostname (e.g., `abc123.us-east-1.elb.amazonaws.com`), not an IP address. Use it the same way.
+> **Nota sobre AWS:** No EKS, o `EXTERNAL-IP` é um hostname DNS (ex.: `abc123.us-east-1.elb.amazonaws.com`), não um endereço IP. Use-o da mesma forma.
 
-### Verification
+### Verificação
 
 ```bash
 # Replace <EXTERNAL-IP> with the actual IP/hostname
 curl http://<EXTERNAL-IP>
 ```
 
-Expected:
+Esperado:
 
 ```
 Hello from the cloud! ☁️
 ```
 
-🎉 **The application is live on the internet!**
+🎉 **A aplicação está no ar na internet!**
 
-> **Coach tip:** If `EXTERNAL-IP` stays `<pending>` for more than 5 minutes, check: `kubectl describe svc frontend-lb` for events, and ensure the cloud provider has sufficient quota for public IPs.
+> **Dica para o Coach:** Se o `EXTERNAL-IP` permanecer em `<pending>` por mais de 5 minutos, verifique: `kubectl describe svc frontend-lb` para ver os eventos, e certifique-se de que o provedor de cloud tem cota suficiente para IPs públicos.
 
 ---
 
-## Task 5: Cloud-Native Storage (CSI Drivers)
+## Tarefa 5: Armazenamento Cloud-Native (CSI Drivers)
 
-### Step-by-step
+### Passo a passo
 
-Check available StorageClasses:
+Verifique as StorageClasses disponíveis:
 
 ```bash
 kubectl get storageclass
 ```
 
-Expected output varies by provider:
+A saída esperada varia por provedor:
 
-| Provider | Default StorageClass | CSI Driver |
+| Provedor | StorageClass Padrão | CSI Driver |
 |----------|---------------------|------------|
 | AKS | `managed-csi` | `disk.csi.azure.com` |
 | EKS | `gp2` | `ebs.csi.aws.com` |
 | GKE | `standard-rwo` | `pd.csi.storage.gke.io` |
 
-Create a test PVC:
+Crie um PVC de teste:
 
 ```yaml
 # Save as cloud-pvc.yaml
@@ -395,28 +395,28 @@ kubectl apply -f cloud-pvc.yaml
 kubectl get pvc cloud-pvc
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl get pvc cloud-pvc
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME        STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 cloud-pvc   Bound    pvc-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx   1Gi        RWO            <default-sc>   30s
 ```
 
-The PVC should be `Bound` — the cloud provider dynamically provisioned a real disk.
+O PVC deve estar com status `Bound` — o provedor de cloud provisionou dinamicamente um disco real.
 
-> **Coach tip:** Point out the difference from Kind — on Kind, `standard` uses `rancher.io/local-path` (local directory). On cloud, the CSI driver provisions actual cloud disks (Azure Managed Disk, AWS EBS, GCE Persistent Disk). Same API, different backends.
+> **Dica para o Coach:** Destaque a diferença em relação ao Kind — no Kind, `standard` usa `rancher.io/local-path` (diretório local). Na cloud, o CSI driver provisiona discos reais na cloud (Azure Managed Disk, AWS EBS, GCE Persistent Disk). Mesma API, backends diferentes.
 
 ---
 
-## Task 6: Set Up Basic Monitoring
+## Tarefa 6: Configurar Monitoramento Básico
 
-### Step-by-step
+### Passo a passo
 
 #### Azure (AKS) — Azure Monitor Container Insights
 
@@ -427,7 +427,7 @@ az aks enable-addons \
   --addons monitoring
 ```
 
-After a few minutes, view metrics in Azure Portal → AKS cluster → **Insights**.
+Após alguns minutos, visualize as métricas no Portal Azure → cluster AKS → **Insights**.
 
 #### AWS (EKS) — CloudWatch Container Insights
 
@@ -437,38 +437,38 @@ aws eks create-addon \
   --addon-name amazon-cloudwatch-observability
 ```
 
-Verify:
+Verifique:
 
 ```bash
 kubectl get pods -n amazon-cloudwatch
 ```
 
-View metrics in AWS Console → CloudWatch → Container Insights.
+Visualize as métricas no AWS Console → CloudWatch → Container Insights.
 
 #### Google Cloud (GKE) — Cloud Monitoring
 
-GKE has Cloud Monitoring enabled **by default** — no extra steps needed.
+O GKE tem o Cloud Monitoring habilitado **por padrão** — nenhuma etapa extra é necessária.
 
-Verify:
+Verifique:
 
 ```bash
 kubectl get pods -n kube-system -l k8s-app=gke-metrics-agent
 ```
 
-View metrics in Google Cloud Console → Kubernetes Engine → cluster → **Observability**.
+Visualize as métricas no Google Cloud Console → Kubernetes Engine → cluster → **Observability**.
 
-### Verification
+### Verificação
 
-- Monitoring agent pods are running in the respective namespace
-- The cloud provider's console shows basic container metrics
+- Os Pods do agente de monitoramento estão em execução no namespace correspondente
+- O console do provedor de cloud exibe métricas básicas de container
 
 ---
 
-## Task 7: Clean Up Cloud Resources ⚠️
+## Tarefa 7: Limpeza dos Recursos na Cloud ⚠️
 
-> 🔴 **THIS IS THE MOST IMPORTANT STEP. Students MUST delete all cloud resources NOW.**
+> 🔴 **ESTE É O PASSO MAIS IMPORTANTE. Os alunos DEVEM excluir todos os recursos na cloud AGORA.**
 >
-> **Coach: Actively verify that every student has cleaned up before they leave.**
+> **Coach: Verifique ativamente que todos os alunos realizaram a limpeza antes de saírem.**
 
 ### Azure (AKS)
 
@@ -477,7 +477,7 @@ View metrics in Google Cloud Console → Kubernetes Engine → cluster → **Obs
 az group delete --name fasthack-rg --yes --no-wait
 ```
 
-Verify deletion:
+Verifique a exclusão:
 
 ```bash
 az group show --name fasthack-rg 2>/dev/null || echo "Resource group deleted successfully"
@@ -494,9 +494,9 @@ kubectl delete pvc cloud-pvc
 eksctl delete cluster --name fasthack-eks --region us-east-1
 ```
 
-This takes 5–10 minutes. Verify in the AWS Console that no EC2 instances, EBS volumes, or Elastic Load Balancers remain.
+Isso leva de 5 a 10 minutos. Verifique no AWS Console que não restam instâncias EC2, volumes EBS ou Elastic Load Balancers.
 
-> **⚠️ AWS extra check:** If `eksctl delete` fails or hangs, manually check for leftover resources in the AWS Console: EC2 Instances, Load Balancers, VPCs, NAT Gateways, and EBS Volumes in `us-east-1`.
+> **⚠️ Verificação extra na AWS:** Se o `eksctl delete` falhar ou travar, verifique manualmente se há recursos remanescentes no AWS Console: EC2 Instances, Load Balancers, VPCs, NAT Gateways e EBS Volumes em `us-east-1`.
 
 ### Google Cloud (GKE)
 
@@ -505,11 +505,11 @@ This takes 5–10 minutes. Verify in the AWS Console that no EC2 instances, EBS 
 gcloud container clusters delete fasthack-gke --zone us-central1-a --quiet
 ```
 
-Verify in Google Cloud Console that no Compute Engine instances or Load Balancers remain.
+Verifique no Google Cloud Console que não restam instâncias do Compute Engine ou Load Balancers.
 
-### Switch Back to Kind
+### Voltar para o Kind
 
-After cleanup, switch kubectl back to your local Kind cluster:
+Após a limpeza, alterne o kubectl de volta para o cluster Kind local:
 
 ```bash
 kubectl config use-context kind-fasthack
@@ -518,17 +518,17 @@ kubectl config use-context kind-fasthack
 kubectl get nodes
 ```
 
-Expected: Shows `fasthack-control-plane` (the Kind node), not cloud VMs.
+Esperado: Mostra `fasthack-control-plane` (o node do Kind), não VMs na cloud.
 
-### Verification
+### Verificação
 
-- [ ] Cloud cluster is deleted (verify in the provider's web console)
-- [ ] No running VMs, load balancers, or disks remain
-- [ ] kubectl context is back to `kind-fasthack`
+- [ ] O cluster na cloud foi excluído (verifique no console web do provedor)
+- [ ] Não há VMs, load balancers ou discos em execução
+- [ ] O contexto do kubectl está de volta em `kind-fasthack`
 
 ---
 
-## What's Next — Learning Path 🎓
+## Próximos Passos — Trilha de Aprendizado 🎓
 
 ```
 ┌─────────────────────────┐     ┌─────────────────────────────────┐     ┌──────────────────────────────┐
@@ -537,37 +537,37 @@ Expected: Shows `fasthack-control-plane` (the Kind node), not cloud VMs.
 └─────────────────────────┘     └─────────────────────────────────┘     └──────────────────────────────┘
 ```
 
-Recommended next steps for students:
+Próximos passos recomendados para os alunos:
 
-1. **[AI for Infrastructure Professionals](https://ai4infra.com/)** — Learn how to run AI workloads on the infrastructure you just mastered.
-2. **Get Certified** — Students are now prepared for: `KCNA → CKA → CKAD → CKS`
-3. **[Linux FUNdamentals](https://linuxhackathon.com/)** — If they haven't done this hackathon yet, it's the foundation for everything they just learned.
-4. **Give back** — [Open issues](https://github.com/ricmmartins/fasthack-kubernetes/issues) or submit PRs to improve the hackathon!
+1. **[AI for Infrastructure Professionals](https://ai4infra.com/)** — Aprenda como executar workloads de IA na infraestrutura que você acabou de dominar.
+2. **Obtenha uma Certificação** — Os alunos agora estão preparados para: `KCNA → CKA → CKAD → CKS`
+3. **[Linux FUNdamentals](https://linuxhackathon.com/)** — Se ainda não fizeram este hackathon, ele é a base de tudo que acabaram de aprender.
+4. **Contribua** — [Abra issues](https://github.com/ricmmartins/fasthack-kubernetes/issues) ou envie PRs para melhorar o hackathon!
 
 ---
 
-## Common Issues
+## Problemas Comuns
 
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| `az aks create` fails with quota error | Subscription has insufficient vCPU quota for the region | Try a different region: `--location westus2` or request a quota increase |
-| `eksctl create cluster` takes 20+ minutes | EKS cluster creation is naturally slow | Wait patiently — it provisions VPC, subnets, NAT gateways, IAM roles, and nodes |
-| `gcloud` says "billing not enabled" | GCP project needs billing linked | Enable billing in Google Cloud Console → Billing |
-| `EXTERNAL-IP` stuck on `<pending>` | Cloud LB provisioning delay or insufficient permissions | Wait 5 min; check `kubectl describe svc frontend-lb` for events |
-| Can't connect to cloud cluster after creation | kubectl context not updated | Re-run the get-credentials command for your provider |
-| `eksctl delete cluster` hangs | Leftover LoadBalancer resources blocking VPC deletion | Manually delete the ELB in AWS Console, then retry |
-| Student forgot to clean up and left | Resources running = costs accruing | **Coach must verify cleanup.** Use the cloud console to check for orphaned resources |
-| PVC stays Pending on EKS | EBS CSI driver not installed | Run: `eksctl create addon --name aws-ebs-csi-driver --cluster fasthack-eks` |
+| Problema | Causa | Correção |
+|----------|-------|----------|
+| `az aks create` falha com erro de cota | A assinatura não tem cota suficiente de vCPU para a região | Tente uma região diferente: `--location westus2` ou solicite aumento de cota |
+| `eksctl create cluster` leva mais de 20 minutos | A criação do cluster EKS é naturalmente lenta | Aguarde pacientemente — provisiona VPC, subnets, NAT gateways, IAM roles e nodes |
+| `gcloud` exibe "billing not enabled" | O projeto GCP precisa de faturamento vinculado | Habilite o faturamento no Google Cloud Console → Billing |
+| `EXTERNAL-IP` preso em `<pending>` | Atraso no provisionamento do Cloud LB ou permissões insuficientes | Aguarde 5 min; verifique `kubectl describe svc frontend-lb` para ver os eventos |
+| Não consegue conectar ao cluster na cloud após a criação | O contexto do kubectl não foi atualizado | Execute novamente o comando get-credentials do seu provedor |
+| `eksctl delete cluster` trava | Recursos de LoadBalancer remanescentes bloqueando a exclusão da VPC | Exclua manualmente o ELB no AWS Console e tente novamente |
+| Aluno esqueceu de limpar e foi embora | Recursos em execução = custos acumulando | **O Coach deve verificar a limpeza.** Use o console da cloud para verificar recursos órfãos |
+| PVC permanece Pending no EKS | EBS CSI driver não instalado | Execute: `eksctl create addon --name aws-ebs-csi-driver --cluster fasthack-eks` |
 
-## Cloud Provider Quick Reference
+## Referência Rápida dos Provedores de Cloud
 
-| Operation | AKS (Azure) | EKS (AWS) | GKE (Google Cloud) |
-|-----------|-------------|-----------|---------------------|
-| **CLI tool** | `az` | `aws` + `eksctl` | `gcloud` |
-| **Create cluster** | `az aks create` | `eksctl create cluster` | `gcloud container clusters create` |
-| **Get credentials** | `az aks get-credentials` | `aws eks update-kubeconfig` | `gcloud container clusters get-credentials` |
+| Operação | AKS (Azure) | EKS (AWS) | GKE (Google Cloud) |
+|----------|-------------|-----------|---------------------|
+| **Ferramenta CLI** | `az` | `aws` + `eksctl` | `gcloud` |
+| **Criar cluster** | `az aks create` | `eksctl create cluster` | `gcloud container clusters create` |
+| **Obter credenciais** | `az aks get-credentials` | `aws eks update-kubeconfig` | `gcloud container clusters get-credentials` |
 | **CSI driver** | `disk.csi.azure.com` | `ebs.csi.aws.com` | `pd.csi.storage.gke.io` |
-| **Default StorageClass** | `managed-csi` | `gp2` | `standard-rwo` |
-| **Monitoring** | Azure Monitor Container Insights | CloudWatch Container Insights | Cloud Monitoring (auto) |
-| **Control plane cost** | Free (Free tier) | $0.10/hour (~$73/mo) | Free ($74.40/mo credit) |
-| **Delete cluster** | `az group delete --name fasthack-rg --yes` | `eksctl delete cluster --name fasthack-eks` | `gcloud container clusters delete fasthack-gke --quiet` |
+| **StorageClass padrão** | `managed-csi` | `gp2` | `standard-rwo` |
+| **Monitoramento** | Azure Monitor Container Insights | CloudWatch Container Insights | Cloud Monitoring (auto) |
+| **Custo do control plane** | Gratuito (Free tier) | $0.10/hora (~$73/mês) | Gratuito (crédito $74.40/mês) |
+| **Excluir cluster** | `az group delete --name fasthack-rg --yes` | `eksctl delete cluster --name fasthack-eks` | `gcloud container clusters delete fasthack-gke --quiet` |

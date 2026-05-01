@@ -1,21 +1,21 @@
-# Solution 16 — Container Image Engineering
+# Solução 16 — Container Image Engineering
 
-[< Previous Solution](Solution-15.md) - **[Home](README.md)** - [Next Solution >](Solution-17.md)
+[< Solução Anterior](Solution-15.md) - **[Home](README.md)** - [Próxima Solução >](Solution-17.md)
 
 ---
 
-> **Coach note:** This challenge covers CKAD-critical topics: writing Dockerfiles, multi-stage builds, image optimization, registries, and loading images into Kind. Students should have Docker (or Podman) installed from Challenge 01 setup. Task 6 (Podman) is optional if not installed. All other tasks are core.
+> **Nota do Coach:** Este desafio aborda tópicos críticos para o CKAD: escrita de Dockerfiles, multi-stage builds, otimização de imagens, registries e carregamento de imagens no Kind. Os alunos devem ter o Docker (ou Podman) instalado desde a configuração do Desafio 01. A Tarefa 6 (Podman) é opcional caso não esteja instalado. Todas as outras tarefas são essenciais.
 
-## Setup
+## Configuração
 
-Ensure students have Docker running and a Kind cluster named `fasthack`:
+Certifique-se de que os alunos têm o Docker rodando e um cluster Kind chamado `fasthack`:
 
 ```bash
 docker info >/dev/null 2>&1 && echo "Docker OK" || echo "Docker not running"
 kind get clusters | grep fasthack && echo "Kind cluster OK" || echo "No fasthack cluster"
 ```
 
-Create the working directory:
+Crie o diretório de trabalho:
 
 ```bash
 mkdir -p ~/image-lab && cd ~/image-lab
@@ -23,11 +23,11 @@ mkdir -p ~/image-lab && cd ~/image-lab
 
 ---
 
-## Task 1: Write a Dockerfile for a Simple Web Application
+## Tarefa 1: Escrever um Dockerfile para uma Aplicação Web Simples
 
-### Step-by-step
+### Passo a passo
 
-Create the application file:
+Crie o arquivo da aplicação:
 
 ```bash
 cat <<'PYEOF' > app.py
@@ -52,7 +52,7 @@ if __name__ == "__main__":
 PYEOF
 ```
 
-Create the requirements file:
+Crie o arquivo de requisitos:
 
 ```bash
 cat <<'EOF' > requirements.txt
@@ -60,7 +60,7 @@ cat <<'EOF' > requirements.txt
 EOF
 ```
 
-Create the Dockerfile:
+Crie o Dockerfile:
 
 ```bash
 cat <<'DOCKERFILE' > Dockerfile
@@ -79,13 +79,13 @@ CMD ["python", "app.py"]
 DOCKERFILE
 ```
 
-Build the image:
+Faça o build da imagem:
 
 ```bash
 docker build -t myapp:v1 .
 ```
 
-Expected output (key lines):
+Saída esperada (linhas principais):
 
 ```
 [+] Building 12.3s (10/10) FINISHED
@@ -98,7 +98,7 @@ Expected output (key lines):
  => => naming to docker.io/library/myapp:v1
 ```
 
-### Verification
+### Verificação
 
 ```bash
 # Run the container
@@ -108,7 +108,7 @@ docker run --rm -d -p 8080:8080 --name myapp-test myapp:v1
 curl http://localhost:8080
 ```
 
-Expected:
+Esperado:
 
 ```
 Hello from my custom image!
@@ -119,28 +119,28 @@ Hello from my custom image!
 docker images myapp:v1
 ```
 
-Expected (approximately):
+Esperado (aproximadamente):
 
 ```
 REPOSITORY   TAG   IMAGE ID       CREATED          SIZE
 myapp        v1    abc123def456   30 seconds ago   155MB
 ```
 
-Clean up:
+Limpeza:
 
 ```bash
 docker stop myapp-test
 ```
 
-> **Coach tip:** If students see `155MB` for a "hello world" Python app, ask: "Where does that size come from?" Answer: The `python:3.12-slim` base image itself is ~150MB. This motivates Task 2 and Task 3.
+> **Dica para o Coach:** Se os alunos virem `155MB` para uma aplicação Python "hello world", pergunte: "De onde vem esse tamanho?" Resposta: A imagem base `python:3.12-slim` em si tem ~150MB. Isso motiva a Tarefa 2 e a Tarefa 3.
 
 ---
 
-## Task 2: Optimize with Multi-Stage Builds
+## Tarefa 2: Otimizar com Multi-Stage Builds
 
-### Step-by-step
+### Passo a passo
 
-Create the Go application:
+Crie a aplicação em Go:
 
 ```bash
 cat <<'GOEOF' > main.go
@@ -166,7 +166,7 @@ func main() {
 GOEOF
 ```
 
-Create the Go module file:
+Crie o arquivo do módulo Go:
 
 ```bash
 cat <<'EOF' > go.mod
@@ -176,7 +176,7 @@ go 1.22
 EOF
 ```
 
-Create the **single-stage** Dockerfile:
+Crie o Dockerfile **single-stage**:
 
 ```bash
 cat <<'DOCKERFILE' > Dockerfile.single
@@ -194,7 +194,7 @@ CMD ["/app"]
 DOCKERFILE
 ```
 
-Create the **multi-stage** Dockerfile:
+Crie o Dockerfile **multi-stage**:
 
 ```bash
 cat <<'DOCKERFILE' > Dockerfile.multi
@@ -218,20 +218,20 @@ CMD ["/app"]
 DOCKERFILE
 ```
 
-Build both:
+Faça o build de ambos:
 
 ```bash
 docker build -t myapp:single -f Dockerfile.single .
 docker build -t myapp:multi -f Dockerfile.multi .
 ```
 
-### Verification
+### Verificação
 
 ```bash
 docker images | grep myapp
 ```
 
-Expected (approximate sizes):
+Esperado (tamanhos aproximados):
 
 ```
 REPOSITORY   TAG      IMAGE ID       CREATED          SIZE
@@ -240,16 +240,16 @@ myapp        single   def456abc789   30 seconds ago   1.12GB
 myapp        v1       789abc123def   2 minutes ago    155MB
 ```
 
-**Key observation:** The multi-stage image (`~13.5MB`) is approximately **80x smaller** than the single-stage image (`~1.12GB`).
+**Observação principal:** A imagem multi-stage (`~13.5MB`) é aproximadamente **80x menor** que a imagem single-stage (`~1.12GB`).
 
-Test the multi-stage image:
+Teste a imagem multi-stage:
 
 ```bash
 docker run --rm -d -p 8080:8080 --name multi-test myapp:multi
 curl http://localhost:8080
 ```
 
-Expected:
+Esperado:
 
 ```
 Hello from Go multi-stage build!
@@ -259,7 +259,7 @@ Hello from Go multi-stage build!
 docker stop multi-test
 ```
 
-Inspect the layers to understand the difference:
+Inspecione as camadas para entender a diferença:
 
 ```bash
 # Single-stage: many layers from the Go SDK
@@ -269,17 +269,17 @@ docker history myapp:single --no-trunc --format "{{.Size}}\t{{.CreatedBy}}" | he
 docker history myapp:multi --no-trunc --format "{{.Size}}\t{{.CreatedBy}}" | head -5
 ```
 
-> **Coach tip:** Ask students: "Why does `CGO_ENABLED=0` matter?" Answer: It produces a statically-linked binary that doesn't need glibc. Without it, the binary needs the C library from the build image, and won't run on Alpine (which uses musl, not glibc) or distroless (which has no C library at all).
+> **Dica para o Coach:** Pergunte aos alunos: "Por que `CGO_ENABLED=0` é importante?" Resposta: Ele produz um binário linkado estaticamente que não precisa do glibc. Sem ele, o binário precisa da biblioteca C da imagem de build e não rodará no Alpine (que usa musl, não glibc) ou no distroless (que não tem biblioteca C alguma).
 
 ---
 
-## Task 3: Compare Base Image Sizes
+## Tarefa 3: Comparar Tamanhos de Imagens Base
 
-### Step-by-step
+### Passo a passo
 
-Create three Dockerfiles for different base images:
+Crie três Dockerfiles para diferentes imagens base:
 
-**Ubuntu-based:**
+**Baseado em Ubuntu:**
 
 ```bash
 cat <<'DOCKERFILE' > Dockerfile.ubuntu
@@ -295,7 +295,7 @@ CMD ["/app"]
 DOCKERFILE
 ```
 
-**Alpine-based** (already created as `Dockerfile.multi`):
+**Baseado em Alpine** (já criado como `Dockerfile.multi`):
 
 ```bash
 # Already exists from Task 2
@@ -317,7 +317,7 @@ CMD ["/app"]
 DOCKERFILE
 ```
 
-Build all three:
+Faça o build dos três:
 
 ```bash
 docker build -t myapp:ubuntu -f Dockerfile.ubuntu .
@@ -325,13 +325,13 @@ docker build -t myapp:alpine -f Dockerfile.multi .
 docker build -t myapp:distroless -f Dockerfile.distroless .
 ```
 
-### Verification
+### Verificação
 
 ```bash
 docker images | grep myapp | sort -k7 -h
 ```
 
-Expected (approximate):
+Esperado (aproximado):
 
 ```
 REPOSITORY   TAG          IMAGE ID       CREATED          SIZE
@@ -341,7 +341,7 @@ myapp        ubuntu       ccc333ddd444   45 seconds ago   85.8MB
 myapp        single       ddd444eee555   2 minutes ago    1.12GB
 ```
 
-Verify all three work:
+Verifique que os três funcionam:
 
 ```bash
 # Test Ubuntu variant
@@ -357,9 +357,9 @@ docker run --rm -d -p 8080:8080 --name test-distroless myapp:distroless
 curl http://localhost:8080 && docker stop test-distroless
 ```
 
-All three should return: `Hello from Go multi-stage build!`
+Todos os três devem retornar: `Hello from Go multi-stage build!`
 
-Test shell access:
+Teste o acesso ao shell:
 
 ```bash
 # Ubuntu — has a full shell
@@ -375,24 +375,24 @@ docker run --rm -it myapp:distroless /bin/sh
 # Error: exec: "/bin/sh": stat /bin/sh: no such file or directory
 ```
 
-### Comparison Table
+### Tabela Comparativa
 
-| Base Image | Size | Shell? | Package Manager? | Best For |
+| Imagem Base | Tamanho | Shell? | Gerenciador de Pacotes? | Melhor Para |
 |---|---|---|---|---|
-| `ubuntu:24.04` | ~85MB | ✅ bash | ✅ apt | Development, debugging, apps needing system libraries |
-| `alpine:3.20` | ~13MB | ✅ sh | ✅ apk | Good balance of size and debuggability |
-| `distroless/static` | ~8MB | ❌ | ❌ | Production — smallest attack surface |
-| `golang:1.22` (single) | ~1.1GB | ✅ bash | ✅ apt | Never use as runtime base |
+| `ubuntu:24.04` | ~85MB | ✅ bash | ✅ apt | Desenvolvimento, debugging, apps que precisam de bibliotecas do sistema |
+| `alpine:3.20` | ~13MB | ✅ sh | ✅ apk | Bom equilíbrio entre tamanho e capacidade de debug |
+| `distroless/static` | ~8MB | ❌ | ❌ | Produção — menor superfície de ataque |
+| `golang:1.22` (single) | ~1.1GB | ✅ bash | ✅ apt | Nunca use como base de runtime |
 
-> **Coach tip:** Ask students which they'd choose for a CKAD exam scenario. Answer: For the exam, use `alpine` — it's small and you can still exec into it. For production security questions, the answer is `distroless`.
+> **Dica para o Coach:** Pergunte aos alunos qual escolheriam em um cenário de exame CKAD. Resposta: Para o exame, use `alpine` — é pequeno e ainda permite exec para dentro do container. Para questões de segurança em produção, a resposta é `distroless`.
 
 ---
 
-## Task 4: Create a .dockerignore File
+## Tarefa 4: Criar um Arquivo .dockerignore
 
-### Step-by-step
+### Passo a passo
 
-Create files that should NOT end up in the image:
+Crie arquivos que NÃO devem acabar na imagem:
 
 ```bash
 cd ~/image-lab
@@ -401,20 +401,20 @@ mkdir -p .git && echo "git data" > .git/HEAD
 dd if=/dev/zero of=large-test-data.bin bs=1M count=50
 ```
 
-Build without `.dockerignore` and observe the context:
+Faça o build sem `.dockerignore` e observe o contexto:
 
 ```bash
 docker build -t myapp:no-ignore -f Dockerfile .
 ```
 
-Expected — look for the build context transfer (BuildKit shows this differently but the context is still sent):
+Esperado — observe a transferência do contexto de build (BuildKit mostra diferente, mas o contexto ainda é enviado):
 
 ```
  => [internal] load build context
  => => transferring context: 52.43MB
 ```
 
-Now create the `.dockerignore`:
+Agora crie o `.dockerignore`:
 
 ```bash
 cat <<'EOF' > .dockerignore
@@ -431,28 +431,28 @@ node_modules
 EOF
 ```
 
-Rebuild:
+Refaça o build:
 
 ```bash
 docker build -t myapp:with-ignore -f Dockerfile .
 ```
 
-Expected:
+Esperado:
 
 ```
  => [internal] load build context
  => => transferring context: 1.23kB
 ```
 
-### Verification
+### Verificação
 
-Verify excluded files are not in the image:
+Verifique que os arquivos excluídos não estão na imagem:
 
 ```bash
 docker run --rm myapp:with-ignore ls -la /app/
 ```
 
-Expected — only `app.py` and `requirements.txt` should be present:
+Esperado — apenas `app.py` e `requirements.txt` devem estar presentes:
 
 ```
 total 8
@@ -462,30 +462,30 @@ drwxr-xr-x 1 root root 4096 ... ..
 -rw-r--r-- 1 root root  ...  requirements.txt
 ```
 
-**No `.env`, no `.git`, no `large-test-data.bin`, no `Dockerfile`.**
+**Sem `.env`, sem `.git`, sem `large-test-data.bin`, sem `Dockerfile`.**
 
-Clean up the test files:
+Limpe os arquivos de teste:
 
 ```bash
 rm -f .env large-test-data.bin
 rm -rf .git
 ```
 
-> **Coach tip:** Emphasize the security angle: without `.dockerignore`, `.env` files with secrets, `.git` directories with full commit history, and other sensitive files get baked into the image. Anyone who pulls the image can extract them.
+> **Dica para o Coach:** Enfatize o aspecto de segurança: sem `.dockerignore`, arquivos `.env` com segredos, diretórios `.git` com histórico completo de commits e outros arquivos sensíveis são incluídos na imagem. Qualquer pessoa que fizer pull da imagem pode extraí-los.
 
 ---
 
-## Task 5: Tag and Push to a Local Registry
+## Tarefa 5: Taguear e Fazer Push para um Registry Local
 
-### Step-by-step
+### Passo a passo
 
-Start the local registry:
+Inicie o registry local:
 
 ```bash
 docker run -d -p 5000:5000 --name local-registry registry:2
 ```
 
-Expected:
+Esperado:
 
 ```
 Unable to find image 'registry:2' locally
@@ -495,20 +495,20 @@ Status: Downloaded newer image for registry:2
 <container-id>
 ```
 
-Verify it's running:
+Verifique que está rodando:
 
 ```bash
 docker ps | grep registry
 curl http://localhost:5000/v2/
 ```
 
-Expected from curl:
+Esperado do curl:
 
 ```
 {}
 ```
 
-Tag and push images:
+Taguear e fazer push das imagens:
 
 ```bash
 docker tag myapp:multi localhost:5000/myapp:v1
@@ -517,7 +517,7 @@ docker push localhost:5000/myapp:v1
 docker push localhost:5000/myapp:latest
 ```
 
-Expected push output:
+Saída esperada do push:
 
 ```
 The push refers to repository [localhost:5000/myapp]
@@ -526,16 +526,16 @@ def456: Pushed
 v1: digest: sha256:... size: 739
 ```
 
-### Verification
+### Verificação
 
-Query the registry API:
+Consulte a API do registry:
 
 ```bash
 # List all repositories
 curl http://localhost:5000/v2/_catalog
 ```
 
-Expected:
+Esperado:
 
 ```json
 {"repositories":["myapp"]}
@@ -546,13 +546,13 @@ Expected:
 curl http://localhost:5000/v2/myapp/tags/list
 ```
 
-Expected:
+Esperado:
 
 ```json
 {"name":"myapp","tags":["v1","latest"]}
 ```
 
-Prove round-trip works — delete local and pull from registry:
+Prove que o ciclo completo funciona — delete a imagem local e faça pull do registry:
 
 ```bash
 docker rmi localhost:5000/myapp:v1
@@ -561,7 +561,7 @@ docker run --rm -d -p 8080:8080 --name registry-test localhost:5000/myapp:v1
 curl http://localhost:8080
 ```
 
-Expected:
+Esperado:
 
 ```
 Hello from Go multi-stage build!
@@ -571,7 +571,7 @@ Hello from Go multi-stage build!
 docker stop registry-test
 ```
 
-Clean up the registry container (optional — keep it for other experiments):
+Limpe o container do registry (opcional — mantenha para outros experimentos):
 
 ```bash
 docker stop local-registry && docker rm local-registry
@@ -579,32 +579,32 @@ docker stop local-registry && docker rm local-registry
 
 ---
 
-## Task 6: Build with Podman (Rootless)
+## Tarefa 6: Build com Podman (Rootless)
 
-> **Coach note:** This task is optional. If students don't have Podman installed and can't easily install it, they should document the commands and note the differences instead.
+> **Nota do Coach:** Esta tarefa é opcional. Se os alunos não têm o Podman instalado e não podem instalá-lo facilmente, eles devem documentar os comandos e anotar as diferenças.
 
-### Step-by-step
+### Passo a passo
 
-Verify Podman is installed:
+Verifique se o Podman está instalado:
 
 ```bash
 podman --version
 ```
 
-Expected (version may vary):
+Esperado (a versão pode variar):
 
 ```
 podman version 5.x.x
 ```
 
-Build the same image with Podman:
+Faça o build da mesma imagem com Podman:
 
 ```bash
 cd ~/image-lab
 podman build -t myapp:podman -f Dockerfile.multi .
 ```
 
-Expected output — nearly identical to Docker's output:
+Saída esperada — quase idêntica à saída do Docker:
 
 ```
 STEP 1/7: FROM golang:1.22 AS builder
@@ -619,27 +619,27 @@ COMMIT myapp:podman
 Successfully tagged localhost/myapp:podman
 ```
 
-### Verification
+### Verificação
 
 ```bash
 podman images | grep myapp
 ```
 
-Expected:
+Esperado:
 
 ```
 REPOSITORY                TAG       IMAGE ID      CREATED        SIZE
 localhost/myapp            podman    abc123def456  30 seconds ago  13.5 MB
 ```
 
-Run the image:
+Execute a imagem:
 
 ```bash
 podman run --rm -d -p 8081:8080 --name podman-test myapp:podman
 curl http://localhost:8081
 ```
 
-Expected:
+Esperado:
 
 ```
 Hello from Go multi-stage build!
@@ -649,7 +649,7 @@ Hello from Go multi-stage build!
 podman stop podman-test
 ```
 
-Verify rootless execution:
+Verifique a execução rootless:
 
 ```bash
 # Podman runs as the current user — no root needed
@@ -657,56 +657,56 @@ whoami
 podman info | grep rootless
 ```
 
-Expected:
+Esperado:
 
 ```
 <your-username>
     rootless: true
 ```
 
-### Key Comparisons for Students
+### Comparações Importantes para os Alunos
 
-| Feature | Docker | Podman |
+| Funcionalidade | Docker | Podman |
 |---------|--------|--------|
-| Build command | `docker build -t img .` | `podman build -t img .` |
-| Daemon required | Yes (`dockerd`) | No |
-| Default user for builds | root | Current user (rootless) |
-| Image compatibility | OCI/Docker format | OCI/Docker format |
-| Dockerfile syntax | Standard | Same — no changes needed |
+| Comando de build | `docker build -t img .` | `podman build -t img .` |
+| Daemon necessário | Sim (`dockerd`) | Não |
+| Usuário padrão para builds | root | Usuário atual (rootless) |
+| Compatibilidade de imagem | Formato OCI/Docker | Formato OCI/Docker |
+| Sintaxe do Dockerfile | Padrão | Igual — nenhuma alteração necessária |
 
-> **Coach tip:** If a student asks "why would I use Podman?", the answer is security. In enterprise environments, running a root-level Docker daemon is a security concern. Podman eliminates that by running entirely in userspace. Some organizations mandate Podman for this reason.
+> **Dica para o Coach:** Se um aluno perguntar "por que eu usaria Podman?", a resposta é segurança. Em ambientes corporativos, executar um daemon Docker com privilégios de root é uma preocupação de segurança. O Podman elimina isso executando inteiramente no espaço do usuário. Algumas organizações exigem Podman por esse motivo.
 
 ---
 
-## Task 7: Load a Custom Image into Kind and Deploy
+## Tarefa 7: Carregar uma Imagem Customizada no Kind e Fazer Deploy
 
-### Step-by-step
+### Passo a passo
 
-Load the multi-stage image into the Kind cluster:
+Carregue a imagem multi-stage no cluster Kind:
 
 ```bash
 kind load docker-image myapp:multi --name fasthack
 ```
 
-Expected:
+Esperado:
 
 ```
 Image: "myapp:multi" with ID "sha256:abc123..." not yet present on node "fasthack-control-plane", loading...
 ```
 
-Verify the image is available inside the Kind node:
+Verifique se a imagem está disponível dentro do node Kind:
 
 ```bash
 docker exec -it fasthack-control-plane crictl images | grep myapp
 ```
 
-Expected:
+Esperado:
 
 ```
 docker.io/library/myapp    multi    abc123def456   13.5MB
 ```
 
-Create the Pod manifest:
+Crie o manifesto do Pod:
 
 ```bash
 cat <<'EOF' > custom-image-pod.yaml
@@ -727,32 +727,32 @@ spec:
 EOF
 ```
 
-Deploy the Pod:
+Faça o deploy do Pod:
 
 ```bash
 kubectl apply -f custom-image-pod.yaml
 ```
 
-Expected:
+Esperado:
 
 ```
 pod/custom-app created
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl get pod custom-app
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME         READY   STATUS    RESTARTS   AGE
 custom-app   1/1     Running   0          10s
 ```
 
-Test the application via port-forward:
+Teste a aplicação via port-forward:
 
 ```bash
 kubectl port-forward pod/custom-app 8080:8080 &
@@ -760,26 +760,26 @@ sleep 2
 curl http://localhost:8080
 ```
 
-Expected:
+Esperado:
 
 ```
 Hello from my custom Kind image!
 ```
 
-Stop the port-forward:
+Pare o port-forward:
 
 ```bash
 # Kill the background port-forward process
 kill %1 2>/dev/null
 ```
 
-Verify the image details in the Pod:
+Verifique os detalhes da imagem no Pod:
 
 ```bash
 kubectl describe pod custom-app | grep -A 2 "Image:"
 ```
 
-Expected:
+Esperado:
 
 ```
     Image:          myapp:multi
@@ -790,13 +790,13 @@ Expected:
 kubectl describe pod custom-app | grep "Pull"
 ```
 
-Expected — no pull events because `imagePullPolicy: Never`:
+Esperado — sem eventos de pull porque `imagePullPolicy: Never`:
 
 ```
 # No "Pulling image" events — the image was already on the node
 ```
 
-### Bonus: Deploy with a Deployment (not just a Pod)
+### Bônus: Deploy com um Deployment (não apenas um Pod)
 
 ```bash
 cat <<'EOF' > custom-image-deployment.yaml
@@ -840,7 +840,7 @@ kubectl apply -f custom-image-deployment.yaml
 kubectl get pods -l app=custom-app
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME                                READY   STATUS    RESTARTS   AGE
@@ -851,11 +851,11 @@ custom-app-deploy-xxxxxxxxx-ccccc   1/1     Running   0          10s
 
 ---
 
-## Break & Fix Solutions
+## Soluções Break & Fix
 
-### Scenario 1: `RUN` vs `CMD` confusion
+### Cenário 1: Confusão entre `RUN` e `CMD`
 
-**Broken Dockerfile:**
+**Dockerfile com problema:**
 
 ```dockerfile
 FROM python:3.12-slim
@@ -865,7 +865,7 @@ EXPOSE 8080
 RUN python app.py
 ```
 
-**Diagnostic commands:**
+**Comandos de diagnóstico:**
 
 ```bash
 docker build -t broken-cmd .
@@ -878,9 +878,9 @@ docker inspect broken-cmd --format='{{.Config.Cmd}}'
 # Output: [] or null — no CMD set
 ```
 
-**Root cause:** `RUN python app.py` executes during build. The server starts but either hangs the build or exits. There's no `CMD` set for runtime.
+**Causa raiz:** `RUN python app.py` é executado durante o build. O servidor inicia mas ou trava o build ou encerra. Não há `CMD` definido para o runtime.
 
-**Fix:**
+**Correção:**
 
 ```dockerfile
 FROM python:3.12-slim
@@ -890,7 +890,7 @@ EXPOSE 8080
 CMD ["python", "app.py"]
 ```
 
-**Verification:**
+**Verificação:**
 
 ```bash
 docker build -t fixed-cmd .
@@ -902,9 +902,9 @@ docker stop test-cmd
 
 ---
 
-### Scenario 2: Multi-stage build still huge — wrong runtime base
+### Cenário 2: Multi-stage build ainda enorme — base de runtime errada
 
-**Broken Dockerfile:**
+**Dockerfile com problema:**
 
 ```dockerfile
 FROM golang:1.22 AS builder
@@ -918,7 +918,7 @@ EXPOSE 8080
 CMD ["/app"]
 ```
 
-**Diagnostic commands:**
+**Comandos de diagnóstico:**
 
 ```bash
 docker build -t bloated-multi .
@@ -931,9 +931,9 @@ docker images bloated-multi
 docker history bloated-multi | head -3
 ```
 
-**Root cause:** Both stages use `golang:1.22`. The runtime stage should use a minimal image like `alpine:3.20`.
+**Causa raiz:** Ambos os estágios usam `golang:1.22`. O estágio de runtime deveria usar uma imagem mínima como `alpine:3.20`.
 
-**Fix:**
+**Correção:**
 
 ```dockerfile
 FROM golang:1.22 AS builder
@@ -947,7 +947,7 @@ EXPOSE 8080
 CMD ["/app"]
 ```
 
-**Verification:**
+**Verificação:**
 
 ```bash
 docker build -t fixed-multi .
@@ -957,15 +957,15 @@ docker images fixed-multi
 
 ---
 
-### Scenario 3: ErrImagePull with Kind — missing imagePullPolicy
+### Cenário 3: ErrImagePull com Kind — imagePullPolicy ausente
 
-**Setup:**
+**Configuração:**
 
 ```bash
 kind load docker-image myapp:latest --name fasthack
 ```
 
-**Broken manifest:**
+**Manifesto com problema:**
 
 ```yaml
 apiVersion: v1
@@ -980,7 +980,7 @@ spec:
         - containerPort: 8080
 ```
 
-**Diagnostic commands:**
+**Comandos de diagnóstico:**
 
 ```bash
 kubectl apply -f - <<EOF
@@ -1002,16 +1002,16 @@ kubectl get pod pull-fail
 kubectl describe pod pull-fail
 ```
 
-Key events:
+Eventos importantes:
 
 ```
 Warning  Failed   Failed to pull image "myapp:latest": ... not found
 Warning  Failed   Error: ErrImagePull
 ```
 
-**Root cause:** The `:latest` tag causes Kubernetes to default to `imagePullPolicy: Always`, so it tries to pull from a remote registry instead of using the locally loaded image.
+**Causa raiz:** A tag `:latest` faz o Kubernetes usar `imagePullPolicy: Always` por padrão, então ele tenta fazer pull de um registry remoto em vez de usar a imagem carregada localmente.
 
-**Fix:**
+**Correção:**
 
 ```bash
 kubectl delete pod pull-fail
@@ -1031,7 +1031,7 @@ spec:
 EOF
 ```
 
-**Verification:**
+**Verificação:**
 
 ```bash
 kubectl get pod pull-fail
@@ -1040,9 +1040,9 @@ kubectl get pod pull-fail
 
 ---
 
-## Cleanup
+## Limpeza
 
-After the challenge, clean up all resources:
+Após o desafio, limpe todos os recursos:
 
 ```bash
 # Delete Kubernetes resources
@@ -1065,17 +1065,17 @@ rm -rf ~/image-lab
 
 ---
 
-## Common Issues
+## Problemas Comuns
 
-| Problem | Cause | Fix |
+| Problema | Causa | Correção |
 |---------|-------|-----|
-| `docker build` fails with "no such file" | `COPY` source doesn't exist or is excluded by `.dockerignore` | Check that the file exists and isn't in `.dockerignore` |
-| Multi-stage image still large (>100MB) | Runtime stage uses the build base image | Change second `FROM` to `alpine:3.20` or `distroless` |
-| `CGO_ENABLED=0` not set and binary crashes | Dynamic linking against glibc, but Alpine uses musl | Add `CGO_ENABLED=0` to the `go build` command |
-| `kind load docker-image` fails | Image doesn't exist in local Docker cache | Run `docker images \| grep myapp` to verify the tag exists |
-| Pod in `ErrImagePull` after `kind load` | `imagePullPolicy` not set to `Never` or `IfNotPresent` | Add `imagePullPolicy: Never` to the container spec |
-| `:latest` tag causes pull from registry | K8s defaults to `Always` pull for `:latest` | Use a specific tag (`:v1`) or set `imagePullPolicy: Never` |
-| `docker push` to `localhost:5000` fails | Local registry container not running | `docker ps \| grep registry` — restart if needed |
-| `podman build` fails on macOS | Podman machine not initialized | Run `podman machine init && podman machine start` |
-| Build context very large | Missing `.dockerignore` | Create `.dockerignore` excluding `.git`, `*.bin`, `node_modules`, etc. |
-| `EXPOSE` doesn't make the port accessible | `EXPOSE` is documentation only — it doesn't publish ports | Use `-p 8080:8080` with `docker run` or `port-forward` in K8s |
+| `docker build` falha com "no such file" | O source do `COPY` não existe ou está excluído pelo `.dockerignore` | Verifique se o arquivo existe e não está no `.dockerignore` |
+| Imagem multi-stage ainda grande (>100MB) | Estágio de runtime usa a imagem base de build | Mude o segundo `FROM` para `alpine:3.20` ou `distroless` |
+| `CGO_ENABLED=0` não definido e binário crasha | Linkagem dinâmica contra glibc, mas Alpine usa musl | Adicione `CGO_ENABLED=0` ao comando `go build` |
+| `kind load docker-image` falha | Imagem não existe no cache local do Docker | Execute `docker images \| grep myapp` para verificar se a tag existe |
+| Pod em `ErrImagePull` após `kind load` | `imagePullPolicy` não definido como `Never` ou `IfNotPresent` | Adicione `imagePullPolicy: Never` à spec do container |
+| Tag `:latest` causa pull do registry | K8s usa `Always` por padrão para `:latest` | Use uma tag específica (`:v1`) ou defina `imagePullPolicy: Never` |
+| `docker push` para `localhost:5000` falha | Container do registry local não está rodando | `docker ps \| grep registry` — reinicie se necessário |
+| `podman build` falha no macOS | Máquina Podman não inicializada | Execute `podman machine init && podman machine start` |
+| Contexto de build muito grande | `.dockerignore` ausente | Crie `.dockerignore` excluindo `.git`, `*.bin`, `node_modules`, etc. |
+| `EXPOSE` não torna a porta acessível | `EXPOSE` é apenas documentação — não publica portas | Use `-p 8080:8080` com `docker run` ou `port-forward` no K8s |

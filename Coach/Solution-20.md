@@ -1,26 +1,26 @@
-# Solution 20 — Supply Chain & Runtime Security
+# Solução 20 — Supply Chain & Runtime Security
 
-[< Previous Solution](Solution-19.md) - **[Home](README.md)**
+[< Solução Anterior](Solution-19.md) - **[Home](README.md)**
 
 ---
 
-> **Coach note:** This is the final challenge and the most tool-heavy. Students will install multiple CLI tools (Trivy, syft, cosign, kubesec, kube-linter, Falco). Help with tool installation issues — they're not the learning objective. Tasks 1-2 and 7 require VM access (kubeadm cluster from Ch18). Tasks 3-9 can run on Kind. Allow **90–120 minutes** — this is a capstone challenge.
+> **Nota do Coach:** Este é o desafio final e o mais pesado em ferramentas. Os alunos instalarão múltiplas ferramentas CLI (Trivy, syft, cosign, kubesec, kube-linter, Falco). Ajude com problemas de instalação — eles não são o objetivo de aprendizado. As Tarefas 1-2 e 7 requerem acesso à VM (cluster kubeadm do Cap.18). As Tarefas 3-9 podem rodar no Kind. Reserve **90–120 minutos** — este é um desafio de encerramento.
 >
-> **Pre-requisites to verify:**
-> - Students have a working Kind cluster (`kind get clusters`)
-> - For VM tasks: SSH access to kubeadm nodes, AppArmor installed (`which apparmor_parser`)
-> - Docker is running (needed for local registry in Task 5, Kind node access in Task 9)
-> - Helm is installed (needed for Falco in Task 7)
+> **Pré-requisitos para verificar:**
+> - Os alunos têm um cluster Kind funcionando (`kind get clusters`)
+> - Para tarefas na VM: acesso SSH aos nodes kubeadm, AppArmor instalado (`which apparmor_parser`)
+> - Docker em execução (necessário para o registry local na Tarefa 5, acesso ao node Kind na Tarefa 9)
+> - Helm instalado (necessário para o Falco na Tarefa 7)
 
-Estimated time: **90–120 minutes**
+Tempo estimado: **90–120 minutos**
 
 ---
 
-## Task 1: AppArmor Profiles for Containers [VM]
+## Tarefa 1: Perfis AppArmor para Containers [VM]
 
-### Step-by-step
+### Passo a passo
 
-**SSH into the worker node** and create the AppArmor profile:
+**Acesse o worker node via SSH** e crie o perfil AppArmor:
 
 ```bash
 sudo tee /etc/apparmor.d/k8s-deny-etc-write << 'EOF'
@@ -39,29 +39,29 @@ profile k8s-deny-etc-write flags=(attach_disconnected,mediate_deleted) {
 EOF
 ```
 
-Load the profile:
+Carregue o perfil:
 
 ```bash
 sudo apparmor_parser -r /etc/apparmor.d/k8s-deny-etc-write
 ```
 
-### Verification — Profile loaded
+### Verificação — Perfil carregado
 
 ```bash
 sudo aa-status | grep k8s-deny-etc-write
 ```
 
-Expected:
+Esperado:
 
 ```
    k8s-deny-etc-write
 ```
 
-The profile should appear in the `enforce` section.
+O perfil deve aparecer na seção `enforce`.
 
-### Create the Pod
+### Crie o Pod
 
-Save `apparmor-pod.yaml`:
+Salve `apparmor-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -86,21 +86,21 @@ spec:
           memory: 64Mi
 ```
 
-> **For Kubernetes < 1.30**, use the annotation approach:
+> **Para Kubernetes < 1.30**, use a abordagem com annotation:
 > ```yaml
 > metadata:
 >   annotations:
 >     container.apparmor.security.beta.kubernetes.io/shell: localhost/k8s-deny-etc-write
 > ```
 
-Apply:
+Aplique:
 
 ```bash
 kubectl apply -f apparmor-pod.yaml
 kubectl wait --for=condition=ready pod/apparmor-test --timeout=60s
 ```
 
-### Verification — AppArmor enforcement
+### Verificação — Aplicação do AppArmor
 
 ```bash
 # Write to /tmp — should succeed
@@ -108,7 +108,7 @@ kubectl exec apparmor-test -- touch /tmp/allowed
 echo "Exit code: $?"
 ```
 
-Expected: `Exit code: 0`
+Esperado: `Exit code: 0`
 
 ```bash
 # Write to /etc — should fail
@@ -116,34 +116,34 @@ kubectl exec apparmor-test -- touch /etc/blocked
 echo "Exit code: $?"
 ```
 
-Expected:
+Esperado:
 
 ```
 touch: /etc/blocked: Permission denied
 command terminated with exit code 1
 ```
 
-Verify the profile is active:
+Verifique se o perfil está ativo:
 
 ```bash
 kubectl exec apparmor-test -- cat /proc/1/attr/current
 ```
 
-Expected:
+Esperado:
 
 ```
 k8s-deny-etc-write (enforce)
 ```
 
-> **Coach tip:** If students see `unconfined` instead of the profile name, the profile is not loaded on the node where the Pod was scheduled. Check which node the Pod is on (`kubectl get pod -o wide`) and ensure the profile is loaded there.
+> **Dica para o Coach:** Se os alunos virem `unconfined` em vez do nome do perfil, o perfil não está carregado no node onde o Pod foi agendado. Verifique em qual node o Pod está (`kubectl get pod -o wide`) e garanta que o perfil esteja carregado lá.
 
 ---
 
-## Task 2: Custom Seccomp Profiles [VM/Kind]
+## Tarefa 2: Perfis Seccomp Personalizados [VM/Kind]
 
-### Step-by-step
+### Passo a passo
 
-Create the seccomp profile JSON:
+Crie o arquivo JSON do perfil seccomp:
 
 ```bash
 cat > block-dangerous.json << 'EOF'
@@ -175,7 +175,7 @@ cat > block-dangerous.json << 'EOF'
 EOF
 ```
 
-Copy to the kubelet seccomp path:
+Copie para o caminho seccomp do kubelet:
 
 ```bash
 # For VM (kubeadm):
@@ -187,7 +187,7 @@ docker exec fasthack-control-plane mkdir -p /var/lib/kubelet/seccomp/profiles
 docker cp block-dangerous.json fasthack-control-plane:/var/lib/kubelet/seccomp/profiles/
 ```
 
-Save `seccomp-pod.yaml`:
+Salve `seccomp-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -212,21 +212,21 @@ spec:
           memory: 64Mi
 ```
 
-Apply:
+Aplique:
 
 ```bash
 kubectl apply -f seccomp-pod.yaml
 kubectl wait --for=condition=ready pod/seccomp-test --timeout=60s
 ```
 
-### Verification — Blocked syscalls
+### Verificação — Syscalls bloqueadas
 
 ```bash
 # unshare should fail
 kubectl exec seccomp-test -- unshare --user --pid --fork --mount-proc readlink /proc/self/ns/user
 ```
 
-Expected: `unshare: unshare(0x10000000): Operation not permitted` (or similar EPERM error)
+Esperado: `unshare: unshare(0x10000000): Operation not permitted` (ou erro EPERM similar)
 
 ```bash
 # Normal commands should succeed
@@ -234,9 +234,9 @@ kubectl exec seccomp-test -- ls /
 kubectl exec seccomp-test -- whoami
 ```
 
-Expected: Normal output — `ls` and `whoami` don't use blocked syscalls.
+Esperado: Saída normal — `ls` e `whoami` não usam syscalls bloqueadas.
 
-### Verification — RuntimeDefault profile
+### Verificação — Perfil RuntimeDefault
 
 ```bash
 cat > seccomp-default.yaml << 'EOF'
@@ -263,36 +263,36 @@ kubectl wait --for=condition=ready pod/seccomp-default --timeout=60s
 kubectl exec seccomp-default -- ls /
 ```
 
-Expected: Pod runs normally. `RuntimeDefault` is the container runtime's built-in profile — it blocks the most dangerous syscalls (like `reboot`, `kexec_load`) while allowing normal operations.
+Esperado: O Pod executa normalmente. `RuntimeDefault` é o perfil integrado do container runtime — ele bloqueia as syscalls mais perigosas (como `reboot`, `kexec_load`) enquanto permite operações normais.
 
-> **Coach tip:** Explain the seccomp profile types:
-> - `Unconfined` — no filtering (dangerous, avoid in production)
-> - `RuntimeDefault` — CRI's built-in profile (good baseline)
-> - `Localhost` — custom profile on the node (most restrictive, best for defense-in-depth)
+> **Dica para o Coach:** Explique os tipos de perfil seccomp:
+> - `Unconfined` — sem filtragem (perigoso, evite em produção)
+> - `RuntimeDefault` — perfil integrado do CRI (boa linha de base)
+> - `Localhost` — perfil personalizado no node (mais restritivo, melhor para defesa em profundidade)
 >
-> The `localhostProfile` path is relative to `/var/lib/kubelet/seccomp/`. So `profiles/block-dangerous.json` resolves to `/var/lib/kubelet/seccomp/profiles/block-dangerous.json`.
+> O caminho `localhostProfile` é relativo a `/var/lib/kubelet/seccomp/`. Então `profiles/block-dangerous.json` resolve para `/var/lib/kubelet/seccomp/profiles/block-dangerous.json`.
 
 ---
 
-## Task 3: Image Scanning with Trivy [Kind]
+## Tarefa 3: Escaneamento de Imagens com Trivy [Kind]
 
-### Step-by-step
+### Passo a passo
 
-Install Trivy:
+Instale o Trivy:
 
 ```bash
 curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 trivy --version
 ```
 
-### Verification — Scan images
+### Verificação — Escanear imagens
 
 ```bash
 # Scan an older image with known CVEs
 trivy image --severity HIGH,CRITICAL nginx:1.21
 ```
 
-Expected output (truncated):
+Saída esperada (resumida):
 
 ```
 nginx:1.21 (debian 11.2)
@@ -306,7 +306,7 @@ Total: XX (HIGH: XX, CRITICAL: XX)
 ...
 ```
 
-> **Coach tip:** The first run downloads the vulnerability DB (~30MB). If students are offline, they can pre-download with `trivy image --download-db-only`.
+> **Dica para o Coach:** A primeira execução baixa o banco de dados de vulnerabilidades (~30MB). Se os alunos estiverem offline, podem pré-baixar com `trivy image --download-db-only`.
 
 ```bash
 # Scan a newer image — fewer CVEs
@@ -316,10 +316,10 @@ trivy image --severity HIGH,CRITICAL nginx:1.27
 trivy image --severity HIGH,CRITICAL nginx:1.27-alpine
 ```
 
-Students should observe:
-- `nginx:1.21` — many CVEs (dozens of HIGH/CRITICAL)
-- `nginx:1.27` — fewer CVEs (patched packages)
-- `nginx:1.27-alpine` — fewest CVEs (minimal base image)
+Os alunos devem observar:
+- `nginx:1.21` — muitas CVEs (dezenas de HIGH/CRITICAL)
+- `nginx:1.27` — menos CVEs (pacotes atualizados)
+- `nginx:1.27-alpine` — menos CVEs ainda (imagem base mínima)
 
 ```bash
 # JSON output for CI/CD pipelines
@@ -334,25 +334,25 @@ trivy image --ignore-unfixed --severity HIGH,CRITICAL nginx:1.21
 
 ---
 
-## Task 4: SBOM Generation [Kind]
+## Tarefa 4: Geração de SBOM [Kind]
 
-### Step-by-step
+### Passo a passo
 
-Install syft:
+Instale o syft:
 
 ```bash
 curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 syft --version
 ```
 
-### Verification — Generate SBOMs
+### Verificação — Gerar SBOMs
 
 ```bash
 # Human-readable table
 syft nginx:1.27-alpine
 ```
 
-Expected: A table listing all packages (apk packages, OS metadata).
+Esperado: Uma tabela listando todos os pacotes (pacotes apk, metadados do SO).
 
 ```bash
 # CycloneDX JSON
@@ -360,7 +360,7 @@ syft nginx:1.27-alpine -o cyclonedx-json > nginx-sbom.cdx.json
 cat nginx-sbom.cdx.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Components: {len(d.get(\"components\",[]))}')"
 ```
 
-Expected: Shows the number of components (packages) in the SBOM.
+Esperado: Mostra o número de componentes (pacotes) no SBOM.
 
 ```bash
 # SPDX JSON
@@ -372,15 +372,15 @@ syft nginx:1.27-alpine -o spdx-json > nginx-sbom.spdx.json
 trivy image --format cyclonedx -o nginx-trivy-sbom.cdx.json nginx:1.27-alpine
 ```
 
-### Verification — Scan SBOM for vulnerabilities
+### Verificação — Escanear SBOM por vulnerabilidades
 
 ```bash
 trivy sbom nginx-sbom.cdx.json
 ```
 
-Expected: Trivy reads the SBOM and checks each component against the vulnerability database — same results as scanning the image directly.
+Esperado: O Trivy lê o SBOM e verifica cada componente contra o banco de dados de vulnerabilidades — mesmos resultados que escanear a imagem diretamente.
 
-### Verification — Compare image sizes
+### Verificação — Comparar tamanhos de imagens
 
 ```bash
 syft nginx:1.27 2>/dev/null | wc -l
@@ -388,20 +388,20 @@ syft nginx:1.27-alpine 2>/dev/null | wc -l
 syft gcr.io/distroless/static-debian12 2>/dev/null | wc -l
 ```
 
-Expected (approximate):
-- `nginx:1.27` — ~150+ packages
-- `nginx:1.27-alpine` — ~30-50 packages
-- `gcr.io/distroless/static-debian12` — ~5-15 packages
+Esperado (aproximado):
+- `nginx:1.27` — ~150+ pacotes
+- `nginx:1.27-alpine` — ~30-50 pacotes
+- `gcr.io/distroless/static-debian12` — ~5-15 pacotes
 
-> **Coach tip:** This dramatically demonstrates why minimal base images matter. Fewer packages = smaller attack surface = fewer potential CVEs.
+> **Dica para o Coach:** Isso demonstra dramaticamente por que imagens base mínimas importam. Menos pacotes = menor superfície de ataque = menos CVEs potenciais.
 
 ---
 
-## Task 5: Sign and Verify Images with Cosign [Kind]
+## Tarefa 5: Assinar e Verificar Imagens com Cosign [Kind]
 
-### Step-by-step
+### Passo a passo
 
-Install cosign:
+Instale o cosign:
 
 ```bash
 curl -LO "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
@@ -410,23 +410,23 @@ sudo mv cosign-linux-amd64 /usr/local/bin/cosign
 cosign version
 ```
 
-Expected: Version output showing `v2.x.x`.
+Esperado: Saída da versão mostrando `v2.x.x`.
 
-Generate a key pair:
+Gere um par de chaves:
 
 ```bash
 cosign generate-key-pair
 ```
 
-Expected: Creates `cosign.key` (private) and `cosign.pub` (public). Students will be prompted for a password.
+Esperado: Cria `cosign.key` (privada) e `cosign.pub` (pública). Os alunos serão solicitados a definir uma senha.
 
-Start a local registry:
+Inicie um registry local:
 
 ```bash
 docker run -d -p 5000:5000 --name registry registry:2 2>/dev/null || true
 ```
 
-Push an image:
+Envie uma imagem:
 
 ```bash
 docker pull busybox:1.36
@@ -434,21 +434,21 @@ docker tag busybox:1.36 localhost:5000/busybox:signed
 docker push localhost:5000/busybox:signed
 ```
 
-### Verification — Sign the image
+### Verificação — Assinar a imagem
 
 ```bash
 cosign sign --key cosign.key localhost:5000/busybox:signed --allow-insecure-registry
 ```
 
-Expected: Prompts for the private key password, then uploads the signature to the registry. Output shows `Pushing signature to: localhost:5000/busybox:sha256-...`.
+Esperado: Solicita a senha da chave privada e, em seguida, faz upload da assinatura para o registry. A saída mostra `Pushing signature to: localhost:5000/busybox:sha256-...`.
 
-### Verification — Verify the signature
+### Verificação — Verificar a assinatura
 
 ```bash
 cosign verify --key cosign.pub localhost:5000/busybox:signed --allow-insecure-registry
 ```
 
-Expected:
+Esperado:
 
 ```
 Verification for localhost:5000/busybox:signed --
@@ -458,7 +458,7 @@ The following checks were performed on each of these signatures:
 [{"critical":{"identity":...},"optional":null}]
 ```
 
-### Verification — Unsigned image fails verification
+### Verificação — Imagem não assinada falha na verificação
 
 ```bash
 docker tag busybox:1.36 localhost:5000/busybox:unsigned
@@ -466,17 +466,17 @@ docker push localhost:5000/busybox:unsigned
 cosign verify --key cosign.pub localhost:5000/busybox:unsigned --allow-insecure-registry
 ```
 
-Expected: `Error: no matching signatures` — verification fails because the image was never signed.
+Esperado: `Error: no matching signatures` — a verificação falha porque a imagem nunca foi assinada.
 
-> **Coach tip:** This is the same principle as `gpg --verify` for `.deb` packages. In production, you'd integrate cosign verification into admission controllers (like Kyverno or OPA Gatekeeper) to reject unsigned images at deploy time.
+> **Dica para o Coach:** Este é o mesmo princípio do `gpg --verify` para pacotes `.deb`. Em produção, você integraria a verificação do cosign em admission controllers (como Kyverno ou OPA Gatekeeper) para rejeitar imagens não assinadas no momento do deploy.
 
 ---
 
-## Task 6: Static Analysis with Kubesec and KubeLinter [Kind]
+## Tarefa 6: Análise Estática com Kubesec e KubeLinter [Kind]
 
-### Step-by-step
+### Passo a passo
 
-Install tools:
+Instale as ferramentas:
 
 ```bash
 # kubesec
@@ -490,7 +490,7 @@ chmod +x kube-linter-linux
 sudo mv kube-linter-linux /usr/local/bin/kube-linter
 ```
 
-Create the insecure manifest:
+Crie o manifesto inseguro:
 
 ```yaml
 # Save as insecure-pod.yaml
@@ -509,13 +509,13 @@ spec:
         - containerPort: 80
 ```
 
-### Verification — Kubesec scan
+### Verificação — Escaneamento com Kubesec
 
 ```bash
 kubesec scan insecure-pod.yaml
 ```
 
-Expected (JSON output — key fields):
+Esperado (saída JSON — campos-chave):
 
 ```json
 [
@@ -537,21 +537,21 @@ Expected (JSON output — key fields):
 ]
 ```
 
-The negative score indicates severe security issues. `Privileged: true` is the biggest offender.
+A pontuação negativa indica problemas graves de segurança. `Privileged: true` é o maior infrator.
 
-### Verification — KubeLinter scan
+### Verificação — Escaneamento com KubeLinter
 
 ```bash
 kube-linter lint insecure-pod.yaml
 ```
 
-Expected: Multiple findings:
-- `run-as-non-root` — container running as root
-- `no-read-only-root-fs` — root filesystem is writable
-- `unset-cpu-requirements` — no resource limits
-- `unset-memory-requirements` — no resource limits
+Esperado: Múltiplas descobertas:
+- `run-as-non-root` — container executando como root
+- `no-read-only-root-fs` — sistema de arquivos raiz é gravável
+- `unset-cpu-requirements` — sem limites de recursos
+- `unset-memory-requirements` — sem limites de recursos
 
-### Verification — Hardened manifest scores better
+### Verificação — Manifesto hardened pontua melhor
 
 ```yaml
 # Save as secure-pod.yaml
@@ -600,19 +600,19 @@ kubesec scan secure-pod.yaml
 kube-linter lint secure-pod.yaml
 ```
 
-Expected:
-- Kubesec: positive score (e.g., +7 or higher)
-- KubeLinter: significantly fewer or zero findings
+Esperado:
+- Kubesec: pontuação positiva (ex: +7 ou mais)
+- KubeLinter: significativamente menos ou zero descobertas
 
-> **Coach tip:** Have students compare the scores side by side. The jump from -30 to +7 is dramatic and visually demonstrates the impact of security hardening.
+> **Dica para o Coach:** Peça aos alunos para comparar as pontuações lado a lado. O salto de -30 para +7 é dramático e demonstra visualmente o impacto do hardening de segurança.
 
 ---
 
-## Task 7: Runtime Threat Detection with Falco [VM]
+## Tarefa 7: Detecção de Ameaças em Runtime com Falco [VM]
 
-### Step-by-step
+### Passo a passo
 
-Install Falco via Helm:
+Instale o Falco via Helm:
 
 ```bash
 helm repo add falcosecurity https://falcosecurity.github.io/charts
@@ -625,15 +625,15 @@ helm install falco falcosecurity/falco \
   --set tty=true
 ```
 
-> **Coach tip:** If `modern_ebpf` fails (older kernel), try `--set driver.kind=ebpf` or `--set driver.kind=kmod`. The kernel module driver (`kmod`) requires kernel headers: `sudo apt-get install -y linux-headers-$(uname -r)`.
+> **Dica para o Coach:** Se `modern_ebpf` falhar (kernel mais antigo), tente `--set driver.kind=ebpf` ou `--set driver.kind=kmod`. O driver de módulo do kernel (`kmod`) requer os headers do kernel: `sudo apt-get install -y linux-headers-$(uname -r)`.
 
-### Verification — Falco is running
+### Verificação — Falco está em execução
 
 ```bash
 kubectl get pods -n falco
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME          READY   STATUS    RESTARTS   AGE
@@ -644,17 +644,17 @@ falco-xxxxx   2/2     Running   0          60s
 kubectl logs -n falco -l app.kubernetes.io/name=falco --tail=10
 ```
 
-Expected: Log output showing Falco engine started and rules loaded.
+Esperado: Saída de log mostrando que o engine do Falco foi iniciado e as regras foram carregadas.
 
-### Verification — Trigger and detect a shell spawn
+### Verificação — Disparar e detectar a criação de um shell
 
-Terminal 1 — Watch Falco logs:
+Terminal 1 — Monitore os logs do Falco:
 
 ```bash
 kubectl logs -n falco -l app.kubernetes.io/name=falco -f --tail=0
 ```
 
-Terminal 2 — Create a test Pod and exec into it:
+Terminal 2 — Crie um Pod de teste e execute um shell nele:
 
 ```bash
 kubectl run falco-test --image=nginx:1.27-alpine --restart=Never
@@ -662,27 +662,27 @@ kubectl wait --for=condition=ready pod/falco-test --timeout=60s
 kubectl exec -it falco-test -- /bin/sh -c "whoami && cat /etc/shadow && ls /root"
 ```
 
-### Verification — Alert in Falco logs
+### Verificação — Alerta nos logs do Falco
 
-Back in Terminal 1, look for alerts:
+De volta no Terminal 1, procure por alertas:
 
 ```bash
 kubectl logs -n falco -l app.kubernetes.io/name=falco --tail=30 | grep -E "shell|shadow|Terminal"
 ```
 
-Expected alerts (may vary by Falco version):
+Alertas esperados (podem variar conforme a versão do Falco):
 
 ```
 Notice A shell was spawned in a container with an attached terminal (...) container_id=xxx container_name=falco-test
 Warning Sensitive file opened for reading (file=/etc/shadow ...)
 ```
 
-> **Coach tip:** If students don't see alerts, check:
-> 1. Falco driver is loaded: `kubectl logs -n falco -l app.kubernetes.io/name=falco | grep -i driver`
-> 2. Rules are loaded: `kubectl logs -n falco -l app.kubernetes.io/name=falco | grep "Loading rules"`
-> 3. The Pod is on a node where Falco is running (DaemonSet deploys to all nodes)
+> **Dica para o Coach:** Se os alunos não virem alertas, verifique:
+> 1. O driver do Falco está carregado: `kubectl logs -n falco -l app.kubernetes.io/name=falco | grep -i driver`
+> 2. As regras estão carregadas: `kubectl logs -n falco -l app.kubernetes.io/name=falco | grep "Loading rules"`
+> 3. O Pod está em um node onde o Falco está executando (DaemonSet deploya em todos os nodes)
 
-### Verification — Examine Falco rules
+### Verificação — Examinar regras do Falco
 
 ```bash
 # List Falco configmaps
@@ -694,11 +694,11 @@ kubectl get configmap -n falco -l app.kubernetes.io/name=falco -o yaml | grep -A
 
 ---
 
-## Task 8: Container Immutability [Kind]
+## Tarefa 8: Imutabilidade de Containers [Kind]
 
-### Step-by-step
+### Passo a passo
 
-Save `immutable-pod.yaml`:
+Salve `immutable-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -746,14 +746,14 @@ kubectl apply -f immutable-pod.yaml
 kubectl wait --for=condition=ready pod/immutable-app --timeout=60s
 ```
 
-### Verification — Read-only filesystem enforced
+### Verificação — Sistema de arquivos somente leitura aplicado
 
 ```bash
 # Write to root filesystem — should FAIL
 kubectl exec immutable-app -- touch /usr/share/nginx/html/hacked.html
 ```
 
-Expected:
+Esperado:
 
 ```
 touch: /usr/share/nginx/html/hacked.html: Read-only file system
@@ -766,9 +766,9 @@ kubectl exec immutable-app -- touch /tmp/allowed.txt
 echo "Exit code: $?"
 ```
 
-Expected: `Exit code: 0`
+Esperado: `Exit code: 0`
 
-### Verification — Distroless has no shell
+### Verificação — Distroless não possui shell
 
 ```bash
 kubectl run distroless-demo --image=gcr.io/distroless/base-debian12 --restart=Never --command -- sleep 3600
@@ -778,16 +778,16 @@ kubectl wait --for=condition=ready pod/distroless-demo --timeout=60s 2>/dev/null
 kubectl exec -it distroless-demo -- /bin/sh
 ```
 
-Expected:
+Esperado:
 
 ```
 OCI runtime exec failed: exec failed: unable to start container process:
 exec: "/bin/sh": stat /bin/sh: no such file or directory
 ```
 
-> **Coach tip:** This is a powerful security measure — even if an attacker gets RCE in the application, there's no shell to use for lateral movement. Combined with `readOnlyRootFilesystem`, they can't install tools either.
+> **Dica para o Coach:** Esta é uma medida de segurança poderosa — mesmo que um atacante consiga RCE na aplicação, não há shell disponível para movimentação lateral. Combinado com `readOnlyRootFilesystem`, também não é possível instalar ferramentas.
 
-### Verification — Package count comparison
+### Verificação — Comparação de quantidade de pacotes
 
 ```bash
 echo "=== Full Debian-based nginx ==="
@@ -800,15 +800,15 @@ echo "=== Distroless static ==="
 syft gcr.io/distroless/static-debian12 2>/dev/null | wc -l
 ```
 
-Expected: Dramatic decrease in package count — demonstrating the reduced attack surface.
+Esperado: Diminuição dramática na quantidade de pacotes — demonstrando a redução da superfície de ataque.
 
 ---
 
-## Task 9: Kubernetes Audit Log Analysis [Kind]
+## Tarefa 9: Análise de Audit Log do Kubernetes [Kind]
 
-### Step-by-step
+### Passo a passo
 
-Create the audit policy file:
+Crie o arquivo de política de auditoria:
 
 ```bash
 cat > audit-policy.yaml << 'EOF'
@@ -845,7 +845,7 @@ rules:
 EOF
 ```
 
-Create the Kind cluster config:
+Crie a configuração do cluster Kind:
 
 ```bash
 mkdir -p audit-logs
@@ -883,29 +883,29 @@ nodes:
 EOF
 ```
 
-Create the cluster:
+Crie o cluster:
 
 ```bash
 kind create cluster --name audit-lab --config kind-audit.yaml
 ```
 
-### Verification — Audit logging is active
+### Verificação — Auditoria está ativa
 
 ```bash
 # Check the API server has audit flags
 docker exec audit-lab-control-plane cat /etc/kubernetes/manifests/kube-apiserver.yaml | grep audit
 ```
 
-Expected: Lines showing `--audit-policy-file` and `--audit-log-path`.
+Esperado: Linhas mostrando `--audit-policy-file` e `--audit-log-path`.
 
 ```bash
 # Verify audit log file exists
 docker exec audit-lab-control-plane ls -la /var/log/kubernetes/audit.log
 ```
 
-Expected: File exists and is growing.
+Esperado: O arquivo existe e está crescendo.
 
-### Generate audit events
+### Gere eventos de auditoria
 
 ```bash
 # Switch to the audit-lab context
@@ -925,7 +925,7 @@ kubectl wait --for=condition=ready pod/audit-exec --timeout=60s
 kubectl exec audit-exec -- whoami
 ```
 
-### Verification — Analyze audit logs
+### Verificação — Analisar logs de auditoria
 
 ```bash
 # Find secret access events
@@ -941,7 +941,7 @@ for line in sys.stdin:
 "
 ```
 
-Expected: Shows `create audit-test-secret by kubernetes-admin` (and possibly other system secret accesses).
+Esperado: Mostra `create audit-test-secret by kubernetes-admin` (e possivelmente outros acessos de secrets do sistema).
 
 ```bash
 # Find Pod exec events
@@ -957,7 +957,7 @@ for line in sys.stdin:
 "
 ```
 
-Expected: Shows `EXEC into audit-exec by kubernetes-admin`.
+Esperado: Mostra `EXEC into audit-exec by kubernetes-admin`.
 
 ```bash
 # Count API calls per user
@@ -976,23 +976,23 @@ for user, count in users.most_common(10):
 "
 ```
 
-Expected: Shows system accounts (`system:apiserver`, `system:kube-scheduler`, etc.) with the most calls, plus `kubernetes-admin` for the student's actions.
+Esperado: Mostra contas do sistema (`system:apiserver`, `system:kube-scheduler`, etc.) com mais chamadas, além de `kubernetes-admin` para as ações dos alunos.
 
-> **Coach tip:** In a real security investigation, you'd look for:
-> - Unusual users accessing secrets (potential credential theft)
-> - `pods/exec` from unexpected service accounts (potential container escape)
-> - RBAC changes by non-admin users (privilege escalation)
-> - High API call rates from a single source (potential reconnaissance)
+> **Dica para o Coach:** Em uma investigação de segurança real, você procuraria por:
+> - Usuários incomuns acessando secrets (potencial roubo de credenciais)
+> - `pods/exec` de service accounts inesperadas (potencial escape de container)
+> - Alterações de RBAC por usuários não-admin (escalação de privilégios)
+> - Alta taxa de chamadas API de uma única fonte (potencial reconhecimento)
 >
-> The audit policy levels control verbosity:
-> - `None` — don't log
-> - `Metadata` — log who/what/when (not request/response bodies)
-> - `Request` — log metadata + request body
-> - `RequestResponse` — log everything (most verbose, use for sensitive resources)
+> Os níveis da política de auditoria controlam a verbosidade:
+> - `None` — não registrar
+> - `Metadata` — registrar quem/o quê/quando (sem corpos de request/response)
+> - `Request` — registrar metadados + corpo da requisição
+> - `RequestResponse` — registrar tudo (mais verboso, use para recursos sensíveis)
 
 ---
 
-## Clean Up
+## Limpeza
 
 ```bash
 # Task 1-2
@@ -1023,27 +1023,27 @@ rm -f insecure-pod.yaml secure-pod.yaml
 
 ---
 
-## Break & Fix Solutions
+## Soluções Break & Fix
 
-### Scenario 1 — Seccomp profile not being applied
+### Cenário 1 — Perfil Seccomp não está sendo aplicado
 
-**Problem:** Pod spec references `localhostProfile: block-dangerous.json` but the file is at `/var/lib/kubelet/seccomp/profiles/block-dangerous.json`.
+**Problema:** O spec do Pod referencia `localhostProfile: block-dangerous.json` mas o arquivo está em `/var/lib/kubelet/seccomp/profiles/block-dangerous.json`.
 
-**Fix:** Change `localhostProfile` to `profiles/block-dangerous.json` — the path is relative to `/var/lib/kubelet/seccomp/`.
+**Correção:** Altere `localhostProfile` para `profiles/block-dangerous.json` — o caminho é relativo a `/var/lib/kubelet/seccomp/`.
 
-**How to verify the fix:**
+**Como verificar a correção:**
 
 ```bash
 kubectl get pod broken-seccomp -o yaml | grep -A3 seccompProfile
 ```
 
-The `localhostProfile` should show `profiles/block-dangerous.json`.
+O `localhostProfile` deve mostrar `profiles/block-dangerous.json`.
 
-### Scenario 2 — Immutable container crashing on startup
+### Cenário 2 — Container imutável crashando na inicialização
 
-**Problem:** Nginx needs to write to `/var/cache/nginx`, `/var/run`, and `/tmp` but `readOnlyRootFilesystem: true` makes those read-only.
+**Problema:** O Nginx precisa escrever em `/var/cache/nginx`, `/var/run` e `/tmp`, mas `readOnlyRootFilesystem: true` torna esses caminhos somente leitura.
 
-**Fix:** Add `emptyDir` volumes for writable paths:
+**Correção:** Adicione volumes `emptyDir` para os caminhos graváveis:
 
 ```yaml
 volumeMounts:
@@ -1062,7 +1062,7 @@ volumes:
     emptyDir: {}
 ```
 
-**How to verify the fix:**
+**Como verificar a correção:**
 
 ```bash
 kubectl get pod broken-immutable
@@ -1071,11 +1071,11 @@ kubectl exec broken-immutable -- nginx -t
 # Should show "test is successful"
 ```
 
-### Scenario 3 — Falco not detecting anything
+### Cenário 3 — Falco não está detectando nada
 
-**Problem:** eBPF driver failed to load (missing kernel headers or unsupported kernel).
+**Problema:** O driver eBPF falhou ao carregar (headers do kernel ausentes ou kernel não suportado).
 
-**Fix:**
+**Correção:**
 
 ```bash
 # Check driver status
@@ -1090,7 +1090,7 @@ sudo apt-get install -y linux-headers-$(uname -r)
 kubectl rollout restart daemonset/falco -n falco
 ```
 
-**How to verify the fix:**
+**Como verificar a correção:**
 
 ```bash
 kubectl logs -n falco -l app.kubernetes.io/name=falco | grep -i "driver.*loaded\|engine.*started"

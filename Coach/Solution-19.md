@@ -1,39 +1,39 @@
-# Solution 19 — Cluster Security & Hardening
+# Solução 19 — Segurança e Hardening do Cluster
 
-[< Previous Solution](Solution-18.md) - **[Home](README.md)** - [Next Solution >](Solution-20.md)
-
----
-
-> **Coach note:** This is a CKS-focused challenge covering cluster setup security, cluster hardening, audit logging, and encryption at rest. Tasks 1, 6, and 7 **require** kubeadm cluster access (SSH to control-plane node, edit static Pod manifests). Tasks 2–5, 8 can be adapted for Kind with limitations. Budget extra time for Tasks 6 and 7 — editing API server manifests is error-prone and students may need recovery help.
-
-Estimated time: **90–120 minutes**
+[< Solução Anterior](Solution-18.md) - **[Home](README.md)** - [Próxima Solução >](Solution-20.md)
 
 ---
 
-## Task 1: CIS Kubernetes Benchmark with kube-bench
+> **Nota do Coach:** Este é um desafio focado no CKS cobrindo segurança de configuração do cluster, hardening do cluster, audit logging e criptografia em repouso. As Tarefas 1, 6 e 7 **requerem** acesso ao cluster kubeadm (SSH no node control-plane, edição de manifestos de Pod estáticos). As Tarefas 2–5, 8 podem ser adaptadas para Kind com limitações. Reserve tempo extra para as Tarefas 6 e 7 — editar manifestos do API server é propenso a erros e os alunos podem precisar de ajuda para recuperação.
 
-### Step-by-step
+Tempo estimado: **90–120 minutos**
 
-**SSH into the control-plane node:**
+---
+
+## Tarefa 1: CIS Kubernetes Benchmark com kube-bench
+
+### Passo a passo
+
+**Conecte via SSH no node control-plane:**
 
 ```bash
 ssh user@control-plane-ip
 ```
 
-**Download kube-bench:**
+**Baixe o kube-bench:**
 
 ```bash
 curl -L https://github.com/aquasecurity/kube-bench/releases/latest/download/kube-bench_0.10.7_linux_amd64.tar.gz -o kube-bench.tar.gz
 tar xzf kube-bench.tar.gz
 ```
 
-**Run against the control-plane:**
+**Execute contra o control-plane:**
 
 ```bash
 sudo ./kube-bench run --targets master
 ```
 
-### Expected output (abbreviated)
+### Saída esperada (abreviada)
 
 ```
 [INFO] 1 Control Plane Security Configuration
@@ -52,9 +52,9 @@ sudo ./kube-bench run --targets master
 0 checks INFO
 ```
 
-### Common remediations
+### Remediações comuns
 
-**Fix 1 — File permissions too permissive:**
+**Correção 1 — Permissões de arquivo muito permissivas:**
 
 ```bash
 sudo chmod 600 /etc/kubernetes/manifests/kube-apiserver.yaml
@@ -64,42 +64,42 @@ sudo chmod 600 /etc/kubernetes/manifests/etcd.yaml
 sudo chmod 600 /etc/kubernetes/admin.conf
 ```
 
-**Fix 2 — Audit logging not configured (1.2.17–1.2.20):**
+**Correção 2 — Audit logging não configurado (1.2.17–1.2.20):**
 
-This will be fully addressed in Task 6. For now, note that the fix requires:
+Isso será completamente abordado na Tarefa 6. Por agora, note que a correção requer:
 - `--audit-log-path`
 - `--audit-log-maxage`
 - `--audit-log-maxbackup`
 - `--audit-log-maxsize`
 
-**Fix 3 — Encryption provider not configured (1.2.29):**
+**Correção 3 — Encryption provider não configurado (1.2.29):**
 
-This will be addressed in Task 7. Requires `--encryption-provider-config`.
+Isso será abordado na Tarefa 7. Requer `--encryption-provider-config`.
 
-**Fix 4 — Admission controllers:**
+**Correção 4 — Admission controllers:**
 
-If kube-bench reports missing admission controllers, edit `/etc/kubernetes/manifests/kube-apiserver.yaml` and ensure the `--enable-admission-plugins` flag includes required plugins:
+Se o kube-bench reportar admission controllers ausentes, edite `/etc/kubernetes/manifests/kube-apiserver.yaml` e garanta que a flag `--enable-admission-plugins` inclua os plugins necessários:
 
 ```bash
 # Check current admission plugins
 sudo grep admission /etc/kubernetes/manifests/kube-apiserver.yaml
 ```
 
-Standard recommended set:
+Conjunto padrão recomendado:
 
 ```yaml
     - --enable-admission-plugins=NodeRestriction,NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota
 ```
 
-**Fix 5 — kubelet anonymous auth (4.2.1):**
+**Correção 5 — kubelet anonymous auth (4.2.1):**
 
-Check kubelet config:
+Verifique a configuração do kubelet:
 
 ```bash
 sudo cat /var/lib/kubelet/config.yaml | grep -A2 authentication
 ```
 
-Ensure:
+Garanta que:
 
 ```yaml
 authentication:
@@ -107,30 +107,30 @@ authentication:
     enabled: false
 ```
 
-If it's `true`, edit the file and restart kubelet:
+Se estiver `true`, edite o arquivo e reinicie o kubelet:
 
 ```bash
 sudo systemctl restart kubelet
 ```
 
-### Run on worker node
+### Execute no worker node
 
 ```bash
 ssh user@worker-node-ip
 sudo ./kube-bench run --targets node
 ```
 
-### Re-run after fixes
+### Re-execute após as correções
 
 ```bash
 sudo ./kube-bench run --targets master 2>&1 | tail -10
 ```
 
-Expected: fewer FAILs than the initial run.
+Esperado: menos FAILs do que na execução inicial.
 
-> **Coach tip:** Don't let students spend too long chasing every FAIL. The goal is to understand the process — audit, identify, remediate, verify. 5 fixes is sufficient. Tasks 6 and 7 will fix additional findings automatically.
+> **Dica para o Coach:** Não deixe os alunos gastarem muito tempo perseguindo cada FAIL. O objetivo é entender o processo — auditar, identificar, remediar, verificar. 5 correções são suficientes. As Tarefas 6 e 7 corrigirão achados adicionais automaticamente.
 
-### Alternative — Run as Job
+### Alternativa — Executar como Job
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/main/job.yaml
@@ -138,21 +138,21 @@ kubectl wait --for=condition=complete job/kube-bench --timeout=300s
 kubectl logs job/kube-bench
 ```
 
-> **Coach tip:** The Job approach may not detect all findings because it can't access all host-level paths. Running directly on the node is more thorough.
+> **Dica para o Coach:** A abordagem via Job pode não detectar todos os achados porque não consegue acessar todos os caminhos no nível do host. Executar diretamente no node é mais completo.
 
 ---
 
-## Task 2: Ingress with TLS Using cert-manager
+## Tarefa 2: Ingress com TLS Usando cert-manager
 
-### Step-by-step
+### Passo a passo
 
-**Install cert-manager:**
+**Instale o cert-manager:**
 
 ```bash
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
 ```
 
-Wait for all components:
+Aguarde todos os componentes:
 
 ```bash
 kubectl wait --for=condition=available deployment/cert-manager -n cert-manager --timeout=120s
@@ -160,7 +160,7 @@ kubectl wait --for=condition=available deployment/cert-manager-webhook -n cert-m
 kubectl wait --for=condition=available deployment/cert-manager-cainjector -n cert-manager --timeout=120s
 ```
 
-Expected:
+Esperado:
 
 ```
 deployment.apps/cert-manager condition met
@@ -168,9 +168,9 @@ deployment.apps/cert-manager-webhook condition met
 deployment.apps/cert-manager-cainjector condition met
 ```
 
-**Create ClusterIssuer:**
+**Crie o ClusterIssuer:**
 
-Save `self-signed-issuer.yaml`:
+Salve `self-signed-issuer.yaml`:
 
 ```yaml
 apiVersion: cert-manager.io/v1
@@ -185,22 +185,22 @@ spec:
 kubectl apply -f self-signed-issuer.yaml
 ```
 
-### Verification — ClusterIssuer ready
+### Verificação — ClusterIssuer pronto
 
 ```bash
 kubectl get clusterissuer selfsigned-issuer
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME                READY   AGE
 selfsigned-issuer   True    10s
 ```
 
-**Create test app:**
+**Crie o app de teste:**
 
-Save `tls-demo-app.yaml`:
+Salve `tls-demo-app.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -250,9 +250,9 @@ spec:
 kubectl apply -f tls-demo-app.yaml
 ```
 
-**Create Certificate:**
+**Crie o Certificate:**
 
-Save `tls-demo-cert.yaml`:
+Salve `tls-demo-cert.yaml`:
 
 ```yaml
 apiVersion: cert-manager.io/v1
@@ -276,13 +276,13 @@ spec:
 kubectl apply -f tls-demo-cert.yaml
 ```
 
-### Verification — Certificate issued
+### Verificação — Certificate emitido
 
 ```bash
 kubectl get certificate tls-demo-cert
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME            READY   SECRET         AGE
@@ -293,20 +293,20 @@ tls-demo-cert   True    tls-demo-tls   30s
 kubectl get secret tls-demo-tls
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME           TYPE                DATA   AGE
 tls-demo-tls   kubernetes.io/tls   3      30s
 ```
 
-**Inspect the certificate:**
+**Inspecione o certificado:**
 
 ```bash
 kubectl get secret tls-demo-tls -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -text -noout | head -20
 ```
 
-Expected output includes:
+A saída esperada inclui:
 
 ```
         Issuer: CN = tls-demo.local
@@ -316,9 +316,9 @@ Expected output includes:
             DNS:tls-demo.local
 ```
 
-**Create Ingress:**
+**Crie o Ingress:**
 
-Save `tls-demo-ingress.yaml`:
+Salve `tls-demo-ingress.yaml`:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -351,28 +351,28 @@ spec:
 kubectl apply -f tls-demo-ingress.yaml
 ```
 
-### Verification — Ingress with TLS
+### Verificação — Ingress com TLS
 
 ```bash
 kubectl get ingress tls-demo-ingress
 kubectl describe ingress tls-demo-ingress
 ```
 
-The `TLS` section should show the host and secret name.
+A seção `TLS` deve mostrar o host e o nome do Secret.
 
-**Test (if Ingress Controller is running):**
+**Teste (se o Ingress Controller estiver em execução):**
 
 ```bash
 curl -k -H "Host: tls-demo.local" https://localhost
 ```
 
-Expected: `Hello from TLS-secured app!`
+Esperado: `Hello from TLS-secured app!`
 
-> **Coach tip:** If no Ingress Controller is installed, the key learning is the Certificate → Secret → Ingress TLS pipeline. The actual HTTPS test is a bonus. Students should verify the Secret was created with valid TLS data.
+> **Dica para o Coach:** Se nenhum Ingress Controller estiver instalado, o aprendizado principal é o pipeline Certificate → Secret → Ingress TLS. O teste HTTPS real é um bônus. Os alunos devem verificar que o Secret foi criado com dados TLS válidos.
 
-### Alternative — Manual TLS Secret
+### Alternativa — Secret TLS Manual
 
-If cert-manager installation stalls:
+Se a instalação do cert-manager travar:
 
 ```bash
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
@@ -383,17 +383,17 @@ kubectl create secret tls tls-demo-tls --cert=tls.crt --key=tls.key
 
 ---
 
-## Task 3: Default-Deny Egress NetworkPolicy
+## Tarefa 3: NetworkPolicy de Egress Default-Deny
 
-### Step-by-step
+### Passo a passo
 
 ```bash
 kubectl create namespace egress-lab
 ```
 
-**Apply default-deny egress:**
+**Aplique o egress default-deny:**
 
-Save `default-deny-egress.yaml`:
+Salve `default-deny-egress.yaml`:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -411,7 +411,7 @@ spec:
 kubectl apply -f default-deny-egress.yaml
 ```
 
-### Verification — All egress blocked
+### Verificação — Todo egress bloqueado
 
 ```bash
 kubectl run test-pod --image=busybox --namespace=egress-lab --restart=Never -- sleep 3600
@@ -422,17 +422,17 @@ kubectl wait --for=condition=ready pod/test-pod -n egress-lab --timeout=60s
 kubectl exec -n egress-lab test-pod -- wget -qO- --timeout=5 http://google.com 2>&1
 ```
 
-Expected: `wget: bad address 'google.com'` or timeout — DNS resolution fails because all egress (including port 53) is blocked.
+Esperado: `wget: bad address 'google.com'` ou timeout — a resolução DNS falha porque todo egress (incluindo porta 53) está bloqueado.
 
 ```bash
 kubectl exec -n egress-lab test-pod -- nslookup kubernetes.default 2>&1
 ```
 
-Expected: timeout or `nslookup: write to '10.96.0.10': Operation not permitted`
+Esperado: timeout ou `nslookup: write to '10.96.0.10': Operation not permitted`
 
-**Apply selective egress:**
+**Aplique egress seletivo:**
 
-Save `allow-dns-and-api.yaml`:
+Salve `allow-dns-and-api.yaml`:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -467,20 +467,20 @@ spec:
 kubectl apply -f allow-dns-and-api.yaml
 ```
 
-### Verification — Selective egress
+### Verificação — Egress seletivo
 
 ```bash
 kubectl run labeled-pod --image=busybox --namespace=egress-lab --labels="role=api-consumer" --restart=Never -- sleep 3600
 kubectl wait --for=condition=ready pod/labeled-pod -n egress-lab --timeout=60s
 ```
 
-DNS should work:
+DNS deve funcionar:
 
 ```bash
 kubectl exec -n egress-lab labeled-pod -- nslookup kubernetes.default
 ```
 
-Expected:
+Esperado:
 
 ```
 Server:    10.96.0.10
@@ -490,23 +490,23 @@ Name:      kubernetes.default
 Address 1: 10.96.0.1 kubernetes.default.svc.cluster.local
 ```
 
-Internet still blocked:
+Internet ainda bloqueada:
 
 ```bash
 kubectl exec -n egress-lab labeled-pod -- wget -qO- --timeout=5 http://google.com 2>&1
 ```
 
-Expected: timeout (DNS resolves, but the egress policy doesn't allow HTTP to external IPs).
+Esperado: timeout (o DNS resolve, mas a política de egress não permite HTTP para IPs externos).
 
-> **Coach tip:** Students often forget that default-deny blocks DNS too. This is the #1 source of confusion. Emphasize that DNS must be explicitly allowed in egress rules. The unlabeled `test-pod` still has no egress at all — only Pods matching `role: api-consumer` get the DNS exemption.
+> **Dica para o Coach:** Os alunos frequentemente esquecem que o default-deny bloqueia o DNS também. Esta é a fonte #1 de confusão. Enfatize que o DNS deve ser explicitamente permitido nas regras de egress. O `test-pod` sem labels ainda não tem nenhum egress — apenas Pods que correspondem a `role: api-consumer` recebem a exceção de DNS.
 
 ---
 
-## Task 4: Verify Kubernetes Binary Checksums
+## Tarefa 4: Verificar Checksums dos Binários do Kubernetes
 
-### Step-by-step
+### Passo a passo
 
-**Get versions:**
+**Obtenha as versões:**
 
 ```bash
 kubectl version --client --output=yaml | grep gitVersion
@@ -514,7 +514,7 @@ kubelet --version
 kubeadm version -o short
 ```
 
-Example output:
+Exemplo de saída:
 
 ```
   gitVersion: v1.32.0
@@ -522,7 +522,7 @@ Kubernetes v1.32.0
 v1.32.0
 ```
 
-**Verify kubectl:**
+**Verifique o kubectl:**
 
 ```bash
 KUBE_VERSION=$(kubectl version --client -o json | grep -oP '"gitVersion": "\K[^"]+')
@@ -532,13 +532,13 @@ curl -sLO "https://dl.k8s.io/release/${KUBE_VERSION}/bin/linux/amd64/kubectl.sha
 echo "$(cat kubectl.sha256)  $(which kubectl)" | sha256sum --check
 ```
 
-Expected:
+Esperado:
 
 ```
 /usr/local/bin/kubectl: OK
 ```
 
-**Verify kubelet:**
+**Verifique o kubelet:**
 
 ```bash
 KUBELET_VERSION=$(kubelet --version | awk '{print $2}')
@@ -548,13 +548,13 @@ curl -sLO "https://dl.k8s.io/release/${KUBELET_VERSION}/bin/linux/amd64/kubelet.
 echo "$(cat kubelet.sha256)  $(which kubelet)" | sha256sum --check
 ```
 
-Expected:
+Esperado:
 
 ```
 /usr/bin/kubelet: OK
 ```
 
-**Verify kubeadm:**
+**Verifique o kubeadm:**
 
 ```bash
 KUBEADM_VERSION=$(kubeadm version -o short)
@@ -564,31 +564,31 @@ curl -sLO "https://dl.k8s.io/release/${KUBEADM_VERSION}/bin/linux/amd64/kubeadm.
 echo "$(cat kubeadm.sha256)  $(which kubeadm)" | sha256sum --check
 ```
 
-Expected:
+Esperado:
 
 ```
 /usr/bin/kubeadm: OK
 ```
 
-> **Coach tip:** If a student's checksum doesn't match, it could mean: (1) they installed from a different source (package manager vs. direct download — binary path may differ), (2) the binary was compiled locally, or (3) the download was corrupted. On kubeadm clusters installed via apt, the binaries should match the upstream checksums.
+> **Dica para o Coach:** Se o checksum de um aluno não corresponder, pode significar: (1) ele instalou de uma fonte diferente (gerenciador de pacotes vs. download direto — o caminho do binário pode diferir), (2) o binário foi compilado localmente, ou (3) o download foi corrompido. Em clusters kubeadm instalados via apt, os binários devem corresponder aos checksums upstream.
 
-> **Note on SHA512 vs SHA256:** The CKS exam references SHA512 checksums. The Kubernetes release artifacts publish `.sha256` files. Both verify integrity — SHA256 is the standard for K8s releases. If the student wants SHA512 specifically:
+> **Nota sobre SHA512 vs SHA256:** O exame CKS referencia checksums SHA512. Os artefatos de release do Kubernetes publicam arquivos `.sha256`. Ambos verificam integridade — SHA256 é o padrão para releases do K8s. Se o aluno quiser SHA512 especificamente:
 > ```bash
 > sha512sum $(which kubectl)
 > ```
-> Then manually compare against the Kubernetes GitHub release page checksums.
+> Então compare manualmente com os checksums da página de releases do Kubernetes no GitHub.
 
 ---
 
-## Task 5: ServiceAccount Hardening
+## Tarefa 5: Hardening de ServiceAccount
 
-### Step-by-step
+### Passo a passo
 
 ```bash
 kubectl create namespace sa-lab
 ```
 
-**Show default token mounting:**
+**Demonstre a montagem padrão do token:**
 
 ```bash
 kubectl run default-sa-test --image=busybox --namespace=sa-lab --restart=Never -- sleep 3600
@@ -599,7 +599,7 @@ kubectl wait --for=condition=ready pod/default-sa-test -n sa-lab --timeout=60s
 kubectl exec -n sa-lab default-sa-test -- ls /var/run/secrets/kubernetes.io/serviceaccount/
 ```
 
-Expected:
+Esperado:
 
 ```
 ca.crt
@@ -607,20 +607,20 @@ namespace
 token
 ```
 
-The token file contains a JWT that can authenticate to the API server:
+O arquivo token contém um JWT que pode autenticar no API server:
 
 ```bash
 kubectl exec -n sa-lab default-sa-test -- cat /var/run/secrets/kubernetes.io/serviceaccount/token
 ```
 
-**Disable automount on default SA:**
+**Desabilite o automount no SA default:**
 
 ```bash
 kubectl patch serviceaccount default -n sa-lab \
   -p '{"automountServiceAccountToken": false}'
 ```
 
-### Verification — No token on new Pods
+### Verificação — Sem token em novos Pods
 
 ```bash
 kubectl delete pod default-sa-test -n sa-lab
@@ -632,15 +632,15 @@ kubectl wait --for=condition=ready pod/no-token-test -n sa-lab --timeout=60s
 kubectl exec -n sa-lab no-token-test -- ls /var/run/secrets/kubernetes.io/serviceaccount/ 2>&1
 ```
 
-Expected:
+Esperado:
 
 ```
 ls: /var/run/secrets/kubernetes.io/serviceaccount/: No such file or directory
 ```
 
-**Create dedicated ServiceAccount:**
+**Crie um ServiceAccount dedicado:**
 
-Save `app-sa.yaml`:
+Salve `app-sa.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -680,9 +680,9 @@ kubectl apply -f app-sa.yaml
 kubectl create configmap test-config -n sa-lab --from-literal=key1=value1
 ```
 
-**Test dedicated SA:**
+**Teste o SA dedicado:**
 
-Save `sa-test-pod.yaml`:
+Salve `sa-test-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -707,15 +707,15 @@ kubectl apply -f sa-test-pod.yaml
 kubectl wait --for=condition=ready pod/sa-test -n sa-lab --timeout=120s
 ```
 
-### Verification — Least privilege
+### Verificação — Privilégio mínimo
 
-ConfigMaps allowed:
+ConfigMaps permitidos:
 
 ```bash
 kubectl exec -n sa-lab sa-test -- kubectl get configmaps -n sa-lab
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME               DATA   AGE
@@ -723,60 +723,60 @@ kube-root-ca.crt   1      5m
 test-config        1      2m
 ```
 
-Secrets denied:
+Secrets negados:
 
 ```bash
 kubectl exec -n sa-lab sa-test -- kubectl get secrets -n sa-lab 2>&1
 ```
 
-Expected:
+Esperado:
 
 ```
 Error from server (Forbidden): secrets is forbidden: User "system:serviceaccount:sa-lab:configmap-reader" cannot list resource "secrets" in API group "" in the namespace "sa-lab"
 ```
 
-Pods denied:
+Pods negados:
 
 ```bash
 kubectl exec -n sa-lab sa-test -- kubectl get pods -n sa-lab 2>&1
 ```
 
-Expected:
+Esperado:
 
 ```
 Error from server (Forbidden): pods is forbidden: User "system:serviceaccount:sa-lab:configmap-reader" cannot list resource "pods" in API group "" in the namespace "sa-lab"
 ```
 
-**Audit cluster-admin bindings:**
+**Audite bindings cluster-admin:**
 
 ```bash
 kubectl get clusterrolebindings -o json | \
   jq -r '.items[] | select(.roleRef.name=="cluster-admin") | .metadata.name + " -> " + (.subjects[]? | .kind + "/" + .name)'
 ```
 
-Expected output (will vary by cluster):
+Saída esperada (pode variar conforme o cluster):
 
 ```
 cluster-admin -> User/kubernetes-admin
 kubeadm:cluster-admins -> Group/kubeadm:cluster-admins
 ```
 
-> **Coach tip:** Students should understand that every `cluster-admin` binding is a potential security risk. In production, minimize these. The kubeadm bootstrap bindings are expected — look for any unexpected ServiceAccounts or Users with cluster-admin access.
+> **Dica para o Coach:** Os alunos devem entender que cada binding `cluster-admin` é um risco potencial de segurança. Em produção, minimize-os. Os bindings de bootstrap do kubeadm são esperados — procure por ServiceAccounts ou Users inesperados com acesso cluster-admin.
 
 ---
 
-## Task 6: Kubernetes Audit Logging
+## Tarefa 6: Audit Logging do Kubernetes
 
-### Step-by-step
+### Passo a passo
 
-> **Important:** Always backup the API server manifest before editing!
+> **Importante:** Sempre faça backup do manifesto do API server antes de editar!
 > ```bash
 > sudo cp /etc/kubernetes/manifests/kube-apiserver.yaml /etc/kubernetes/manifests/kube-apiserver.yaml.bak
 > ```
 
-**Create audit policy:**
+**Crie a política de auditoria:**
 
-Save as `/etc/kubernetes/audit-policy.yaml`:
+Salve como `/etc/kubernetes/audit-policy.yaml`:
 
 ```yaml
 apiVersion: audit.k8s.io/v1
@@ -853,19 +853,19 @@ rules:
 EOF
 ```
 
-**Create log directory:**
+**Crie o diretório de logs:**
 
 ```bash
 sudo mkdir -p /var/log/kubernetes/audit
 ```
 
-**Edit kube-apiserver.yaml:**
+**Edite o kube-apiserver.yaml:**
 
 ```bash
 sudo vi /etc/kubernetes/manifests/kube-apiserver.yaml
 ```
 
-Add to `spec.containers[0].command`:
+Adicione em `spec.containers[0].command`:
 
 ```yaml
     - --audit-policy-file=/etc/kubernetes/audit-policy.yaml
@@ -875,7 +875,7 @@ Add to `spec.containers[0].command`:
     - --audit-log-maxsize=100
 ```
 
-Add to `spec.containers[0].volumeMounts`:
+Adicione em `spec.containers[0].volumeMounts`:
 
 ```yaml
     - mountPath: /etc/kubernetes/audit-policy.yaml
@@ -885,7 +885,7 @@ Add to `spec.containers[0].volumeMounts`:
       name: audit-log
 ```
 
-Add to `spec.volumes`:
+Adicione em `spec.volumes`:
 
 ```yaml
   - name: audit-policy
@@ -898,7 +898,7 @@ Add to `spec.volumes`:
       type: DirectoryOrCreate
 ```
 
-### Verification — API server restarts
+### Verificação — API server reinicia
 
 ```bash
 # Wait for API server to come back (may take up to 60 seconds)
@@ -906,17 +906,17 @@ sleep 30
 kubectl get nodes
 ```
 
-If `kubectl` hangs, check with:
+Se o `kubectl` travar, verifique com:
 
 ```bash
 sudo crictl ps | grep kube-apiserver
 ```
 
-Expected: a running kube-apiserver container with a recent start time.
+Esperado: um container kube-apiserver em execução com um horário de início recente.
 
-### Verification — Audit logs are generated
+### Verificação — Logs de auditoria são gerados
 
-Generate some activity:
+Gere alguma atividade:
 
 ```bash
 kubectl create namespace audit-test
@@ -925,13 +925,13 @@ kubectl get secrets -n audit-test
 kubectl delete namespace audit-test
 ```
 
-Check audit logs:
+Verifique os logs de auditoria:
 
 ```bash
 sudo tail -5 /var/log/kubernetes/audit/audit.log | jq .
 ```
 
-Expected: JSON entries like:
+Esperado: entradas JSON como:
 
 ```json
 {
@@ -961,50 +961,50 @@ Expected: JSON entries like:
 }
 ```
 
-**Verify key audit policy behaviors:**
+**Verifique os comportamentos principais da política de auditoria:**
 
 ```bash
 # Secrets logged at Metadata level (no request/response body)
 sudo grep '"resource":"secrets"' /var/log/kubernetes/audit/audit.log | jq '.level' | head -3
 ```
 
-Expected: `"Metadata"`
+Esperado: `"Metadata"`
 
 ```bash
 # Health checks NOT logged
 sudo grep 'healthz' /var/log/kubernetes/audit/audit.log | wc -l
 ```
 
-Expected: `0`
+Esperado: `0`
 
-> **Coach tip:** If the API server fails to start after editing, the most common causes are:
-> 1. YAML indentation error in the static Pod manifest
-> 2. Missing volume mount (the container can't see the policy file)
-> 3. Audit policy YAML syntax error
+> **Dica para o Coach:** Se o API server falhar ao iniciar após a edição, as causas mais comuns são:
+> 1. Erro de indentação YAML no manifesto do Pod estático
+> 2. Volume mount ausente (o container não consegue ver o arquivo de política)
+> 3. Erro de sintaxe no YAML da política de auditoria
 >
-> Recovery: `sudo cp /etc/kubernetes/manifests/kube-apiserver.yaml.bak /etc/kubernetes/manifests/kube-apiserver.yaml`
+> Recuperação: `sudo cp /etc/kubernetes/manifests/kube-apiserver.yaml.bak /etc/kubernetes/manifests/kube-apiserver.yaml`
 >
-> To debug: `sudo journalctl -u kubelet --since "5 minutes ago" | grep -i error`
+> Para depurar: `sudo journalctl -u kubelet --since "5 minutes ago" | grep -i error`
 
 ---
 
-## Task 7: Secrets Encryption at Rest
+## Tarefa 7: Criptografia de Secrets em Repouso
 
-### Step-by-step
+### Passo a passo
 
-> **Important:** Backup the API server manifest first!
+> **Importante:** Faça backup do manifesto do API server primeiro!
 > ```bash
 > sudo cp /etc/kubernetes/manifests/kube-apiserver.yaml /etc/kubernetes/manifests/kube-apiserver.yaml.bak
 > ```
 
-**Generate encryption key:**
+**Gere a chave de criptografia:**
 
 ```bash
 ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)
 echo "Encryption key: $ENCRYPTION_KEY"
 ```
 
-**Create EncryptionConfiguration:**
+**Crie o EncryptionConfiguration:**
 
 ```bash
 cat <<EOF | sudo tee /etc/kubernetes/encryption-config.yaml
@@ -1024,13 +1024,13 @@ EOF
 sudo chmod 600 /etc/kubernetes/encryption-config.yaml
 ```
 
-### Verification — Config file valid
+### Verificação — Arquivo de configuração válido
 
 ```bash
 sudo cat /etc/kubernetes/encryption-config.yaml
 ```
 
-Expected:
+Esperado:
 
 ```yaml
 apiVersion: apiserver.config.k8s.io/v1
@@ -1046,15 +1046,15 @@ resources:
       - identity: {}
 ```
 
-**Edit kube-apiserver.yaml:**
+**Edite o kube-apiserver.yaml:**
 
-Add to `spec.containers[0].command`:
+Adicione em `spec.containers[0].command`:
 
 ```yaml
     - --encryption-provider-config=/etc/kubernetes/encryption-config.yaml
 ```
 
-Add to `spec.containers[0].volumeMounts`:
+Adicione em `spec.containers[0].volumeMounts`:
 
 ```yaml
     - mountPath: /etc/kubernetes/encryption-config.yaml
@@ -1062,7 +1062,7 @@ Add to `spec.containers[0].volumeMounts`:
       readOnly: true
 ```
 
-Add to `spec.volumes`:
+Adicione em `spec.volumes`:
 
 ```yaml
   - name: encryption-config
@@ -1071,21 +1071,21 @@ Add to `spec.volumes`:
       type: File
 ```
 
-**Wait for API server restart:**
+**Aguarde o restart do API server:**
 
 ```bash
 sleep 30
 kubectl get nodes
 ```
 
-### Verification — New Secrets are encrypted
+### Verificação — Novos Secrets estão criptografados
 
 ```bash
 kubectl create namespace encryption-test
 kubectl create secret generic encrypted-secret -n encryption-test --from-literal=mykey=mydata
 ```
 
-Read raw data from etcd:
+Leia os dados brutos do etcd:
 
 ```bash
 sudo ETCDCTL_API=3 etcdctl get /registry/secrets/encryption-test/encrypted-secret \
@@ -1095,7 +1095,7 @@ sudo ETCDCTL_API=3 etcdctl get /registry/secrets/encryption-test/encrypted-secre
   | hexdump -C | head -20
 ```
 
-Expected: The output contains `k8s:enc:aescbc:v1:key1:` followed by binary encrypted data:
+Esperado: A saída contém `k8s:enc:aescbc:v1:key1:` seguido de dados binários criptografados:
 
 ```
 00000000  2f 72 65 67 69 73 74 72  79 2f 73 65 63 72 65 74  |/registry/secret|
@@ -1105,28 +1105,28 @@ Expected: The output contains `k8s:enc:aescbc:v1:key1:` followed by binary encry
 00000040  63 3a 76 31 3a 6b 65 79  31 3a ...                |c:v1:key1:...|
 ```
 
-The `k8s:enc:aescbc:v1:key1:` prefix confirms encryption is active.
+O prefixo `k8s:enc:aescbc:v1:key1:` confirma que a criptografia está ativa.
 
-**Verify the Secret is still readable via kubectl (transparent decryption):**
+**Verifique que o Secret ainda é legível via kubectl (descriptografia transparente):**
 
 ```bash
 kubectl get secret encrypted-secret -n encryption-test -o jsonpath='{.data.mykey}' | base64 -d
 ```
 
-Expected: `mydata`
+Esperado: `mydata`
 
-### Re-encrypt existing Secrets
+### Re-criptografe Secrets existentes
 
 ```bash
 kubectl get secrets --all-namespaces -o json | kubectl replace -f -
 ```
 
-Expected: Each Secret is read (decrypted) and written back (encrypted). You may see `replaced` for each Secret.
+Esperado: Cada Secret é lido (descriptografado) e reescrito (criptografado). Você pode ver `replaced` para cada Secret.
 
-> **Coach tip:** Common issues:
-> 1. **API server won't start:** Check `sudo journalctl -u kubelet --since "5 min ago" | grep encrypt` — usually a malformed config or missing volume mount
-> 2. **"invalid key length":** The key must be exactly 32 bytes (base64-encoded result of `head -c 32 /dev/urandom`)
-> 3. **etcdctl not found:** Use `sudo apt install etcd-client` or exec into the etcd Pod:
+> **Dica para o Coach:** Problemas comuns:
+> 1. **API server não inicia:** Verifique `sudo journalctl -u kubelet --since "5 min ago" | grep encrypt` — geralmente um config malformado ou volume mount ausente
+> 2. **"invalid key length":** A chave deve ter exatamente 32 bytes (resultado em base64 de `head -c 32 /dev/urandom`)
+> 3. **etcdctl não encontrado:** Use `sudo apt install etcd-client` ou execute dentro do Pod etcd:
 >    ```bash
 >    kubectl exec -n kube-system etcd-<node-name> -- etcdctl \
 >      --cacert=/etc/kubernetes/pki/etcd/ca.crt \
@@ -1137,15 +1137,15 @@ Expected: Each Secret is read (decrypted) and written back (encrypted). You may 
 
 ---
 
-## Task 8: Block Cloud Metadata Endpoint
+## Tarefa 8: Bloquear Endpoint de Metadata da Cloud
 
-### Step-by-step
+### Passo a passo
 
-Ensure the `egress-lab` namespace and test Pods exist from Task 3.
+Garanta que o namespace `egress-lab` e os Pods de teste da Tarefa 3 existam.
 
-**Apply metadata-blocking policy:**
+**Aplique a política de bloqueio de metadata:**
 
-Save `block-metadata.yaml`:
+Salve `block-metadata.yaml`:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -1173,29 +1173,29 @@ kubectl delete networkpolicy allow-dns-and-api -n egress-lab 2>/dev/null
 kubectl apply -f block-metadata.yaml
 ```
 
-### Verification — Metadata blocked
+### Verificação — Metadata bloqueado
 
 ```bash
 kubectl exec -n egress-lab test-pod -- wget -qO- --timeout=5 http://169.254.169.254/ 2>&1
 ```
 
-Expected: timeout or connection refused — the metadata endpoint is blocked.
+Esperado: timeout ou conexão recusada — o endpoint de metadata está bloqueado.
 
 ```bash
 kubectl exec -n egress-lab test-pod -- wget -qO- --timeout=5 http://kubernetes.default.svc.cluster.local/healthz 2>&1
 ```
 
-Expected: `ok` — general egress still works (except to `169.254.169.254`).
+Esperado: `ok` — o egress geral ainda funciona (exceto para `169.254.169.254`).
 
-> **Coach tip:** On a non-cloud VM (local VMs, bare metal), `169.254.169.254` isn't actually reachable anyway. The learning goal is the NetworkPolicy pattern. In a real cloud environment (AWS, GCP, Azure), this policy prevents Pod-level credential theft from the instance metadata service. The test may show "connection refused" or "network unreachable" rather than a clean block — both indicate the policy is working.
+> **Dica para o Coach:** Em uma VM não-cloud (VMs locais, bare metal), `169.254.169.254` não é realmente alcançável de qualquer forma. O objetivo de aprendizado é o padrão de NetworkPolicy. Em um ambiente cloud real (AWS, GCP, Azure), esta política previne roubo de credenciais no nível do Pod a partir do serviço de metadata da instância. O teste pode mostrar "connection refused" ou "network unreachable" em vez de um bloqueio limpo — ambos indicam que a política está funcionando.
 
-### Verification — Policy details
+### Verificação — Detalhes da política
 
 ```bash
 kubectl describe networkpolicy deny-cloud-metadata -n egress-lab
 ```
 
-Expected:
+Esperado:
 
 ```
 Name:         deny-cloud-metadata
@@ -1214,11 +1214,11 @@ Spec:
 
 ---
 
-## Task 9: Sandboxed Containers with RuntimeClass
+## Tarefa 9: Containers Isolados com RuntimeClass
 
-### Step-by-step
+### Passo a passo
 
-**Install gVisor on each node:**
+**Instale o gVisor em cada node:**
 
 ```bash
 # Add gVisor repo
@@ -1227,7 +1227,7 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gviso
 sudo apt-get update && sudo apt-get install -y runsc
 ```
 
-**Configure containerd:**
+**Configure o containerd:**
 
 ```bash
 # Add the runsc runtime handler
@@ -1240,9 +1240,9 @@ EOF
 sudo systemctl restart containerd
 ```
 
-**Create the RuntimeClass:**
+**Crie o RuntimeClass:**
 
-Save `gvisor-runtimeclass.yaml`:
+Salve `gvisor-runtimeclass.yaml`:
 
 ```yaml
 apiVersion: node.k8s.io/v1
@@ -1256,9 +1256,9 @@ handler: runsc
 kubectl apply -f gvisor-runtimeclass.yaml
 ```
 
-**Deploy a sandboxed Pod:**
+**Faça deploy de um Pod isolado (sandboxed):**
 
-Save `sandboxed-pod.yaml`:
+Salve `sandboxed-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -1280,38 +1280,38 @@ kubectl create namespace sandbox-lab
 kubectl apply -f sandboxed-pod.yaml
 ```
 
-### Verification — gVisor running
+### Verificação — gVisor em execução
 
 ```bash
 kubectl exec -n sandbox-lab sandboxed-pod -- dmesg 2>&1 | head -5
 ```
 
-Expected: Output includes "Starting gVisor..." — this is gVisor's user-space kernel, not the host.
+Esperado: A saída inclui "Starting gVisor..." — este é o kernel user-space do gVisor, não o do host.
 
 ```bash
 kubectl exec -n sandbox-lab sandboxed-pod -- uname -r
 ```
 
-Expected: A synthetic kernel version like `4.4.0` — NOT the host kernel version.
+Esperado: Uma versão de kernel sintética como `4.4.0` — NÃO a versão do kernel do host.
 
-**Compare with a standard Pod:**
+**Compare com um Pod padrão:**
 
 ```bash
 kubectl run standard-pod -n sandbox-lab --image=nginx:1.27 --restart=Never
 kubectl exec -n sandbox-lab standard-pod -- uname -r
 ```
 
-Expected: Returns the actual host kernel (e.g., `6.8.0-xxx`). The difference proves gVisor sandboxing is active.
+Esperado: Retorna o kernel real do host (ex.: `6.8.0-xxx`). A diferença comprova que o sandboxing do gVisor está ativo.
 
-> **Coach tip:** gVisor adds latency to syscalls (they go through user-space instead of directly to the kernel). This is the security-performance tradeoff. Some workloads (high-I/O, GPU) may not work well in gVisor. The CKS exam tests understanding of when and why to use sandboxed runtimes, not deep gVisor tuning.
+> **Dica para o Coach:** O gVisor adiciona latência às syscalls (elas passam pelo user-space em vez de ir diretamente ao kernel). Este é o tradeoff segurança-performance. Algumas cargas de trabalho (alto I/O, GPU) podem não funcionar bem no gVisor. O exame CKS testa o entendimento de quando e por que usar runtimes isolados (sandboxed), não o tuning profundo do gVisor.
 
 ---
 
-## Task 10: Pod-to-Pod Encryption with Cilium WireGuard
+## Tarefa 10: Criptografia Pod-to-Pod com Cilium WireGuard
 
-### Step-by-step
+### Passo a passo
 
-**Install Cilium CLI:**
+**Instale o Cilium CLI:**
 
 ```bash
 CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
@@ -1322,7 +1322,7 @@ sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
 rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
 ```
 
-**Remove existing CNI and install Cilium with WireGuard:**
+**Remova o CNI existente e instale o Cilium com WireGuard:**
 
 ```bash
 # Remove Calico (if installed)
@@ -1337,27 +1337,27 @@ cilium install --version 1.19.3 \
   --set encryption.type=wireguard
 ```
 
-**Wait for Cilium to be ready:**
+**Aguarde o Cilium ficar pronto:**
 
 ```bash
 cilium status --wait
 ```
 
-### Verification — Encryption active
+### Verificação — Criptografia ativa
 
 ```bash
 cilium status | grep Encryption
 ```
 
-Expected:
+Esperado:
 
 ```
 Encryption:   Wireguard [cilium_wg0 (Pubkey: <key>, Port: 51871, Peers: N)]
 ```
 
-Where N = number of other nodes in the cluster.
+Onde N = número de outros nodes no cluster.
 
-**Deploy test workload:**
+**Faça deploy da carga de trabalho de teste:**
 
 ```bash
 kubectl create namespace encryption-test
@@ -1369,37 +1369,37 @@ kubectl expose pod server -n encryption-test --port=80
 kubectl wait -n encryption-test --for=condition=Ready pod --all --timeout=60s
 ```
 
-### Verification — Traffic on WireGuard tunnel
+### Verificação — Tráfego no túnel WireGuard
 
-In one terminal, capture traffic on the WireGuard interface:
+Em um terminal, capture o tráfego na interface WireGuard:
 
 ```bash
 kubectl -n kube-system exec -ti ds/cilium -- bash -c "apt-get update -qq && apt-get install -y -qq tcpdump > /dev/null 2>&1 && tcpdump -c 10 -n -i cilium_wg0"
 ```
 
-In a second terminal, generate traffic:
+Em um segundo terminal, gere tráfego:
 
 ```bash
 kubectl exec -n encryption-test client -- wget -qO- http://server.encryption-test.svc.cluster.local
 ```
 
-Expected: The tcpdump shows TCP traffic on `cilium_wg0` — meaning packets are being routed through the encrypted WireGuard tunnel.
+Esperado: O tcpdump mostra tráfego TCP em `cilium_wg0` — significando que os pacotes estão sendo roteados pelo túnel WireGuard criptografado.
 
-### Verification — Connectivity test
+### Verificação — Teste de conectividade
 
 ```bash
 cilium connectivity test
 ```
 
-Expected: All tests pass. The connectivity test validates encryption, network policies, and DNS resolution.
+Esperado: Todos os testes passam. O teste de conectividade valida criptografia, network policies e resolução DNS.
 
-> **Coach tip:** Cilium replaces the entire CNI. If students had Calico-based NetworkPolicies from earlier tasks, those policies continue to work because Cilium also enforces NetworkPolicy. However, the policy enforcement engine is now Cilium, not Calico. For the CKS exam, students should understand that Cilium provides both CNI networking AND encryption — it's not just a NetworkPolicy enforcer.
+> **Dica para o Coach:** O Cilium substitui todo o CNI. Se os alunos tinham NetworkPolicies baseadas em Calico de tarefas anteriores, essas políticas continuam funcionando porque o Cilium também aplica NetworkPolicy. Porém, o motor de enforcement de políticas agora é o Cilium, não o Calico. Para o exame CKS, os alunos devem entender que o Cilium fornece tanto networking CNI QUANTO criptografia — não é apenas um enforcer de NetworkPolicy.
 
-> **Coach tip:** If the cluster only has a single node, WireGuard shows 0 peers and there's no cross-node traffic to encrypt. Students need a multi-node kubeadm cluster (at least 2 nodes) to see WireGuard encryption in action. This is expected.
+> **Dica para o Coach:** Se o cluster tiver apenas um único node, o WireGuard mostra 0 peers e não há tráfego cross-node para criptografar. Os alunos precisam de um cluster kubeadm multi-node (pelo menos 2 nodes) para ver a criptografia WireGuard em ação. Isso é esperado.
 
 ---
 
-## Clean Up
+## Limpeza
 
 ```bash
 kubectl delete namespace egress-lab 2>/dev/null
@@ -1414,11 +1414,11 @@ kubectl delete -f self-signed-issuer.yaml 2>/dev/null
 kubectl delete job kube-bench 2>/dev/null
 ```
 
-On the control-plane node, optionally revert API server changes:
+No node control-plane, opcionalmente reverta as alterações do API server:
 
 ```bash
 # Only if you want to remove audit logging and encryption for subsequent challenges
 sudo cp /etc/kubernetes/manifests/kube-apiserver.yaml.bak /etc/kubernetes/manifests/kube-apiserver.yaml
 ```
 
-> **Coach tip:** If students are continuing to Challenge 20, they may want to **keep** the audit logging and encryption changes — they're production-good practices. Only revert for a clean slate.
+> **Dica para o Coach:** Se os alunos forem continuar para o Desafio 20, eles podem querer **manter** as alterações de audit logging e criptografia — são práticas boas para produção. Reverta apenas para um ambiente limpo.
