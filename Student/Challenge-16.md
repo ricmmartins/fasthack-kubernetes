@@ -1,32 +1,32 @@
-# Challenge 16 — Container Image Engineering
+# Desafio 16 — Engenharia de Imagens de Container
 
-[< Previous Challenge](Challenge-15.md) - **[Home](../README.md)** - [Next Challenge >](Challenge-17.md)
+[< Desafio Anterior](Challenge-15.md) - **[Início](../README.md)** - [Próximo Desafio >](Challenge-17.md)
 
-## Introduction
+## Introdução
 
-If you've ever provisioned a Linux server from scratch, you know the ritual: start with a minimal install (maybe a netinstall ISO), run a shell script that installs packages (`apt-get install -y nginx curl`), copies config files into place, opens firewall ports, and sets the startup command (`systemctl enable nginx`). That shell script **is** your server's build recipe — run it on a fresh VM and you get an identical machine every time.
+Se você já provisionou um servidor Linux do zero, conhece o ritual: começar com uma instalação mínima (talvez um ISO netinstall), executar um shell script que instala pacotes (`apt-get install -y nginx curl`), copia arquivos de configuração para o lugar certo, abre portas no firewall e define o comando de inicialização (`systemctl enable nginx`). Esse shell script **é** a receita de construção do seu servidor — execute-o em uma VM nova e você obtém uma máquina idêntica toda vez.
 
-A **Dockerfile** is exactly that shell script, but for containers. Each instruction (`FROM`, `RUN`, `COPY`, `CMD`) maps directly to a step in your provisioning script. The difference is that Docker captures each step as an **immutable image layer**, so you get caching, reproducibility, and portability that shell scripts on bare metal can only dream of.
+Um **Dockerfile** é exatamente esse shell script, mas para containers. Cada instrução (`FROM`, `RUN`, `COPY`, `CMD`) mapeia diretamente para um passo no seu script de provisionamento. A diferença é que o Docker captura cada passo como uma **camada de imagem imutável**, então você obtém cache, reprodutibilidade e portabilidade que shell scripts em bare metal só podem sonhar.
 
-In the Linux world, you've probably also done this: compiled software in a build chroot or a beefy build VM (with `gcc`, `make`, header files), then copied just the final binary to a minimal production server that doesn't have any build tools. This is exactly what **multi-stage builds** do — build in one stage, copy the artifact to a tiny runtime stage.
+No mundo Linux, você provavelmente também já fez isso: compilou software em um chroot de build ou uma VM de build robusta (com `gcc`, `make`, arquivos header), depois copiou apenas o binário final para um servidor de produção mínimo que não tem nenhuma ferramenta de build. Isso é exatamente o que **multi-stage builds** fazem — compilar em um estágio, copiar o artefato para um estágio de runtime mínimo.
 
-And just like you'd choose between Ubuntu Server (full-featured, large) and Alpine Linux (minimal, tiny) as your base OS, you'll choose between `ubuntu`, `alpine`, and `distroless` base images depending on whether you need a shell for debugging or want the smallest possible attack surface.
+E assim como você escolheria entre Ubuntu Server (completo, grande) e Alpine Linux (mínimo, pequeno) como seu sistema operacional base, você escolherá entre imagens base `ubuntu`, `alpine` e `distroless` dependendo se precisa de um shell para depuração ou quer a menor superfície de ataque possível.
 
-In this challenge, you'll write Dockerfiles from scratch, optimize images with multi-stage builds, compare base image strategies, work with registries (like pushing RPMs to a yum repo), and load custom images into your Kind cluster for deployment.
+Neste desafio, você escreverá Dockerfiles do zero, otimizará imagens com multi-stage builds, comparará estratégias de imagem base, trabalhará com registries (como fazer push de RPMs para um repositório yum) e carregará imagens personalizadas no seu cluster Kind para deployment.
 
-## Description
+## Descrição
 
-### Task 1 — Write a Dockerfile for a Simple Web Application
+### Tarefa 1 — Escrever um Dockerfile para uma Aplicação Web Simples
 
-Just like writing a shell script that provisions a fresh VM, you'll write a Dockerfile that builds a container image for a simple Python web application.
+Assim como escrever um shell script que provisiona uma VM nova, você escreverá um Dockerfile que constrói uma imagem de container para uma aplicação web Python simples.
 
-Create a project directory and the application files:
+Crie um diretório de projeto e os arquivos da aplicação:
 
 ```bash
 mkdir -p ~/image-lab && cd ~/image-lab
 ```
 
-Create a simple Python web app:
+Crie uma aplicação web Python simples:
 
 ```python
 # app.py
@@ -50,37 +50,37 @@ if __name__ == "__main__":
     server.serve_forever()
 ```
 
-Create a `requirements.txt` (empty for this app, but good practice):
+Crie um `requirements.txt` (vazio para esta aplicação, mas é boa prática):
 
 ```
 # requirements.txt
-# No external dependencies — stdlib only
+# Sem dependências externas — apenas stdlib
 ```
 
-Now write a `Dockerfile` that:
-- Starts from the `python:3.12-slim` base image
-- Sets a working directory (`/app`)
-- Copies the requirements file and installs dependencies
-- Copies the application code
-- Exposes port 8080
-- Sets the startup command to run the app
+Agora escreva um `Dockerfile` que:
+- Começa da imagem base `python:3.12-slim`
+- Define um diretório de trabalho (`/app`)
+- Copia o arquivo de requirements e instala dependências
+- Copia o código da aplicação
+- Expõe a porta 8080
+- Define o comando de inicialização para executar a aplicação
 
-Build and test it:
+Construa e teste:
 
 ```bash
 docker build -t myapp:v1 .
 docker run --rm -p 8080:8080 myapp:v1
-# In another terminal:
+# Em outro terminal:
 curl http://localhost:8080
 ```
 
-> **Linux analogy:** `FROM python:3.12-slim` = choosing your base OS. `RUN pip install` = running your provisioning script. `COPY . .` = deploying your application files. `CMD` = setting the default service to start.
+> **Analogia com Linux:** `FROM python:3.12-slim` = escolher seu sistema operacional base. `RUN pip install` = executar seu script de provisionamento. `COPY . .` = implantar seus arquivos de aplicação. `CMD` = definir o serviço padrão para iniciar.
 
-### Task 2 — Optimize with Multi-Stage Builds
+### Tarefa 2 — Otimizar com Multi-Stage Builds
 
-Multi-stage builds are like compiling in a build chroot (with all the compilers and headers), then copying just the final binary to a minimal rootfs for production.
+Multi-stage builds são como compilar em um chroot de build (com todos os compiladores e headers), depois copiar apenas o binário final para um rootfs mínimo para produção.
 
-Create a Go web application to demonstrate the power of multi-stage builds:
+Crie uma aplicação web Go para demonstrar o poder dos multi-stage builds:
 
 ```go
 // main.go
@@ -105,27 +105,27 @@ func main() {
 }
 ```
 
-Initialize the Go module:
+Inicialize o módulo Go:
 
 ```bash
 go mod init myapp
 ```
 
-> **Note:** If you don't have Go installed locally, that's fine — Docker will use the Go toolchain inside the build stage. You can create `go.mod` manually:
+> **Nota:** Se você não tem Go instalado localmente, tudo bem — o Docker usará o toolchain Go dentro do estágio de build. Você pode criar `go.mod` manualmente:
 > ```
 > module myapp
 > go 1.22
 > ```
 
-Write a **single-stage** Dockerfile first (`Dockerfile.single`):
-- Use `golang:1.22` as the base image
-- Copy the source code, build it with `go build`, and run it
+Escreva primeiro um Dockerfile de **estágio único** (`Dockerfile.single`):
+- Use `golang:1.22` como imagem base
+- Copie o código fonte, compile com `go build` e execute
 
-Then write a **multi-stage** Dockerfile (`Dockerfile.multi`):
-- **Stage 1 (builder):** Use `golang:1.22` — copy source, run `CGO_ENABLED=0 go build -o /app`
-- **Stage 2 (runtime):** Use `alpine:3.20` — copy only the compiled binary from Stage 1, expose port 8080, set the CMD
+Depois escreva um Dockerfile **multi-stage** (`Dockerfile.multi`):
+- **Estágio 1 (builder):** Use `golang:1.22` — copie o fonte, execute `CGO_ENABLED=0 go build -o /app`
+- **Estágio 2 (runtime):** Use `alpine:3.20` — copie apenas o binário compilado do Estágio 1, exponha a porta 8080, defina o CMD
 
-Build both and compare the image sizes:
+Construa ambos e compare os tamanhos das imagens:
 
 ```bash
 docker build -t myapp:single -f Dockerfile.single .
@@ -133,53 +133,53 @@ docker build -t myapp:multi -f Dockerfile.multi .
 docker images | grep myapp
 ```
 
-The multi-stage image should be **dramatically** smaller (megabytes vs gigabytes).
+A imagem multi-stage deve ser **dramaticamente** menor (megabytes vs gigabytes).
 
-> **Linux analogy:** Stage 1 is your build VM with `gcc`, `make`, and all dev headers. Stage 2 is your production server — you `scp` just the compiled binary and nothing else.
+> **Analogia com Linux:** O Estágio 1 é sua VM de build com `gcc`, `make` e todos os headers de desenvolvimento. O Estágio 2 é seu servidor de produção — você faz `scp` apenas do binário compilado e nada mais.
 
-### Task 3 — Compare Base Image Sizes
+### Tarefa 3 — Comparar Tamanhos de Imagem Base
 
-Just like choosing between Ubuntu Server (full) vs Alpine (minimal) vs a stripped-down busybox rootfs, your base image choice dramatically affects image size and attack surface.
+Assim como escolher entre Ubuntu Server (completo) vs Alpine (mínimo) vs um rootfs busybox reduzido, sua escolha de imagem base afeta dramaticamente o tamanho da imagem e a superfície de ataque.
 
-Build the same Go application with three different runtime bases:
+Construa a mesma aplicação Go com três bases de runtime diferentes:
 
-1. **Ubuntu-based:** Use `ubuntu:24.04` as the runtime stage
-2. **Alpine-based:** Use `alpine:3.20` as the runtime stage
-3. **Distroless:** Use `gcr.io/distroless/static-debian12:nonroot` as the runtime stage
+1. **Baseada em Ubuntu:** Use `ubuntu:24.04` como estágio de runtime
+2. **Baseada em Alpine:** Use `alpine:3.20` como estágio de runtime
+3. **Distroless:** Use `gcr.io/distroless/static-debian12:nonroot` como estágio de runtime
 
-Write three Dockerfiles (or parameterize using build args) and compare:
+Escreva três Dockerfiles (ou parametrize usando build args) e compare:
 
 ```bash
 docker images | grep myapp
 ```
 
-Create a comparison table of the results — note the image sizes and think about the trade-offs:
-- Which image has a shell you can `exec` into for debugging?
-- Which image has the smallest attack surface?
-- Which would you use in production vs development?
+Crie uma tabela comparativa dos resultados — observe os tamanhos das imagens e pense sobre os trade-offs:
+- Qual imagem tem um shell no qual você pode fazer `exec` para depuração?
+- Qual imagem tem a menor superfície de ataque?
+- Qual você usaria em produção vs desenvolvimento?
 
-### Task 4 — Create a .dockerignore File
+### Tarefa 4 — Criar um Arquivo .dockerignore
 
-Just like `.gitignore` prevents unwanted files from entering your repository, `.dockerignore` prevents unwanted files from entering your build context.
+Assim como `.gitignore` impede que arquivos indesejados entrem no seu repositório, `.dockerignore` impede que arquivos indesejados entrem no seu contexto de build.
 
-First, observe the build context **without** a `.dockerignore`. Create some files that shouldn't be in your image:
+Primeiro, observe o contexto de build **sem** um `.dockerignore`. Crie alguns arquivos que não deveriam estar na sua imagem:
 
 ```bash
-# Create files that should NOT be in the image
+# Crie arquivos que NÃO devem estar na imagem
 echo "SECRET_KEY=supersecret" > .env
 mkdir -p .git && echo "git data" > .git/HEAD
 dd if=/dev/zero of=large-test-data.bin bs=1M count=50
 ```
 
-Build and check the build context size in the output:
+Construa e verifique o tamanho do contexto de build na saída:
 
 ```bash
 docker build -t myapp:no-ignore .
 ```
 
-Look for the line: `Sending build context to Docker daemon  XX.XXB` (or equivalent progress in BuildKit).
+Procure pela linha: `Sending build context to Docker daemon  XX.XXB` (ou progresso equivalente no BuildKit).
 
-Now create a `.dockerignore` file:
+Agora crie um arquivo `.dockerignore`:
 
 ```
 # .dockerignore
@@ -195,29 +195,29 @@ __pycache__
 node_modules
 ```
 
-Rebuild and compare the build context size:
+Reconstrua e compare o tamanho do contexto de build:
 
 ```bash
 docker build -t myapp:with-ignore .
 ```
 
-The build context should be significantly smaller. Verify that excluded files are not in the image:
+O contexto de build deve ser significativamente menor. Verifique que os arquivos excluídos não estão na imagem:
 
 ```bash
 docker run --rm myapp:with-ignore ls -la /app/
 ```
 
-### Task 5 — Tag and Push to a Local Registry
+### Tarefa 5 — Tag e Push para um Registry Local
 
-Working with registries is like pushing packages to an apt/yum repository so other machines can install them.
+Trabalhar com registries é como fazer push de pacotes para um repositório apt/yum para que outras máquinas possam instalá-los.
 
-Start a local registry (Docker's official `registry:2` image):
+Inicie um registry local (imagem oficial `registry:2` do Docker):
 
 ```bash
 docker run -d -p 5000:5000 --name local-registry registry:2
 ```
 
-Tag your image for the local registry and push it:
+Adicione uma tag à sua imagem para o registry local e faça push:
 
 ```bash
 docker tag myapp:multi localhost:5000/myapp:v1
@@ -226,14 +226,14 @@ docker push localhost:5000/myapp:v1
 docker push localhost:5000/myapp:latest
 ```
 
-Verify the image is in the registry:
+Verifique que a imagem está no registry:
 
 ```bash
 curl http://localhost:5000/v2/_catalog
 curl http://localhost:5000/v2/myapp/tags/list
 ```
 
-Now delete the local copy and pull from the registry to prove it works:
+Agora delete a cópia local e faça pull do registry para provar que funciona:
 
 ```bash
 docker rmi localhost:5000/myapp:v1
@@ -241,55 +241,55 @@ docker pull localhost:5000/myapp:v1
 docker run --rm -p 8080:8080 localhost:5000/myapp:v1
 ```
 
-> **Linux analogy:** `docker push` = `rpm --addsign && createrepo` (sign and publish to your repo). `docker pull` = `yum install` (download from the repo). The registry is your private package mirror.
+> **Analogia com Linux:** `docker push` = `rpm --addsign && createrepo` (assinar e publicar no seu repositório). `docker pull` = `yum install` (baixar do repositório). O registry é seu mirror privado de pacotes.
 
-### Task 6 — Build with Podman (Rootless)
+### Tarefa 6 — Build com Podman (Rootless)
 
-On Linux, running builds as root is a security risk — just like you'd avoid running `make install` as root when you can use `fakeroot` or user namespaces. Podman builds images **rootlessly** by default — no daemon, no root privileges.
+No Linux, executar builds como root é um risco de segurança — assim como você evitaria executar `make install` como root quando pode usar `fakeroot` ou user namespaces. Podman constrói imagens **sem root** por padrão — sem daemon, sem privilégios de root.
 
-Build the same image with Podman:
+Construa a mesma imagem com Podman:
 
 ```bash
 podman build -t myapp:podman -f Dockerfile.multi .
 podman images | grep myapp
 ```
 
-Compare the experience:
-- Does the Dockerfile syntax change? (No — Podman uses the same Dockerfile format)
-- Does Podman need a daemon running? (No — it's daemonless)
-- Can you run Podman builds as a non-root user? (Yes — by default)
+Compare a experiência:
+- A sintaxe do Dockerfile muda? (Não — Podman usa o mesmo formato de Dockerfile)
+- Podman precisa de um daemon em execução? (Não — é daemonless)
+- Você pode executar builds do Podman como usuário não-root? (Sim — por padrão)
 
-Run the Podman-built image:
+Execute a imagem construída com Podman:
 
 ```bash
 podman run --rm -p 8081:8080 myapp:podman
 curl http://localhost:8081
 ```
 
-> **Note:** If Podman is not installed on your system, install it:
+> **Nota:** Se Podman não está instalado no seu sistema, instale-o:
 > - **Ubuntu/Debian:** `sudo apt-get install -y podman`
 > - **Fedora/RHEL:** `sudo dnf install -y podman`
 > - **macOS:** `brew install podman && podman machine init && podman machine start`
 >
-> If you cannot install Podman, document the commands you would run and note the differences from Docker in your notes. This task is optional but recommended.
+> Se você não conseguir instalar o Podman, documente os comandos que executaria e anote as diferenças em relação ao Docker nas suas notas. Esta tarefa é opcional mas recomendada.
 
-### Task 7 — Load a Custom Image into Kind and Deploy
+### Tarefa 7 — Carregar uma Imagem Personalizada no Kind e Fazer Deploy
 
-Kind clusters run inside Docker containers, so they can't pull from your local Docker image cache directly. You need to explicitly load images into the cluster.
+Clusters Kind executam dentro de containers Docker, então não podem fazer pull do seu cache local de imagens Docker diretamente. Você precisa carregar imagens explicitamente no cluster.
 
-Load your multi-stage image into the Kind cluster:
+Carregue sua imagem multi-stage no cluster Kind:
 
 ```bash
 kind load docker-image myapp:multi --name fasthack
 ```
 
-Verify the image is available inside the Kind node:
+Verifique que a imagem está disponível dentro do node Kind:
 
 ```bash
 docker exec -it fasthack-control-plane crictl images | grep myapp
 ```
 
-Now deploy it as a Pod:
+Agora faça deploy como um Pod:
 
 ```yaml
 # custom-image-pod.yaml
@@ -313,97 +313,97 @@ spec:
 kubectl apply -f custom-image-pod.yaml
 kubectl get pod custom-app
 kubectl port-forward pod/custom-app 8080:8080
-# In another terminal:
+# Em outro terminal:
 curl http://localhost:8080
 ```
 
-> **Critical:** `imagePullPolicy: Never` tells Kubernetes not to try pulling the image from a registry — it must already exist on the node. Without this, the Pod will fail with `ErrImagePull` because `myapp:multi` doesn't exist in any registry.
+> **Crítico:** `imagePullPolicy: Never` diz ao Kubernetes para não tentar puxar a imagem de um registry — ela já deve existir no node. Sem isso, o Pod falhará com `ErrImagePull` porque `myapp:multi` não existe em nenhum registry.
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] You wrote a Dockerfile from scratch with `FROM`, `COPY`, `RUN`, `EXPOSE`, and `CMD` — and the built image runs correctly (Task 1)
-- [ ] You built a multi-stage Dockerfile and the runtime image is significantly smaller than the single-stage image (Task 2)
-- [ ] You compared image sizes across `ubuntu`, `alpine`, and `distroless` base images and can explain the trade-offs (Task 3)
-- [ ] You created a `.dockerignore` file and confirmed the build context size decreased (Task 4)
-- [ ] You pushed an image to a local `registry:2` and pulled it back successfully (Task 5)
-- [ ] You built an image with Podman and confirmed it produces the same result as Docker (Task 6 — optional if Podman not available)
-- [ ] You loaded a custom image into Kind with `kind load docker-image` and deployed it as a Pod with `imagePullPolicy: Never` (Task 7)
-- [ ] The Pod is Running and responds to `curl` via `port-forward` (Task 7)
+- [ ] Você escreveu um Dockerfile do zero com `FROM`, `COPY`, `RUN`, `EXPOSE` e `CMD` — e a imagem construída executa corretamente (Tarefa 1)
+- [ ] Você construiu um Dockerfile multi-stage e a imagem de runtime é significativamente menor que a imagem de estágio único (Tarefa 2)
+- [ ] Você comparou tamanhos de imagem entre bases `ubuntu`, `alpine` e `distroless` e consegue explicar os trade-offs (Tarefa 3)
+- [ ] Você criou um arquivo `.dockerignore` e confirmou que o tamanho do contexto de build diminuiu (Tarefa 4)
+- [ ] Você fez push de uma imagem para um `registry:2` local e fez pull de volta com sucesso (Tarefa 5)
+- [ ] Você construiu uma imagem com Podman e confirmou que produz o mesmo resultado que o Docker (Tarefa 6 — opcional se Podman não estiver disponível)
+- [ ] Você carregou uma imagem personalizada no Kind com `kind load docker-image` e fez deploy como um Pod com `imagePullPolicy: Never` (Tarefa 7)
+- [ ] O Pod está Running e responde ao `curl` via `port-forward` (Tarefa 7)
 
-## Linux ↔ Kubernetes Reference
+## Referência Linux ↔ Kubernetes
 
-| Linux Concept | Container/Kubernetes Equivalent |
+| Conceito Linux | Equivalente Container/Kubernetes |
 |---|---|
-| Shell provisioning script (`setup.sh`) | Dockerfile (`FROM`, `RUN`, `COPY`, `CMD`) |
-| `chroot` + `debootstrap` (create a minimal rootfs) | `FROM` base image (e.g., `alpine:3.20`, `ubuntu:24.04`) |
-| Compile in build VM, copy binary to production server | Multi-stage build (build stage → runtime stage) |
-| RPM/DEB package repository (`yum repo`, `apt repo`) | Container registry (`registry:2`, Docker Hub, GHCR) |
-| Package versions (`nginx-1.27.0-1.el9.x86_64`) | Image tags (`myapp:v1`, `myapp:latest`, `myapp:v1.2.3`) |
-| `.gitignore` (exclude files from repo) | `.dockerignore` (exclude files from build context) |
-| `su` / `sudo` for builds (running as root) | Rootless Podman (build without root privileges) |
-| `scp binary user@prod:/usr/local/bin/` | `COPY --from=builder /app /app` (copy from build stage) |
-| `rpm -qa \| wc -l` (count installed packages) | `docker images` / `docker history` (check image layers and sizes) |
-| Minimal install (netinstall ISO) | Distroless images (no shell, no package manager) |
+| Shell script de provisionamento (`setup.sh`) | Dockerfile (`FROM`, `RUN`, `COPY`, `CMD`) |
+| `chroot` + `debootstrap` (criar um rootfs mínimo) | Imagem base `FROM` (ex: `alpine:3.20`, `ubuntu:24.04`) |
+| Compilar em VM de build, copiar binário para servidor de produção | Multi-stage build (estágio de build → estágio de runtime) |
+| Repositório de pacotes RPM/DEB (`yum repo`, `apt repo`) | Container registry (`registry:2`, Docker Hub, GHCR) |
+| Versões de pacotes (`nginx-1.27.0-1.el9.x86_64`) | Tags de imagem (`myapp:v1`, `myapp:latest`, `myapp:v1.2.3`) |
+| `.gitignore` (excluir arquivos do repo) | `.dockerignore` (excluir arquivos do contexto de build) |
+| `su` / `sudo` para builds (executar como root) | Podman rootless (build sem privilégios de root) |
+| `scp binary user@prod:/usr/local/bin/` | `COPY --from=builder /app /app` (copiar do estágio de build) |
+| `rpm -qa \| wc -l` (contar pacotes instalados) | `docker images` / `docker history` (verificar camadas e tamanhos de imagem) |
+| Instalação mínima (ISO netinstall) | Imagens distroless (sem shell, sem gerenciador de pacotes) |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: Basic Dockerfile structure</summary>
+<summary>Dica 1: Estrutura básica do Dockerfile</summary>
 
-A Dockerfile follows this pattern — think of it as your server provisioning script:
+Um Dockerfile segue este padrão — pense nele como seu script de provisionamento de servidor:
 
 ```dockerfile
-# Step 1: Choose your base OS (like picking a Linux ISO)
+# Passo 1: Escolha seu SO base (como escolher um ISO Linux)
 FROM python:3.12-slim
 
-# Step 2: Set where you'll work (like cd /opt/myapp)
+# Passo 2: Defina onde você vai trabalhar (como cd /opt/myapp)
 WORKDIR /app
 
-# Step 3: Install dependencies first (for layer caching)
+# Passo 3: Instale dependências primeiro (para cache de camadas)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Step 4: Copy your application code
+# Passo 4: Copie o código da sua aplicação
 COPY app.py .
 
-# Step 5: Document the port (like opening a firewall port)
+# Passo 5: Documente a porta (como abrir uma porta no firewall)
 EXPOSE 8080
 
-# Step 6: Set the startup command (like systemctl start)
+# Passo 6: Defina o comando de inicialização (como systemctl start)
 CMD ["python", "app.py"]
 ```
 
-**Key optimization:** Copy `requirements.txt` and install dependencies **before** copying application code. This way, Docker caches the dependency layer and only rebuilds it when `requirements.txt` changes — not every time you edit `app.py`.
+**Otimização chave:** Copie `requirements.txt` e instale dependências **antes** de copiar o código da aplicação. Dessa forma, o Docker faz cache da camada de dependências e só a reconstrói quando `requirements.txt` muda — não toda vez que você edita `app.py`.
 
 </details>
 
 <details>
-<summary>Hint 2: Multi-stage build pattern</summary>
+<summary>Dica 2: Padrão de multi-stage build</summary>
 
-The key syntax is naming stages with `AS` and copying between them with `COPY --from=`:
+A sintaxe chave é nomear estágios com `AS` e copiar entre eles com `COPY --from=`:
 
 ```dockerfile
-# Stage 1: Build environment (like your build VM)
+# Estágio 1: Ambiente de build (como sua VM de build)
 FROM golang:1.22 AS builder
 WORKDIR /src
 COPY go.mod main.go ./
 RUN CGO_ENABLED=0 go build -o /app
 
-# Stage 2: Runtime environment (like your production server)
+# Estágio 2: Ambiente de runtime (como seu servidor de produção)
 FROM alpine:3.20
 COPY --from=builder /app /app
 EXPOSE 8080
 CMD ["/app"]
 ```
 
-`CGO_ENABLED=0` produces a statically-linked binary that doesn't need glibc — this is what lets you run it on `alpine` or even `distroless` (which has no C library).
+`CGO_ENABLED=0` produz um binário estaticamente linkado que não precisa de glibc — isso é o que permite executá-lo no `alpine` ou até em `distroless` (que não tem biblioteca C).
 
 </details>
 
 <details>
-<summary>Hint 3: Distroless images — no shell, no package manager</summary>
+<summary>Dica 3: Imagens distroless — sem shell, sem gerenciador de pacotes</summary>
 
-Distroless images from Google contain **only** your application and its runtime dependencies. No shell, no `ls`, no `cat`, no package manager.
+Imagens distroless do Google contêm **apenas** sua aplicação e suas dependências de runtime. Sem shell, sem `ls`, sem `cat`, sem gerenciador de pacotes.
 
 ```dockerfile
 FROM gcr.io/distroless/static-debian12:nonroot
@@ -413,29 +413,29 @@ CMD ["/app"]
 ```
 
 **Trade-off:**
-- ✅ Smallest image size, smallest attack surface
-- ✅ No shell means attackers can't get an interactive session
-- ❌ You can't `kubectl exec` into the container for debugging
-- ❌ Debugging requires ephemeral debug containers: `kubectl debug -it <pod> --image=busybox --target=app`
+- ✅ Menor tamanho de imagem, menor superfície de ataque
+- ✅ Sem shell significa que atacantes não podem obter uma sessão interativa
+- ❌ Você não pode fazer `kubectl exec` no container para depuração
+- ❌ Depuração requer containers de debug efêmeros: `kubectl debug -it <pod> --image=busybox --target=app`
 
-Use distroless in production, use alpine in development/staging.
+Use distroless em produção, use alpine em desenvolvimento/staging.
 
 </details>
 
 <details>
-<summary>Hint 4: Loading images into Kind</summary>
+<summary>Dica 4: Carregando imagens no Kind</summary>
 
-Kind runs as Docker containers, so it has its own image store separate from your host. You must explicitly load images:
+Kind executa como containers Docker, então tem seu próprio armazém de imagens separado do seu host. Você deve carregar imagens explicitamente:
 
 ```bash
-# Load from your local Docker image cache
+# Carregar do cache local de imagens Docker
 kind load docker-image myapp:multi --name fasthack
 
-# Verify it's there
+# Verificar que está lá
 docker exec -it fasthack-control-plane crictl images | grep myapp
 ```
 
-**Critical Pod config:** When deploying images loaded this way, set `imagePullPolicy: Never` — otherwise Kubernetes tries to pull from a registry and fails:
+**Configuração crítica do Pod:** Ao fazer deploy de imagens carregadas desta forma, defina `imagePullPolicy: Never` — caso contrário o Kubernetes tenta puxar de um registry e falha:
 
 ```yaml
 containers:
@@ -444,49 +444,49 @@ containers:
     imagePullPolicy: Never
 ```
 
-If you use the `:latest` tag, Kubernetes defaults to `imagePullPolicy: Always` — so either use a specific tag or explicitly set `Never`.
+Se você usar a tag `:latest`, o Kubernetes usa como padrão `imagePullPolicy: Always` — então use uma tag específica ou defina explicitamente `Never`.
 
 </details>
 
 <details>
-<summary>Hint 5: Registry basics</summary>
+<summary>Dica 5: Fundamentos do registry</summary>
 
-The local registry runs as a container:
+O registry local executa como um container:
 
 ```bash
 docker run -d -p 5000:5000 --name local-registry registry:2
 ```
 
-To push an image, you must tag it with the registry address:
+Para fazer push de uma imagem, você deve tagueá-la com o endereço do registry:
 
 ```bash
 docker tag myapp:multi localhost:5000/myapp:v1
 docker push localhost:5000/myapp:v1
 ```
 
-Query the registry API:
+Consulte a API do registry:
 ```bash
-# List all repositories
+# Listar todos os repositórios
 curl http://localhost:5000/v2/_catalog
 
-# List tags for a specific image
+# Listar tags de uma imagem específica
 curl http://localhost:5000/v2/myapp/tags/list
 ```
 
 </details>
 
 <details>
-<summary>Hint 6: Podman vs Docker — key differences</summary>
+<summary>Dica 6: Podman vs Docker — diferenças principais</summary>
 
-| Feature | Docker | Podman |
+| Recurso | Docker | Podman |
 |---------|--------|--------|
-| Daemon required | Yes (`dockerd`) | No (daemonless) |
-| Root required for builds | Yes (by default) | No (rootless by default) |
-| Dockerfile compatible | Yes | Yes (same syntax) |
-| CLI compatible | Yes | Yes (drop-in replacement) |
-| Image format | OCI / Docker | OCI / Docker |
+| Daemon necessário | Sim (`dockerd`) | Não (daemonless) |
+| Root necessário para builds | Sim (por padrão) | Não (rootless por padrão) |
+| Compatível com Dockerfile | Sim | Sim (mesma sintaxe) |
+| CLI compatível | Sim | Sim (substituto direto) |
+| Formato de imagem | OCI / Docker | OCI / Docker |
 
-The commands are nearly identical:
+Os comandos são quase idênticos:
 
 ```bash
 # Docker
@@ -498,11 +498,11 @@ podman build -t myapp:v1 .
 podman run --rm myapp:v1
 ```
 
-Some people alias `alias docker=podman` and never notice the difference.
+Algumas pessoas fazem alias `alias docker=podman` e nunca percebem a diferença.
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [Dockerfile reference — Docker docs](https://docs.docker.com/reference/dockerfile/)
 - [Multi-stage builds — Docker docs](https://docs.docker.com/build/building/multi-stage/)
@@ -516,15 +516,15 @@ Some people alias `alias docker=podman` and never notice the difference.
 
 ---
 
-## Break & Fix 🔧
+## Quebra & Conserta 🔧
 
-After completing the challenge, try diagnosing these broken scenarios:
+Após completar o desafio, tente diagnosticar estes cenários quebrados:
 
 ---
 
-### Scenario 1: Dockerfile builds but container exits immediately
+### Cenário 1: Dockerfile compila mas container encerra imediatamente
 
-A developer writes a Dockerfile, builds it successfully, but the container exits immediately on `docker run`:
+Um desenvolvedor escreve um Dockerfile, compila com sucesso, mas o container encerra imediatamente no `docker run`:
 
 ```dockerfile
 # broken-cmd/Dockerfile
@@ -538,17 +538,17 @@ RUN python app.py
 ```bash
 docker build -t broken-cmd .
 docker run --rm broken-cmd
-# Container exits immediately — no output, no server
+# Container encerra imediatamente — sem saída, sem servidor
 ```
 
-**Your task:** Why does the container exit? Fix the Dockerfile.
+**Sua tarefa:** Por que o container encerra? Corrija o Dockerfile.
 
 <details>
-<summary>💡 Root cause & fix</summary>
+<summary>💡 Causa raiz & correção</summary>
 
-**Root cause:** The developer used `RUN python app.py` instead of `CMD ["python", "app.py"]`. `RUN` executes during the **build** phase — the server starts, the build hangs (or the process runs briefly), and the resulting layer has no startup command. At runtime there's nothing to run.
+**Causa raiz:** O desenvolvedor usou `RUN python app.py` em vez de `CMD ["python", "app.py"]`. `RUN` executa durante a fase de **build** — o servidor inicia, o build trava (ou o processo executa brevemente), e a camada resultante não tem comando de inicialização. Em runtime não há nada para executar.
 
-**Fix:** Replace `RUN` with `CMD`:
+**Correção:** Substitua `RUN` por `CMD`:
 
 ```dockerfile
 FROM python:3.12-slim
@@ -558,15 +558,15 @@ EXPOSE 8080
 CMD ["python", "app.py"]
 ```
 
-> **Rule:** `RUN` = runs at build time (like installing packages). `CMD` = runs at container start time (like your service's start command).
+> **Regra:** `RUN` = executa no tempo de build (como instalar pacotes). `CMD` = executa no tempo de início do container (como o comando start do seu serviço).
 
 </details>
 
 ---
 
-### Scenario 2: Image is huge despite multi-stage build
+### Cenário 2: Imagem é enorme apesar do multi-stage build
 
-A developer claims to use a multi-stage build, but the image is still over 1GB:
+Um desenvolvedor afirma usar multi-stage build, mas a imagem ainda tem mais de 1GB:
 
 ```dockerfile
 # bloated-multi/Dockerfile
@@ -584,17 +584,17 @@ CMD ["/app"]
 ```bash
 docker build -t bloated-multi .
 docker images bloated-multi
-# SIZE: ~1.1GB — not what you'd expect from multi-stage!
+# SIZE: ~1.1GB — não é o que você esperaria de multi-stage!
 ```
 
-**Your task:** Spot the mistake and fix it.
+**Sua tarefa:** Identifique o erro e corrija.
 
 <details>
-<summary>💡 Root cause & fix</summary>
+<summary>💡 Causa raiz & correção</summary>
 
-**Root cause:** The runtime stage also uses `golang:1.22` — the full Go SDK image (~1.1GB). The developer forgot to switch to a minimal base image in the second stage.
+**Causa raiz:** O estágio de runtime também usa `golang:1.22` — a imagem completa do SDK Go (~1.1GB). O desenvolvedor esqueceu de trocar para uma imagem base mínima no segundo estágio.
 
-**Fix:** Use `alpine:3.20` or `distroless` for the runtime stage, and build a static binary:
+**Correção:** Use `alpine:3.20` ou `distroless` para o estágio de runtime, e compile um binário estático:
 
 ```dockerfile
 FROM golang:1.22 AS builder
@@ -608,15 +608,15 @@ EXPOSE 8080
 CMD ["/app"]
 ```
 
-Now the image should be ~15MB instead of 1.1GB.
+Agora a imagem deve ter ~15MB em vez de 1.1GB.
 
 </details>
 
 ---
 
-### Scenario 3: Pod stuck in ErrImagePull after loading into Kind
+### Cenário 3: Pod travado em ErrImagePull após carregar no Kind
 
-A developer loads an image into Kind and creates a Pod, but it fails:
+Um desenvolvedor carrega uma imagem no Kind e cria um Pod, mas falha:
 
 ```bash
 kind load docker-image myapp:latest --name fasthack
@@ -636,14 +636,14 @@ kubectl get pod pull-fail
 # STATUS: ErrImagePull
 ```
 
-**Your task:** The image was loaded — why can't Kubernetes find it?
+**Sua tarefa:** A imagem foi carregada — por que o Kubernetes não a encontra?
 
 <details>
-<summary>💡 Root cause & fix</summary>
+<summary>💡 Causa raiz & correção</summary>
 
-**Root cause:** The image tag is `:latest`. Kubernetes defaults to `imagePullPolicy: Always` for `:latest` tags, which means it tries to pull from a remote registry instead of using the local image on the node.
+**Causa raiz:** A tag da imagem é `:latest`. O Kubernetes usa como padrão `imagePullPolicy: Always` para tags `:latest`, o que significa que ele tenta puxar de um registry remoto em vez de usar a imagem local no node.
 
-**Fix:** Set `imagePullPolicy: Never`:
+**Correção:** Defina `imagePullPolicy: Never`:
 
 ```yaml
 spec:
@@ -653,7 +653,7 @@ spec:
       imagePullPolicy: Never
 ```
 
-Or better yet, use a specific version tag instead of `:latest`:
+Ou melhor ainda, use uma tag de versão específica em vez de `:latest`:
 
 ```bash
 docker tag myapp:latest myapp:v1.0.0
@@ -665,6 +665,6 @@ image: myapp:v1.0.0
 imagePullPolicy: IfNotPresent
 ```
 
-> **Best practice:** Avoid `:latest` in Kubernetes manifests — it makes deployments unpredictable and causes issues with `imagePullPolicy`.
+> **Melhor prática:** Evite `:latest` em manifestos Kubernetes — torna deployments imprevisíveis e causa problemas com `imagePullPolicy`.
 
 </details>

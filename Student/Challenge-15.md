@@ -1,24 +1,24 @@
-# Challenge 15 — Pod Scheduling & Resource Management
+# Desafio 15 — Agendamento de Pods & Gerenciamento de Recursos
 
-[< Previous Challenge](Challenge-14.md) - **[Home](../README.md)** - [Next Challenge >](Challenge-16.md)
+[< Desafio Anterior](Challenge-14.md) - **[Início](../README.md)** - [Próximo Desafio >](Challenge-16.md)
 
-## Introduction
+## Introdução
 
-On a Linux server, you control *where* and *how* processes run using tools like `taskset` (pin a process to specific CPUs), `cgroups` (limit CPU and memory), `ulimit` (cap resources per user), and `nice`/`ionice` (set scheduling priority). When you manage multiple machines, you decide which server runs which workload — maybe the database goes on the box with SSDs, or you keep two replicas of a web server on different physical hosts so a single hardware failure doesn't take everything down.
+Em um servidor Linux, você controla *onde* e *como* os processos são executados usando ferramentas como `taskset` (fixar um processo em CPUs específicas), `cgroups` (limitar CPU e memória), `ulimit` (limitar recursos por usuário) e `nice`/`ionice` (definir prioridade de agendamento). Quando você gerencia múltiplas máquinas, decide qual servidor executa qual carga de trabalho — talvez o banco de dados vá para a máquina com SSDs, ou você mantém duas réplicas de um servidor web em hosts físicos diferentes para que uma única falha de hardware não derrube tudo.
 
-Kubernetes automates all of these decisions through its **scheduler**. Instead of SSH-ing into machines and placing workloads manually, you declare *rules* — "this Pod needs a GPU node," "keep these two Pods apart," "never put more than 2 replicas on the same node," "this namespace can't use more than 4 CPUs total." The scheduler reads your rules and the current cluster state, then places Pods accordingly.
+O Kubernetes automatiza todas essas decisões através do seu **scheduler**. Em vez de acessar máquinas via SSH e posicionar cargas de trabalho manualmente, você declara *regras* — "este Pod precisa de um node com GPU", "mantenha estes dois Pods separados", "nunca coloque mais de 2 réplicas no mesmo node", "este namespace não pode usar mais de 4 CPUs no total." O scheduler lê suas regras e o estado atual do cluster, então posiciona os Pods de acordo.
 
-In this challenge you will master the full scheduling and resource management toolkit: **taints & tolerations** (node-level repellents), **node affinity** (attracting Pods to nodes), **Pod affinity & anti-affinity** (co-locating or separating Pods), **topology spread constraints** (even distribution), **static Pods** (kubelet-managed Pods), **ResourceQuotas & LimitRanges** (namespace-level resource caps), and **PodDisruptionBudgets** (maintenance safety nets).
+Neste desafio você dominará o kit completo de agendamento e gerenciamento de recursos: **taints & tolerations** (repelentes no nível do node), **node affinity** (atraindo Pods para nodes), **Pod affinity & anti-affinity** (co-localizando ou separando Pods), **topology spread constraints** (distribuição uniforme), **static Pods** (Pods gerenciados pelo kubelet), **ResourceQuotas & LimitRanges** (limites de recursos no nível do namespace) e **PodDisruptionBudgets** (redes de segurança para manutenção).
 
-> **Cluster requirement:** This challenge requires a **3-node Kind cluster** (1 control-plane + 2 workers) so that scheduling exercises work correctly. Follow Task 0 below to create one.
+> **Requisito do cluster:** Este desafio requer um **cluster Kind com 3 nodes** (1 control-plane + 2 workers) para que os exercícios de agendamento funcionem corretamente. Siga a Tarefa 0 abaixo para criar um.
 
-## Description
+## Descrição
 
-### Task 0 — Create a 3-Node Kind Cluster
+### Tarefa 0 — Criar um Cluster Kind com 3 Nodes
 
-For scheduling exercises to be meaningful, you need multiple worker nodes. Create a Kind cluster with 1 control-plane and 2 workers.
+Para que os exercícios de agendamento sejam significativos, você precisa de múltiplos worker nodes. Crie um cluster Kind com 1 control-plane e 2 workers.
 
-Save this as `kind-scheduling.yaml`:
+Salve como `kind-scheduling.yaml`:
 
 ```yaml
 kind: Cluster
@@ -40,9 +40,9 @@ kind create cluster --name fasthack --config kind-scheduling.yaml
 kubectl get nodes
 ```
 
-You should see three nodes: `fasthack-control-plane`, `fasthack-worker`, and `fasthack-worker2`.
+Você deve ver três nodes: `fasthack-control-plane`, `fasthack-worker` e `fasthack-worker2`.
 
-Label the worker nodes for later tasks:
+Rotule os worker nodes para tarefas posteriores:
 
 ```bash
 kubectl label node fasthack-worker disk=ssd zone=us-east-1a
@@ -51,21 +51,21 @@ kubectl label node fasthack-worker2 disk=hdd zone=us-east-1b
 
 ---
 
-### Task 1 — Taints & Tolerations
+### Tarefa 1 — Taints & Tolerations
 
-**Linux analogy:** Like setting a cgroup rule that prevents certain processes from running on specific CPUs — only processes that explicitly "opt in" are allowed.
+**Analogia com Linux:** Como definir uma regra de cgroup que impede certos processos de executar em CPUs específicas — apenas processos que explicitamente "optam por entrar" são permitidos.
 
-Taints are applied to **nodes** to repel Pods. Tolerations are applied to **Pods** to allow them onto tainted nodes.
+Taints são aplicados a **nodes** para repelir Pods. Tolerations são aplicados a **Pods** para permitir que eles sejam alocados em nodes com taints.
 
-**Step 1:** Taint `fasthack-worker2` so that only Pods with a matching toleration can be scheduled there:
+**Passo 1:** Aplique um taint no `fasthack-worker2` para que apenas Pods com uma toleration correspondente possam ser agendados lá:
 
 ```bash
 kubectl taint nodes fasthack-worker2 environment=production:NoSchedule
 ```
 
-**Step 2:** Create a Pod **without** a toleration and observe that it only lands on `fasthack-worker`:
+**Passo 2:** Crie um Pod **sem** toleration e observe que ele só é alocado no `fasthack-worker`:
 
-Save as `no-toleration-pod.yaml`:
+Salve como `no-toleration-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -83,11 +83,11 @@ kubectl apply -f no-toleration-pod.yaml
 kubectl get pod no-toleration -o wide
 ```
 
-The Pod should be scheduled on `fasthack-worker` (not `fasthack-worker2`).
+O Pod deve ser agendado no `fasthack-worker` (não no `fasthack-worker2`).
 
-**Step 3:** Create a Pod **with** a matching toleration that can run on the tainted node:
+**Passo 3:** Crie um Pod **com** uma toleration correspondente que pode executar no node com taint:
 
-Save as `tolerant-pod.yaml`:
+Salve como `tolerant-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -110,15 +110,15 @@ kubectl apply -f tolerant-pod.yaml
 kubectl get pod tolerant-pod -o wide
 ```
 
-The Pod *may* land on either worker — tolerations *allow* scheduling on the tainted node but don't *force* it. To guarantee placement on the tainted node, you would combine a toleration with node affinity (covered in Task 2).
+O Pod *pode* ser alocado em qualquer worker — tolerations *permitem* o agendamento no node com taint mas não *forçam*. Para garantir a alocação no node com taint, você combinaria uma toleration com node affinity (abordado na Tarefa 2).
 
-**Step 4:** Verify by checking taints:
+**Passo 4:** Verifique checando os taints:
 
 ```bash
 kubectl describe node fasthack-worker2 | grep -A 3 Taints
 ```
 
-Clean up before the next task:
+Limpe antes da próxima tarefa:
 
 ```bash
 kubectl delete pod no-toleration tolerant-pod
@@ -126,17 +126,17 @@ kubectl delete pod no-toleration tolerant-pod
 
 ---
 
-### Task 2 — Node Affinity
+### Tarefa 2 — Node Affinity
 
-**Linux analogy:** Like `taskset -c 0,1 myprocess` — pinning a process to specific CPUs. Node affinity pins Pods to specific nodes based on labels.
+**Analogia com Linux:** Como `taskset -c 0,1 myprocess` — fixar um processo em CPUs específicas. Node affinity fixa Pods em nodes específicos baseado em labels.
 
-Kubernetes supports two types of node affinity:
-- `requiredDuringSchedulingIgnoredDuringExecution` — **hard rule** (must be satisfied)
-- `preferredDuringSchedulingIgnoredDuringExecution` — **soft rule** (try to satisfy, but schedule anyway if not possible)
+O Kubernetes suporta dois tipos de node affinity:
+- `requiredDuringSchedulingIgnoredDuringExecution` — **regra rígida** (deve ser satisfeita)
+- `preferredDuringSchedulingIgnoredDuringExecution` — **regra flexível** (tenta satisfazer, mas agenda de qualquer forma se não for possível)
 
-**Step 1:** Create a Pod with **required** node affinity that targets the `disk=ssd` node:
+**Passo 1:** Crie um Pod com node affinity **obrigatória** que tem como alvo o node `disk=ssd`:
 
-Save as `required-affinity.yaml`:
+Salve como `required-affinity.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -163,11 +163,11 @@ kubectl apply -f required-affinity.yaml
 kubectl get pod ssd-required -o wide
 ```
 
-The Pod **must** land on `fasthack-worker` (the node labeled `disk=ssd`).
+O Pod **deve** ser alocado no `fasthack-worker` (o node rotulado como `disk=ssd`).
 
-**Step 2:** Create a Pod with **preferred** node affinity that prefers `disk=nvme` (which doesn't exist), with a fallback:
+**Passo 2:** Crie um Pod com node affinity **preferencial** que prefere `disk=nvme` (que não existe), com fallback:
 
-Save as `preferred-affinity.yaml`:
+Salve como `preferred-affinity.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -195,11 +195,11 @@ kubectl apply -f preferred-affinity.yaml
 kubectl get pod nvme-preferred -o wide
 ```
 
-Since no node has `disk=nvme`, the scheduler places the Pod on any available node — it's a soft preference, not a hard requirement.
+Como nenhum node tem `disk=nvme`, o scheduler coloca o Pod em qualquer node disponível — é uma preferência flexível, não uma exigência rígida.
 
-**Step 3:** Verify the difference — try to create a Pod requiring a non-existent label:
+**Passo 3:** Verifique a diferença — tente criar um Pod exigindo uma label inexistente:
 
-Save as `impossible-affinity.yaml`:
+Salve como `impossible-affinity.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -226,13 +226,13 @@ kubectl apply -f impossible-affinity.yaml
 kubectl get pod impossible-pod
 ```
 
-The Pod should be stuck in `Pending` — no node satisfies the requirement. Check why:
+O Pod deve ficar travado em `Pending` — nenhum node satisfaz o requisito. Verifique o motivo:
 
 ```bash
 kubectl describe pod impossible-pod | grep -A 5 Events
 ```
 
-Clean up:
+Limpe:
 
 ```bash
 kubectl delete pod ssd-required nvme-preferred impossible-pod
@@ -240,15 +240,15 @@ kubectl delete pod ssd-required nvme-preferred impossible-pod
 
 ---
 
-### Task 3 — Pod Affinity & Anti-Affinity
+### Tarefa 3 — Pod Affinity & Anti-Affinity
 
-**Linux analogy:** Like co-locating processes on the same NUMA node for shared memory performance, or separating critical processes across CPUs so one can't starve the other.
+**Analogia com Linux:** Como co-localizar processos no mesmo node NUMA para desempenho de memória compartilhada, ou separar processos críticos entre CPUs para que um não possa privar o outro de recursos.
 
-Pod affinity attracts Pods toward other Pods. Pod anti-affinity repels Pods away from each other.
+Pod affinity atrai Pods em direção a outros Pods. Pod anti-affinity repele Pods uns dos outros.
 
-**Step 1:** Deploy a "cache" Pod that other Pods will be attracted to:
+**Passo 1:** Implante um Pod "cache" para o qual outros Pods serão atraídos:
 
-Save as `cache-pod.yaml`:
+Salve como `cache-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -268,11 +268,11 @@ kubectl apply -f cache-pod.yaml
 kubectl get pod cache -o wide
 ```
 
-Note which node the `cache` Pod lands on.
+Observe em qual node o Pod `cache` é alocado.
 
-**Step 2:** Create a Pod with **podAffinity** that wants to be co-located with the cache:
+**Passo 2:** Crie um Pod com **podAffinity** que deseja ser co-localizado com o cache:
 
-Save as `web-with-affinity.yaml`:
+Salve como `web-with-affinity.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -300,11 +300,11 @@ kubectl apply -f web-with-affinity.yaml
 kubectl get pod web-near-cache -o wide
 ```
 
-The `web-near-cache` Pod should land on the **same node** as the `cache` Pod.
+O Pod `web-near-cache` deve ser alocado no **mesmo node** que o Pod `cache`.
 
-**Step 3:** Create a Deployment with **podAntiAffinity** to spread replicas across nodes:
+**Passo 3:** Crie um Deployment com **podAntiAffinity** para espalhar réplicas entre nodes:
 
-Save as `spread-deployment.yaml`:
+Salve como `spread-deployment.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -341,14 +341,14 @@ kubectl apply -f spread-deployment.yaml
 kubectl get pods -l app=spread-web -o wide
 ```
 
-Each replica should land on a **different** worker node. If you scale to 3 replicas, the third will be `Pending` (only 2 worker nodes with no taint-removing tolerations applicable):
+Cada réplica deve ser alocada em um worker node **diferente**. Se você escalar para 3 réplicas, a terceira ficará `Pending` (apenas 2 worker nodes sem tolerations aplicáveis para remoção de taints):
 
 ```bash
 kubectl scale deployment spread-web --replicas=3
 kubectl get pods -l app=spread-web -o wide
 ```
 
-Scale back down and clean up:
+Reduza a escala e limpe:
 
 ```bash
 kubectl scale deployment spread-web --replicas=2
@@ -358,21 +358,21 @@ kubectl delete deployment spread-web
 
 ---
 
-### Task 4 — Topology Spread Constraints
+### Tarefa 4 — Topology Spread Constraints
 
-**Linux analogy:** Like distributing processes evenly across NUMA nodes to prevent memory hotspots.
+**Analogia com Linux:** Como distribuir processos uniformemente entre nodes NUMA para evitar hotspots de memória.
 
-Topology spread constraints give you finer-grained control over Pod distribution than anti-affinity.
+Topology spread constraints oferecem controle mais granular sobre a distribuição de Pods do que anti-affinity.
 
-**Step 1:** Remove the taint from Task 1 so both workers are available:
+**Passo 1:** Remova o taint da Tarefa 1 para que ambos os workers estejam disponíveis:
 
 ```bash
 kubectl taint nodes fasthack-worker2 environment=production:NoSchedule-
 ```
 
-**Step 2:** Create a Deployment with topology spread constraints:
+**Passo 2:** Crie um Deployment com topology spread constraints:
 
-Save as `topology-spread.yaml`:
+Salve como `topology-spread.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -406,9 +406,9 @@ kubectl apply -f topology-spread.yaml
 kubectl get pods -l app=balanced-web -o wide
 ```
 
-With `maxSkew: 1`, Pods should be distributed as evenly as possible across worker nodes — expect 2 Pods per worker.
+Com `maxSkew: 1`, os Pods devem ser distribuídos o mais uniformemente possível entre os worker nodes — espere 2 Pods por worker.
 
-**Step 3:** Change `whenUnsatisfiable` to `ScheduleAnyway` and observe the difference:
+**Passo 3:** Altere `whenUnsatisfiable` para `ScheduleAnyway` e observe a diferença:
 
 ```bash
 kubectl patch deployment balanced-web --type=json \
@@ -418,9 +418,9 @@ kubectl rollout status deployment balanced-web
 kubectl get pods -l app=balanced-web -o wide
 ```
 
-With `ScheduleAnyway`, the scheduler *tries* to spread evenly but won't leave Pods unscheduled if the constraint can't be perfectly met.
+Com `ScheduleAnyway`, o scheduler *tenta* distribuir uniformemente mas não deixará Pods sem agendar se a restrição não puder ser perfeitamente atendida.
 
-Clean up:
+Limpe:
 
 ```bash
 kubectl delete deployment balanced-web
@@ -428,21 +428,21 @@ kubectl delete deployment balanced-web
 
 ---
 
-### Task 5 — Static Pods
+### Tarefa 5 — Static Pods
 
-**Linux analogy:** Like a service started directly by `systemd` from a unit file on disk — the init system watches the file and manages the process lifecycle, bypassing any higher-level process manager.
+**Analogia com Linux:** Como um serviço iniciado diretamente pelo `systemd` a partir de um arquivo unit em disco — o sistema init monitora o arquivo e gerencia o ciclo de vida do processo, ignorando qualquer gerenciador de processos de nível superior.
 
-Static Pods are managed directly by the **kubelet** on a specific node, not by the API server. The kubelet watches a directory for Pod manifests and starts/stops Pods as files appear/disappear.
+Static Pods são gerenciados diretamente pelo **kubelet** em um node específico, não pelo API server. O kubelet monitora um diretório por manifestos de Pod e inicia/para Pods conforme arquivos aparecem/desaparecem.
 
-**Step 1:** Find the static Pod path on your Kind control-plane node:
+**Passo 1:** Encontre o caminho do static Pod no node control-plane do Kind:
 
 ```bash
 docker exec fasthack-control-plane cat /var/lib/kubelet/config.yaml | grep staticPodPath
 ```
 
-You should see `staticPodPath: /etc/kubernetes/manifests`.
+Você deve ver `staticPodPath: /etc/kubernetes/manifests`.
 
-**Step 2:** Create a static Pod by placing a manifest directly in that directory:
+**Passo 2:** Crie um static Pod colocando um manifesto diretamente nesse diretório:
 
 ```bash
 docker exec fasthack-control-plane bash -c 'cat > /etc/kubernetes/manifests/static-web.yaml << EOF
@@ -461,35 +461,35 @@ spec:
 EOF'
 ```
 
-**Step 3:** Verify the static Pod appears in the API server as a **mirror Pod**:
+**Passo 3:** Verifique se o static Pod aparece no API server como um **mirror Pod**:
 
 ```bash
 kubectl get pods -A | grep static-web
 ```
 
-You should see `static-web-fasthack-control-plane` — the kubelet created a mirror Pod. Notice the node hostname is appended to the name.
+Você deve ver `static-web-fasthack-control-plane` — o kubelet criou um mirror Pod. Note que o hostname do node é anexado ao nome.
 
-**Step 4:** Try to delete the mirror Pod:
+**Passo 4:** Tente deletar o mirror Pod:
 
 ```bash
 kubectl delete pod static-web-fasthack-control-plane -n default
 ```
 
-Wait a few seconds, then check again:
+Aguarde alguns segundos, depois verifique novamente:
 
 ```bash
 kubectl get pods | grep static-web
 ```
 
-The Pod comes back! The kubelet recreates it because the manifest file still exists on disk.
+O Pod volta! O kubelet o recria porque o arquivo de manifesto ainda existe no disco.
 
-**Step 5:** The only way to truly remove a static Pod is to delete the manifest file:
+**Passo 5:** A única forma de realmente remover um static Pod é deletar o arquivo de manifesto:
 
 ```bash
 docker exec fasthack-control-plane rm /etc/kubernetes/manifests/static-web.yaml
 ```
 
-Wait 10–20 seconds, then verify it's gone:
+Aguarde 10–20 segundos, depois verifique que ele sumiu:
 
 ```bash
 kubectl get pods | grep static-web
@@ -497,19 +497,19 @@ kubectl get pods | grep static-web
 
 ---
 
-### Task 6 — ResourceQuotas and LimitRanges
+### Tarefa 6 — ResourceQuotas e LimitRanges
 
-**Linux analogy:** `ResourceQuota` is like a per-user `ulimit` — it caps total resource usage for a namespace. `LimitRange` is like setting default `ulimit` values for a user group — it provides automatic defaults and enforces min/max per container.
+**Analogia com Linux:** `ResourceQuota` é como um `ulimit` por usuário — limita o uso total de recursos para um namespace. `LimitRange` é como definir valores padrão de `ulimit` para um grupo de usuários — fornece padrões automáticos e impõe mínimo/máximo por container.
 
-**Step 1:** Create a namespace for this exercise:
+**Passo 1:** Crie um namespace para este exercício:
 
 ```bash
 kubectl create namespace quota-lab
 ```
 
-**Step 2:** Create a ResourceQuota that limits the namespace to 2 CPUs and 1Gi of memory total:
+**Passo 2:** Crie uma ResourceQuota que limita o namespace a 2 CPUs e 1Gi de memória no total:
 
-Save as `resource-quota.yaml`:
+Salve como `resource-quota.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -531,9 +531,9 @@ kubectl apply -f resource-quota.yaml
 kubectl describe quota compute-quota -n quota-lab
 ```
 
-**Step 3:** Create a LimitRange that sets default resource requests/limits for containers in the namespace:
+**Passo 3:** Crie um LimitRange que define requests/limits padrão de recursos para containers no namespace:
 
-Save as `limit-range.yaml`:
+Salve como `limit-range.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -563,18 +563,18 @@ kubectl apply -f limit-range.yaml
 kubectl describe limitrange default-limits -n quota-lab
 ```
 
-**Step 4:** Create a Pod **without** specifying resources — the LimitRange should inject defaults:
+**Passo 4:** Crie um Pod **sem** especificar recursos — o LimitRange deve injetar os padrões:
 
 ```bash
 kubectl run auto-limits --image=nginx:stable -n quota-lab
 kubectl get pod auto-limits -n quota-lab -o jsonpath='{.spec.containers[0].resources}' | python3 -m json.tool
 ```
 
-You should see the default requests and limits injected by the LimitRange.
+Você deve ver os requests e limits padrão injetados pelo LimitRange.
 
-**Step 5:** Try to create a Pod that exceeds the LimitRange maximum:
+**Passo 5:** Tente criar um Pod que excede o máximo do LimitRange:
 
-Save as `greedy-pod.yaml`:
+Salve como `greedy-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -599,27 +599,27 @@ spec:
 kubectl apply -f greedy-pod.yaml
 ```
 
-This should be **rejected** because the container's CPU limit (`2`) exceeds the LimitRange max (`1`).
+Isso deve ser **rejeitado** porque o limite de CPU do container (`2`) excede o máximo do LimitRange (`1`).
 
-**Step 6:** Check the quota usage:
+**Passo 6:** Verifique o uso da quota:
 
 ```bash
 kubectl describe quota compute-quota -n quota-lab
 ```
 
-You should see the resources consumed by the `auto-limits` Pod counted against the quota.
+Você deve ver os recursos consumidos pelo Pod `auto-limits` contabilizados na quota.
 
 ---
 
-### Task 7 — PodDisruptionBudgets (PDB)
+### Tarefa 7 — PodDisruptionBudgets (PDB)
 
-**Linux analogy:** Like ensuring that during a maintenance window (`systemctl stop`), you always keep at least N instances of a critical service running across your server pool.
+**Analogia com Linux:** Como garantir que durante uma janela de manutenção (`systemctl stop`), você sempre mantenha pelo menos N instâncias de um serviço crítico em execução no seu pool de servidores.
 
-PDBs protect your application during **voluntary disruptions** (node drains, cluster upgrades) by guaranteeing a minimum number of available Pods.
+PDBs protegem sua aplicação durante **interrupções voluntárias** (drains de nodes, upgrades de cluster) garantindo um número mínimo de Pods disponíveis.
 
-**Step 1:** Create a Deployment with 3 replicas:
+**Passo 1:** Crie um Deployment com 3 réplicas:
 
-Save as `pdb-app.yaml`:
+Salve como `pdb-app.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -650,9 +650,9 @@ kubectl apply -f pdb-app.yaml
 kubectl get pods -l app=pdb-web -o wide
 ```
 
-**Step 2:** Create a PodDisruptionBudget that requires at least 2 Pods to always be available:
+**Passo 2:** Crie um PodDisruptionBudget que exige pelo menos 2 Pods sempre disponíveis:
 
-Save as `pdb.yaml`:
+Salve como `pdb.yaml`:
 
 ```yaml
 apiVersion: policy/v1
@@ -671,40 +671,40 @@ kubectl apply -f pdb.yaml
 kubectl get pdb
 ```
 
-Expected output shows `ALLOWED-DISRUPTIONS: 1` (3 replicas − 2 minAvailable = 1 disruption allowed).
+A saída esperada mostra `ALLOWED-DISRUPTIONS: 1` (3 réplicas − 2 minAvailable = 1 interrupção permitida).
 
-**Step 3:** Test the PDB by draining a worker node:
+**Passo 3:** Teste o PDB fazendo drain de um worker node:
 
 ```bash
 kubectl drain fasthack-worker --ignore-daemonsets --delete-emptydir-data
 ```
 
-Observe that the drain proceeds, but respects the PDB — it evicts Pods one at a time, waiting for replacements to come up before evicting the next.
+Observe que o drain prossegue, mas respeita o PDB — ele despeja Pods um de cada vez, esperando que substitutos subam antes de despejar o próximo.
 
 ```bash
 kubectl get pods -l app=pdb-web -o wide
 kubectl get pdb
 ```
 
-You should still see at least 2 running Pods at all times.
+Você deve ver pelo menos 2 Pods em execução o tempo todo.
 
-**Step 4:** Uncordon the drained node to make it schedulable again:
+**Passo 4:** Desbloqueie o node drenado para torná-lo agendável novamente:
 
 ```bash
 kubectl uncordon fasthack-worker
 ```
 
-**Step 5 (Bonus):** Try creating a PDB with `minAvailable: 3` (equal to replicas) and draining — the drain will **block** because it can't evict any Pod without violating the budget:
+**Passo 5 (Bônus):** Tente criar um PDB com `minAvailable: 3` (igual às réplicas) e fazer drain — o drain será **bloqueado** porque não pode despejar nenhum Pod sem violar o budget:
 
 ```bash
 kubectl patch pdb pdb-web --type=merge -p '{"spec":{"minAvailable":3}}'
 kubectl get pdb
 
-# This will block — press Ctrl+C after 30 seconds
+# Isso vai bloquear — pressione Ctrl+C após 30 segundos
 kubectl drain fasthack-worker --ignore-daemonsets --delete-emptydir-data --timeout=30s
 ```
 
-Reset:
+Restaure:
 
 ```bash
 kubectl uncordon fasthack-worker
@@ -713,87 +713,87 @@ kubectl patch pdb pdb-web --type=merge -p '{"spec":{"minAvailable":2}}'
 
 ---
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] **Task 0:** 3-node Kind cluster is running (1 control-plane + 2 workers) with custom labels
-- [ ] **Task 1:** Tainted node repels Pods without tolerations; toleration-bearing Pod can be scheduled on the tainted node
-- [ ] **Task 2:** Pod with `requiredDuringScheduling` node affinity lands only on the matching node; Pod with `preferredDuringScheduling` falls back when no match exists; Pod with impossible affinity stays `Pending`
-- [ ] **Task 3:** Pod with podAffinity lands on the same node as target Pod; Deployment with podAntiAffinity spreads replicas to different nodes
-- [ ] **Task 4:** Topology spread constraints distribute 4 replicas evenly (2 per worker node)
-- [ ] **Task 5:** Static Pod created via kubelet manifest directory; mirror Pod visible in API server; Pod survives `kubectl delete`; removed only by deleting the manifest file
-- [ ] **Task 6:** ResourceQuota limits total namespace resources; LimitRange injects default requests/limits; Pod exceeding LimitRange max is rejected
-- [ ] **Task 7:** PDB prevents `kubectl drain` from evicting too many Pods simultaneously; at least `minAvailable` Pods remain running during drain
+- [ ] **Tarefa 0:** Cluster Kind com 3 nodes está em execução (1 control-plane + 2 workers) com labels personalizadas
+- [ ] **Tarefa 1:** Node com taint repele Pods sem tolerations; Pod com toleration pode ser agendado no node com taint
+- [ ] **Tarefa 2:** Pod com node affinity `requiredDuringScheduling` é alocado apenas no node correspondente; Pod com `preferredDuringScheduling` faz fallback quando não há correspondência; Pod com affinity impossível fica `Pending`
+- [ ] **Tarefa 3:** Pod com podAffinity é alocado no mesmo node que o Pod alvo; Deployment com podAntiAffinity espalha réplicas em nodes diferentes
+- [ ] **Tarefa 4:** Topology spread constraints distribuem 4 réplicas uniformemente (2 por worker node)
+- [ ] **Tarefa 5:** Static Pod criado via diretório de manifestos do kubelet; mirror Pod visível no API server; Pod sobrevive a `kubectl delete`; removido apenas deletando o arquivo de manifesto
+- [ ] **Tarefa 6:** ResourceQuota limita recursos totais do namespace; LimitRange injeta requests/limits padrão; Pod que excede o máximo do LimitRange é rejeitado
+- [ ] **Tarefa 7:** PDB impede que `kubectl drain` despeje muitos Pods simultaneamente; pelo menos `minAvailable` Pods permanecem em execução durante o drain
 
 ---
 
-## Linux ↔ Kubernetes Quick Reference
+## Referência Rápida Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent | What It Does |
+| Conceito Linux | Equivalente Kubernetes | O Que Faz |
 |---|---|---|
-| `cgroup` CPU restrictions | **Taints & Tolerations** | Prevent processes/Pods from running on certain CPUs/nodes |
-| `taskset -c 0,1 process` | **Node Affinity** (`requiredDuringScheduling`) | Pin a process/Pod to specific CPUs/nodes |
-| `nice` / CPU preference | **Node Affinity** (`preferredDuringScheduling`) | Prefer certain CPUs/nodes but allow fallback |
-| NUMA co-location | **Pod Affinity** | Co-locate related processes/Pods on same node |
-| Process separation across CPUs | **Pod Anti-Affinity** | Keep processes/Pods on different nodes |
-| Load balancing across NUMA nodes | **Topology Spread Constraints** | Distribute processes/Pods evenly across topology |
-| `systemd` unit files on disk | **Static Pods** | kubelet watches a directory and manages Pod lifecycle directly |
-| `ulimit` / per-user resource caps | **ResourceQuota** | Cap total resources per namespace |
-| Default `ulimit` for a user group | **LimitRange** | Default and min/max resource values per container |
-| Minimum instances during maintenance | **PodDisruptionBudget** | Guarantee minimum available Pods during voluntary disruptions |
-| `nice -n 10` / `ionice` | **Resource requests/limits** | CPU/memory priority and caps per container |
-| `/proc/sys/kernel/threads-max` | **ResourceQuota `pods`** | Max number of processes/Pods in a namespace |
+| Restrições de CPU via `cgroup` | **Taints & Tolerations** | Impedir processos/Pods de executar em certas CPUs/nodes |
+| `taskset -c 0,1 process` | **Node Affinity** (`requiredDuringScheduling`) | Fixar um processo/Pod em CPUs/nodes específicos |
+| `nice` / preferência de CPU | **Node Affinity** (`preferredDuringScheduling`) | Preferir certas CPUs/nodes mas permitir fallback |
+| Co-localização NUMA | **Pod Affinity** | Co-localizar processos/Pods relacionados no mesmo node |
+| Separação de processos entre CPUs | **Pod Anti-Affinity** | Manter processos/Pods em nodes diferentes |
+| Balanceamento de carga entre nodes NUMA | **Topology Spread Constraints** | Distribuir processos/Pods uniformemente pela topologia |
+| Arquivos unit do `systemd` em disco | **Static Pods** | kubelet monitora um diretório e gerencia o ciclo de vida do Pod diretamente |
+| `ulimit` / limites de recursos por usuário | **ResourceQuota** | Limitar recursos totais por namespace |
+| `ulimit` padrão para um grupo de usuários | **LimitRange** | Valores padrão e mínimo/máximo de recursos por container |
+| Mínimo de instâncias durante manutenção | **PodDisruptionBudget** | Garantir mínimo de Pods disponíveis durante interrupções voluntárias |
+| `nice -n 10` / `ionice` | **Resource requests/limits** | Prioridade e limites de CPU/memória por container |
+| `/proc/sys/kernel/threads-max` | **ResourceQuota `pods`** | Número máximo de processos/Pods em um namespace |
 
 ---
 
-## Hints
+## Dicas
 
 <details>
-<summary><strong>Hint 1 — I tainted a node but my toleration Pod still doesn't land there</strong></summary>
+<summary><strong>Dica 1 — Apliquei taint em um node mas meu Pod com toleration ainda não é alocado lá</strong></summary>
 
-Tolerations *allow* scheduling on a tainted node but don't *force* it. The scheduler may still prefer untainted nodes. To force a Pod onto a specific node, combine a toleration with nodeAffinity or use `nodeName`.
+Tolerations *permitem* o agendamento em um node com taint mas não *forçam*. O scheduler ainda pode preferir nodes sem taint. Para forçar um Pod em um node específico, combine uma toleration com nodeAffinity ou use `nodeName`.
 
 ```bash
-# Check the node's taints
+# Verifique os taints do node
 kubectl describe node fasthack-worker2 | grep Taints
 
-# Check the Pod's tolerations
+# Verifique as tolerations do Pod
 kubectl get pod tolerant-pod -o jsonpath='{.spec.tolerations}'
 ```
 
 </details>
 
 <details>
-<summary><strong>Hint 2 — My Pod with required node affinity is stuck Pending</strong></summary>
+<summary><strong>Dica 2 — Meu Pod com node affinity obrigatória está travado em Pending</strong></summary>
 
-The node labels must match exactly. Check what labels exist:
+As labels do node devem corresponder exatamente. Verifique quais labels existem:
 
 ```bash
 kubectl get nodes --show-labels
 ```
 
-Verify the affinity expression in your Pod spec matches the label key and value on the target node.
+Verifique se a expressão de affinity no spec do seu Pod corresponde à chave e valor da label no node alvo.
 
 </details>
 
 <details>
-<summary><strong>Hint 3 — How do I find the static Pod path in Kind?</strong></summary>
+<summary><strong>Dica 3 — Como encontro o caminho do static Pod no Kind?</strong></summary>
 
-The kubelet configuration file on Kind nodes is at `/var/lib/kubelet/config.yaml`. Access it with:
+O arquivo de configuração do kubelet nos nodes Kind está em `/var/lib/kubelet/config.yaml`. Acesse-o com:
 
 ```bash
 docker exec fasthack-control-plane cat /var/lib/kubelet/config.yaml | grep staticPodPath
 ```
 
-The default is `/etc/kubernetes/manifests`.
+O padrão é `/etc/kubernetes/manifests`.
 
 </details>
 
 <details>
-<summary><strong>Hint 4 — My Pod was rejected by the ResourceQuota</strong></summary>
+<summary><strong>Dica 4 — Meu Pod foi rejeitado pela ResourceQuota</strong></summary>
 
-When a ResourceQuota exists in a namespace with CPU/memory quotas, **every** Pod must specify resource requests. If you don't, the API server rejects it. That's why LimitRange is useful — it injects defaults.
+Quando uma ResourceQuota existe em um namespace com quotas de CPU/memória, **todo** Pod deve especificar resource requests. Se não especificar, o API server rejeita. Por isso o LimitRange é útil — ele injeta os padrões.
 
-Check the error message:
+Verifique a mensagem de erro:
 
 ```bash
 kubectl describe quota -n quota-lab
@@ -802,32 +802,32 @@ kubectl describe quota -n quota-lab
 </details>
 
 <details>
-<summary><strong>Hint 5 — kubectl drain is stuck / not progressing</strong></summary>
+<summary><strong>Dica 5 — kubectl drain está travado / não está progredindo</strong></summary>
 
-The drain is likely blocked by a PodDisruptionBudget. Check:
+O drain provavelmente está bloqueado por um PodDisruptionBudget. Verifique:
 
 ```bash
 kubectl get pdb
 kubectl get events --sort-by='.lastTimestamp'
 ```
 
-If `ALLOWED-DISRUPTIONS` is `0`, the drain cannot evict any Pod. Reduce `minAvailable` or increase replicas.
+Se `ALLOWED-DISRUPTIONS` é `0`, o drain não pode despejar nenhum Pod. Reduza `minAvailable` ou aumente as réplicas.
 
 </details>
 
 <details>
-<summary><strong>Hint 6 — What's the difference between topologySpreadConstraints and podAntiAffinity?</strong></summary>
+<summary><strong>Dica 6 — Qual a diferença entre topologySpreadConstraints e podAntiAffinity?</strong></summary>
 
-- **podAntiAffinity** is binary: "don't place two matching Pods on the same node" (required) or "try not to" (preferred).
-- **topologySpreadConstraints** gives finer control with `maxSkew` — allows up to N Pods difference between topology domains, enabling balanced distribution rather than strict one-per-node.
+- **podAntiAffinity** é binária: "não coloque dois Pods correspondentes no mesmo node" (obrigatória) ou "tente não colocar" (preferencial).
+- **topologySpreadConstraints** oferece controle mais fino com `maxSkew` — permite até N Pods de diferença entre domínios de topologia, permitindo distribuição balanceada em vez de separação estrita um-por-node.
 
-Use topologySpreadConstraints when you want *even distribution*, and podAntiAffinity when you want *strict separation*.
+Use topologySpreadConstraints quando quiser *distribuição uniforme*, e podAntiAffinity quando quiser *separação estrita*.
 
 </details>
 
 ---
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 - [Assigning Pods to Nodes (Node Affinity)](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)

@@ -1,35 +1,35 @@
-# Challenge 17 — Advanced Deployment Strategies
+# Desafio 17 — Estratégias Avançadas de Deployment
 
-[< Previous Challenge](Challenge-16.md) - **[Home](../README.md)** - [Next Challenge >](Challenge-18.md)
+[< Desafio Anterior](Challenge-16.md) - **[Início](../README.md)** - [Próximo Desafio >](Challenge-18.md)
 
-## Introduction
+## Introdução
 
-On a Linux server, upgrading a production application is a carefully choreographed process. You might keep two identical server pools behind a load balancer and flip traffic from the old to the new (`blue/green`). Or you might configure Nginx upstream weights to send only 10% of traffic to the new version while 90% stays on the proven one (`canary / A/B testing`). A simple `apt upgrade nginx` replaces the binary in-place while the service stays up (`rolling update`). And sometimes the only safe option is `systemctl stop myapp && systemctl start myapp` — a hard restart with a brief outage (`recreate`).
+Em um servidor Linux, atualizar uma aplicação em produção é um processo cuidadosamente orquestrado. Você pode manter dois pools de servidores idênticos atrás de um load balancer e alternar o tráfego do antigo para o novo (`blue/green`). Ou pode configurar pesos de upstream no Nginx para enviar apenas 10% do tráfego para a nova versão enquanto 90% permanece na versão comprovada (`canary / teste A/B`). Um simples `apt upgrade nginx` substitui o binário in-place enquanto o serviço continua ativo (`rolling update`). E às vezes a única opção segura é `systemctl stop myapp && systemctl start myapp` — uma reinicialização forçada com uma breve indisponibilidade (`recreate`).
 
-Kubernetes formalizes every one of these patterns as a **deployment strategy**. Instead of scripting failovers and upstream weights yourself, you declare the strategy in YAML and the cluster handles the rollout mechanics.
+O Kubernetes formaliza cada um desses padrões como uma **estratégia de deployment**. Em vez de criar scripts de failover e pesos de upstream manualmente, você declara a estratégia em YAML e o cluster cuida da mecânica do rollout.
 
-In this challenge you will implement all four patterns on your Kind cluster, plus learn how to handle **API version deprecations** — the Kubernetes equivalent of `apt-get dist-upgrade` breaking your configs when old package interfaces are removed.
+Neste desafio você implementará todos os quatro padrões no seu cluster Kind, além de aprender como lidar com **depreciações de API** — o equivalente Kubernetes de um `apt-get dist-upgrade` quebrando suas configurações quando interfaces antigas de pacotes são removidas.
 
-| Linux Pattern | Kubernetes Pattern |
+| Padrão Linux | Padrão Kubernetes |
 |---|---|
-| Two server pools + DNS/VIP flip | Blue/Green Deployments |
-| Nginx upstream weights (10/90) | Canary with Ingress annotations or Gateway API |
-| `apt upgrade` (in-place, no downtime) | RollingUpdate strategy |
-| `systemctl stop && start` (brief outage) | Recreate strategy |
-| `apt-get dist-upgrade` (breaking changes) | API deprecation & version migration |
+| Dois pools de servidores + flip DNS/VIP | Blue/Green Deployments |
+| Pesos de upstream Nginx (10/90) | Canary com annotations de Ingress ou Gateway API |
+| `apt upgrade` (in-place, sem downtime) | Estratégia RollingUpdate |
+| `systemctl stop && start` (breve indisponibilidade) | Estratégia Recreate |
+| `apt-get dist-upgrade` (breaking changes) | Depreciação de API & migração de versão |
 
-> **Cluster requirement:** All exercises use a local [Kind](https://kind.sigs.k8s.io/) cluster — no cloud account needed. If you haven't created one yet, run:
+> **Requisito do cluster:** Todos os exercícios usam um cluster [Kind](https://kind.sigs.k8s.io/) local — nenhuma conta cloud é necessária. Se você ainda não criou um, execute:
 > ```bash
 > kind create cluster --name fasthack
 > ```
 
-## Description
+## Descrição
 
-### Task 1 — Blue/Green Deployment
+### Tarefa 1 — Blue/Green Deployment
 
-Blue/Green is the Kubernetes equivalent of maintaining two identical server pools behind a load balancer and switching the VIP from "blue" (current) to "green" (new). The key insight: **two Deployments exist simultaneously, but only one receives traffic** — controlled by the Service selector.
+Blue/Green é o equivalente Kubernetes de manter dois pools de servidores idênticos atrás de um load balancer e alternar o VIP de "blue" (atual) para "green" (novo). O insight chave: **dois Deployments existem simultaneamente, mas apenas um recebe tráfego** — controlado pelo selector do Service.
 
-**Step 1:** Create two Deployments — one "blue" (v1) and one "green" (v2). Both use the same base `app` label but differ on a `version` label. Save this as `blue-green.yaml`:
+**Passo 1:** Crie dois Deployments — um "blue" (v1) e um "green" (v2). Ambos usam a mesma label base `app` mas diferem na label `version`. Salve como `blue-green.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -95,7 +95,7 @@ spec:
               memory: 64Mi
 ```
 
-**Step 2:** Create a Service that currently points to the **blue** version. Save as `webapp-svc.yaml`:
+**Passo 2:** Crie um Service que atualmente aponta para a versão **blue**. Salve como `webapp-svc.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -112,7 +112,7 @@ spec:
       targetPort: 5678
 ```
 
-**Step 3:** Apply both files and verify that traffic goes to the blue Deployment:
+**Passo 3:** Aplique ambos os arquivos e verifique que o tráfego vai para o Deployment blue:
 
 ```bash
 kubectl apply -f blue-green.yaml
@@ -120,43 +120,43 @@ kubectl apply -f webapp-svc.yaml
 kubectl run curl-test --image=curlimages/curl --restart=Never --rm -it -- curl -s http://webapp-svc
 ```
 
-You should see `v1 - BLUE`.
+Você deve ver `v1 - BLUE`.
 
-**Step 4:** Switch traffic to green by updating the Service selector:
+**Passo 4:** Troque o tráfego para green atualizando o selector do Service:
 
 ```bash
 kubectl patch svc webapp-svc -p '{"spec":{"selector":{"version":"green"}}}'
 ```
 
-**Step 5:** Verify the cutover — all traffic now goes to v2:
+**Passo 5:** Verifique a troca — todo o tráfego agora vai para v2:
 
 ```bash
 kubectl run curl-test --image=curlimages/curl --restart=Never --rm -it -- curl -s http://webapp-svc
 ```
 
-You should now see `v2 - GREEN`.
+Agora você deve ver `v2 - GREEN`.
 
-> **Why this works:** The Service uses label selectors to choose which Pods receive traffic. By changing one label value, you instantly redirect 100% of traffic — no DNS propagation delay, no connection draining headaches. This is the Kubernetes equivalent of flipping a VIP in a load balancer.
+> **Por que funciona:** O Service usa label selectors para escolher quais Pods recebem tráfego. Alterando um valor de label, você redireciona instantaneamente 100% do tráfego — sem atraso de propagação DNS, sem dores de cabeça com connection draining. Este é o equivalente Kubernetes de alternar um VIP em um load balancer.
 
-### Task 2 — Canary Deployment with NGINX Ingress Controller
+### Tarefa 2 — Canary Deployment com NGINX Ingress Controller
 
-A canary deployment sends a small percentage of traffic to the new version while keeping most traffic on the stable version — like configuring `upstream` weights in an Nginx config to do A/B testing.
+Um canary deployment envia uma pequena porcentagem de tráfego para a nova versão enquanto mantém a maior parte do tráfego na versão estável — como configurar pesos de `upstream` em uma configuração Nginx para fazer teste A/B.
 
-The NGINX Ingress Controller supports canary traffic splitting natively via annotations.
+O NGINX Ingress Controller suporta divisão de tráfego canary nativamente via annotations.
 
-**Step 1:** Install the NGINX Ingress Controller on your Kind cluster:
+**Passo 1:** Instale o NGINX Ingress Controller no seu cluster Kind:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
 
-# Wait for the controller to be ready
+# Aguarde o controller estar pronto
 kubectl wait --namespace ingress-nginx \
   --for=condition=ready pod \
   --selector=app.kubernetes.io/component=controller \
   --timeout=120s
 ```
 
-**Step 2:** Create two Deployments and Services — "stable" and "canary". Save as `canary-app.yaml`:
+**Passo 2:** Crie dois Deployments e Services — "stable" e "canary". Salve como `canary-app.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -240,7 +240,7 @@ spec:
       targetPort: 5678
 ```
 
-**Step 3:** Create the **main** Ingress for the stable Service. Save as `canary-ingress.yaml`:
+**Passo 3:** Crie o Ingress **principal** para o Service estável. Salve como `canary-ingress.yaml`:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -283,16 +283,16 @@ spec:
                   number: 80
 ```
 
-The `canary-weight: "20"` annotation tells NGINX to send **20% of traffic** to the canary Service and 80% to stable.
+A annotation `canary-weight: "20"` diz ao NGINX para enviar **20% do tráfego** para o Service canary e 80% para o estável.
 
-**Step 4:** Apply everything:
+**Passo 4:** Aplique tudo:
 
 ```bash
 kubectl apply -f canary-app.yaml
 kubectl apply -f canary-ingress.yaml
 ```
 
-**Step 5:** Test the traffic split. Send 20 requests and count the results:
+**Passo 5:** Teste a divisão de tráfego. Envie 20 requisições e conte os resultados:
 
 ```bash
 for i in $(seq 1 20); do
@@ -300,40 +300,40 @@ for i in $(seq 1 20); do
 done | sort | uniq -c
 ```
 
-You should see roughly 16 responses saying `STABLE v1` and 4 saying `CANARY v2` (80/20 split).
+Você deve ver aproximadamente 16 respostas dizendo `STABLE v1` e 4 dizendo `CANARY v2` (divisão 80/20).
 
-> **Note:** On Kind, the NGINX Ingress Controller listens on the host's port 80. If port 80 is unavailable, use `kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8080:80` and curl `http://localhost:8080` instead.
+> **Nota:** No Kind, o NGINX Ingress Controller escuta na porta 80 do host. Se a porta 80 não estiver disponível, use `kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8080:80` e faça curl em `http://localhost:8080`.
 
-**Step 6:** Increase canary weight to promote the new version gradually:
+**Passo 6:** Aumente o peso canary para promover a nova versão gradualmente:
 
 ```bash
 kubectl annotate ingress myapp-canary \
   nginx.ingress.kubernetes.io/canary-weight="50" --overwrite
 ```
 
-Re-run the curl loop — you should now see a ~50/50 split.
+Re-execute o loop de curl — agora você deve ver uma divisão ~50/50.
 
-### Task 3 — Canary Deployment with Gateway API HTTPRoute
+### Tarefa 3 — Canary Deployment com Gateway API HTTPRoute
 
-The Gateway API is the successor to Ingress and provides native traffic splitting without annotations. It's like having weighted upstream configuration built into the load balancer's routing rules instead of bolted on via comments.
+A Gateway API é a sucessora do Ingress e fornece divisão de tráfego nativa sem annotations. É como ter configuração de upstream ponderada embutida nas regras de roteamento do load balancer em vez de adicionada via comentários.
 
-**Step 1:** Install Gateway API CRDs and a controller. We'll use **Contour** as the Gateway controller:
+**Passo 1:** Instale os CRDs da Gateway API e um controller. Usaremos **Contour** como controller do Gateway:
 
 ```bash
-# Install Gateway API CRDs (standard channel)
+# Instalar CRDs da Gateway API (canal standard)
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/latest/download/standard-install.yaml
 
-# Install Contour (includes a Gateway controller)
+# Instalar Contour (inclui um controller de Gateway)
 kubectl apply -f https://projectcontour.io/quickstart/contour.yaml
 
-# Wait for Contour to be ready
+# Aguardar Contour ficar pronto
 kubectl wait --namespace projectcontour \
   --for=condition=ready pod \
   --selector=app=contour \
   --timeout=120s
 ```
 
-**Step 2:** Create a GatewayClass and Gateway. Save as `gateway.yaml`:
+**Passo 2:** Crie um GatewayClass e Gateway. Salve como `gateway.yaml`:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -359,7 +359,7 @@ spec:
           from: All
 ```
 
-**Step 3:** Create an HTTPRoute with **weighted backendRefs** for traffic splitting. Save as `canary-httproute.yaml`:
+**Passo 3:** Crie um HTTPRoute com **backendRefs ponderados** para divisão de tráfego. Salve como `canary-httproute.yaml`:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -386,17 +386,17 @@ spec:
           weight: 20
 ```
 
-**Step 4:** Apply and test:
+**Passo 4:** Aplique e teste:
 
 ```bash
 kubectl apply -f gateway.yaml
 kubectl apply -f canary-httproute.yaml
 
-# Find the Envoy service port
+# Encontre a porta do serviço Envoy
 kubectl get svc -n projectcontour envoy -o jsonpath='{.spec.ports[0].nodePort}'
 ```
 
-Send test requests through the Gateway (adjust the port as needed):
+Envie requisições de teste pelo Gateway (ajuste a porta conforme necessário):
 
 ```bash
 ENVOY_PORT=$(kubectl get svc -n projectcontour envoy -o jsonpath='{.spec.ports[0].nodePort}')
@@ -405,7 +405,7 @@ for i in $(seq 1 20); do
 done | sort | uniq -c
 ```
 
-**Step 5:** Shift traffic fully to canary by updating the HTTPRoute weights:
+**Passo 5:** Mude o tráfego totalmente para canary atualizando os pesos do HTTPRoute:
 
 ```bash
 kubectl patch httproute myapp-canary-route --type=merge -p '{
@@ -421,11 +421,11 @@ kubectl patch httproute myapp-canary-route --type=merge -p '{
 }'
 ```
 
-### Task 4 — Rolling Update Deep Dive (maxSurge & maxUnavailable)
+### Tarefa 4 — Rolling Update Deep Dive (maxSurge & maxUnavailable)
 
-In Challenge 04 you performed a basic rolling update. Now we'll tune the rollout speed with `maxSurge` and `maxUnavailable` — the equivalent of controlling how many servers you take out of the pool at once during an `apt upgrade` cycle.
+No Desafio 04 você realizou um rolling update básico. Agora vamos ajustar a velocidade do rollout com `maxSurge` e `maxUnavailable` — o equivalente a controlar quantos servidores você tira do pool de uma vez durante um ciclo de `apt upgrade`.
 
-**Step 1:** Create a Deployment with explicit rolling update parameters. Save as `rolling-deep.yaml`:
+**Passo 1:** Crie um Deployment com parâmetros explícitos de rolling update. Salve como `rolling-deep.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -463,59 +463,59 @@ spec:
               memory: 64Mi
 ```
 
-With `replicas: 6`, `maxSurge: 2`, and `maxUnavailable: 1`:
-- During rollout, up to **8 Pods** can exist at once (6 + 2 surge)
-- At least **5 Pods** are always available (6 − 1 unavailable)
+Com `replicas: 6`, `maxSurge: 2` e `maxUnavailable: 1`:
+- Durante o rollout, até **8 Pods** podem existir ao mesmo tempo (6 + 2 surge)
+- Pelo menos **5 Pods** estão sempre disponíveis (6 − 1 unavailable)
 
-**Step 2:** Apply and then trigger a rolling update:
+**Passo 2:** Aplique e então dispare um rolling update:
 
 ```bash
 kubectl apply -f rolling-deep.yaml
 kubectl rollout status deployment rolling-app
 
-# Update the image to trigger a rollout
+# Atualize a imagem para disparar um rollout
 kubectl set image deployment/rolling-app app=nginx:1.28
 kubectl annotate deployment rolling-app kubernetes.io/change-cause="update to nginx:1.28" --overwrite
 ```
 
-**Step 3:** Watch the rollout in real time — observe surge and availability:
+**Passo 3:** Observe o rollout em tempo real — observe o surge e a disponibilidade:
 
 ```bash
 kubectl rollout status deployment/rolling-app
 kubectl get pods -l app=rolling-app --watch
 ```
 
-Notice how Kubernetes creates new Pods before terminating old ones — never dropping below 5 available.
+Observe como o Kubernetes cria novos Pods antes de terminar os antigos — nunca caindo abaixo de 5 disponíveis.
 
-**Step 4:** Inspect the rollout history:
+**Passo 4:** Inspecione o histórico de rollout:
 
 ```bash
 kubectl rollout history deployment/rolling-app
 ```
 
-**Step 5:** Experiment with different configurations to see the speed/safety trade-off:
+**Passo 5:** Experimente com diferentes configurações para ver o trade-off velocidade/segurança:
 
 ```bash
-# Fast rollout — aggressive surge, allow more unavailable
+# Rollout rápido — surge agressivo, permite mais indisponibilidade
 kubectl patch deployment rolling-app -p '{
   "spec": {"strategy": {"rollingUpdate": {"maxSurge": 3, "maxUnavailable": 2}}}
 }'
 kubectl set image deployment/rolling-app app=nginx:1.27
 
-# Slow, safe rollout — minimal surge, zero unavailable
+# Rollout lento e seguro — surge mínimo, zero indisponibilidade
 kubectl patch deployment rolling-app -p '{
   "spec": {"strategy": {"rollingUpdate": {"maxSurge": 1, "maxUnavailable": 0}}}
 }'
 kubectl set image deployment/rolling-app app=nginx:1.28
 ```
 
-> **Key insight:** `maxSurge: 1, maxUnavailable: 0` means "never have fewer Pods than desired, create one new before removing one old." This is the safest but slowest option — exactly like taking one server out of a pool at a time during a rolling firmware upgrade.
+> **Insight chave:** `maxSurge: 1, maxUnavailable: 0` significa "nunca tenha menos Pods que o desejado, crie um novo antes de remover um antigo." Esta é a opção mais segura mas mais lenta — exatamente como tirar um servidor do pool por vez durante um upgrade de firmware gradual.
 
-### Task 5 — Recreate Strategy
+### Tarefa 5 — Estratégia Recreate
 
-The Recreate strategy is the equivalent of `systemctl stop myapp && systemctl start myapp` — all old Pods are terminated before any new ones are created. There **will** be downtime.
+A estratégia Recreate é o equivalente a `systemctl stop myapp && systemctl start myapp` — todos os Pods antigos são terminados antes de quaisquer novos serem criados. **Haverá** downtime.
 
-**Step 1:** Create a Deployment with Recreate strategy. Save as `recreate-app.yaml`:
+**Passo 1:** Crie um Deployment com estratégia Recreate. Salve como `recreate-app.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -545,50 +545,50 @@ spec:
               memory: 32Mi
 ```
 
-**Step 2:** Apply and wait for all Pods to be ready:
+**Passo 2:** Aplique e aguarde todos os Pods estarem prontos:
 
 ```bash
 kubectl apply -f recreate-app.yaml
 kubectl rollout status deployment recreate-app
 ```
 
-**Step 3:** Trigger an update and **watch carefully** — you'll see all old Pods terminate before any new ones start:
+**Passo 3:** Dispare uma atualização e **observe com atenção** — você verá todos os Pods antigos terminarem antes de quaisquer novos iniciarem:
 
 ```bash
 kubectl set image deployment/recreate-app app=nginx:1.28
 
-# In another terminal, watch the Pod transitions
+# Em outro terminal, observe as transições dos Pods
 kubectl get pods -l app=recreate-app --watch
 ```
 
-**Step 4:** Observe the timeline:
+**Passo 4:** Observe a linha do tempo:
 
 ```bash
 kubectl describe deployment recreate-app
 ```
 
-Look at the Events section — you'll see `ScalingReplicaSet` events showing the old ReplicaSet scaled to 0 *before* the new ReplicaSet scales up.
+Observe a seção Events — você verá eventos `ScalingReplicaSet` mostrando o antigo ReplicaSet escalado para 0 *antes* do novo ReplicaSet escalar para cima.
 
-> **When to use Recreate:**
-> - Your application cannot tolerate two versions running simultaneously (e.g., database schema migration in progress)
-> - You have a singleton workload that holds an exclusive lock on a resource
-> - Brief downtime is acceptable and simpler than managing version coexistence
+> **Quando usar Recreate:**
+> - Sua aplicação não pode tolerar duas versões rodando simultaneamente (ex: migração de schema de banco de dados em andamento)
+> - Você tem um workload singleton que mantém um lock exclusivo em um recurso
+> - Um breve downtime é aceitável e mais simples do que gerenciar coexistência de versões
 
-### Task 6 — API Deprecation Handling
+### Tarefa 6 — Tratamento de Depreciação de API
 
-When Kubernetes removes old API versions, your stored manifests break — just like when `apt-get dist-upgrade` removes a deprecated package interface and scripts relying on it stop working.
+Quando o Kubernetes remove versões antigas de API, seus manifests armazenados quebram — assim como quando `apt-get dist-upgrade` remove uma interface de pacote depreciada e scripts que dependem dela param de funcionar.
 
-**Step 1:** Check your cluster for deprecated API usage:
+**Passo 1:** Verifique o uso de APIs depreciadas no seu cluster:
 
 ```bash
-# See which API versions your cluster supports
+# Veja quais versões de API seu cluster suporta
 kubectl api-versions | sort
 
-# Check for deprecation warnings (the API server returns warnings in response headers)
+# Verifique avisos de depreciação (o API server retorna avisos nos headers de resposta)
 kubectl get deployments -v=8 2>&1 | grep -i deprecat
 ```
 
-**Step 2:** Practice converting a manifest with an old API version. Create a file `old-ingress.yaml` with the **deprecated** `extensions/v1beta1` API:
+**Passo 2:** Pratique a conversão de um manifest com uma versão de API antiga. Crie um arquivo `old-ingress.yaml` com a API **depreciada** `extensions/v1beta1`:
 
 ```yaml
 apiVersion: extensions/v1beta1
@@ -606,32 +606,32 @@ spec:
               servicePort: 80
 ```
 
-**Step 3:** Try to apply it — the API server will reject it:
+**Passo 3:** Tente aplicá-lo — o API server irá rejeitá-lo:
 
 ```bash
 kubectl apply -f old-ingress.yaml
 ```
 
-You'll see an error like: `error: resource mapping not found for name: "legacy-ingress" namespace: "" from "old-ingress.yaml": no matches for kind "Ingress" in version "extensions/v1beta1"`.
+Você verá um erro como: `error: resource mapping not found for name: "legacy-ingress" namespace: "" from "old-ingress.yaml": no matches for kind "Ingress" in version "extensions/v1beta1"`.
 
-**Step 4:** Install and use `kubectl-convert` to migrate to the current API version:
+**Passo 4:** Instale e use `kubectl-convert` para migrar para a versão atual da API:
 
 ```bash
-# Install the kubectl-convert plugin (if not already installed)
+# Instale o plugin kubectl-convert (se ainda não estiver instalado)
 # Via Krew:
 kubectl krew install convert
 
-# Or download directly:
+# Ou baixe diretamente:
 # curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl-convert"
 # chmod +x kubectl-convert && sudo mv kubectl-convert /usr/local/bin/
 ```
 
 ```bash
-# Convert to the current networking.k8s.io/v1 API
+# Converta para a API atual networking.k8s.io/v1
 kubectl convert -f old-ingress.yaml --output-version networking.k8s.io/v1
 ```
 
-**Step 5:** If `kubectl-convert` is not available, manually migrate the manifest. Create `new-ingress.yaml` with the current API:
+**Passo 5:** Se `kubectl-convert` não estiver disponível, migre o manifest manualmente. Crie `new-ingress.yaml` com a API atual:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -652,23 +652,23 @@ spec:
                   number: 80
 ```
 
-Key changes from `extensions/v1beta1` → `networking.k8s.io/v1`:
-- `apiVersion` changed
+Mudanças chave de `extensions/v1beta1` → `networking.k8s.io/v1`:
+- `apiVersion` mudou
 - `backend.serviceName` → `backend.service.name`
 - `backend.servicePort` → `backend.service.port.number`
-- `pathType` is now **required** (was optional before)
+- `pathType` agora é **obrigatório** (era opcional antes)
 
-**Step 6:** Explore tools for detecting deprecated APIs across your manifests:
+**Passo 6:** Explore ferramentas para detectar APIs depreciadas nos seus manifests:
 
 ```bash
-# List all API resources and their preferred versions
+# Liste todos os recursos de API e suas versões preferidas
 kubectl api-resources -o wide
 
-# The Kubernetes deprecation guide is the authoritative reference:
+# O guia de depreciação do Kubernetes é a referência oficial:
 # https://kubernetes.io/docs/reference/using-api/deprecation-guide/
 ```
 
-### Clean Up
+### Limpe
 
 ```bash
 kubectl delete -f blue-green.yaml 2>/dev/null
@@ -683,52 +683,52 @@ kubectl delete -f old-ingress.yaml 2>/dev/null
 kubectl delete -f new-ingress.yaml 2>/dev/null
 ```
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] You deployed a blue/green setup with two Deployments and switched traffic by patching the Service selector.
-- [ ] You can explain why blue/green gives instant rollback (just patch the selector back).
-- [ ] You installed the NGINX Ingress Controller and created a canary Ingress with `canary-weight` annotation.
-- [ ] Curl tests confirm the ~80/20 traffic split between stable and canary.
-- [ ] You created a Gateway API HTTPRoute with weighted `backendRefs` for canary traffic splitting.
-- [ ] You can explain the difference between Ingress annotations and Gateway API native traffic splitting.
-- [ ] You deployed with `maxSurge: 2` and `maxUnavailable: 1` and observed the rollout behavior.
-- [ ] You can explain the speed vs. safety trade-off of different `maxSurge`/`maxUnavailable` values.
-- [ ] You deployed with `strategy: Recreate` and observed all old Pods terminate before new ones started.
-- [ ] You can explain when Recreate is appropriate despite its downtime.
-- [ ] You understand why `extensions/v1beta1` Ingress fails on modern clusters and can manually migrate to `networking.k8s.io/v1`.
-- [ ] You know how to use `kubectl-convert` (or manual migration) to handle API deprecations.
+- [ ] Você implantou uma configuração blue/green com dois Deployments e alternou o tráfego fazendo patch no selector do Service.
+- [ ] Você consegue explicar por que blue/green oferece rollback instantâneo (basta fazer patch no selector de volta).
+- [ ] Você instalou o NGINX Ingress Controller e criou um Ingress canary com a annotation `canary-weight`.
+- [ ] Testes com curl confirmam a divisão de tráfego ~80/20 entre estável e canary.
+- [ ] Você criou um HTTPRoute da Gateway API com `backendRefs` ponderados para divisão de tráfego canary.
+- [ ] Você consegue explicar a diferença entre annotations de Ingress e divisão de tráfego nativa da Gateway API.
+- [ ] Você implantou com `maxSurge: 2` e `maxUnavailable: 1` e observou o comportamento do rollout.
+- [ ] Você consegue explicar o trade-off velocidade vs. segurança de diferentes valores de `maxSurge`/`maxUnavailable`.
+- [ ] Você implantou com `strategy: Recreate` e observou todos os Pods antigos terminarem antes dos novos iniciarem.
+- [ ] Você consegue explicar quando Recreate é apropriado apesar do seu downtime.
+- [ ] Você entende por que Ingress `extensions/v1beta1` falha em clusters modernos e pode migrar manualmente para `networking.k8s.io/v1`.
+- [ ] Você sabe como usar `kubectl-convert` (ou migração manual) para lidar com depreciações de API.
 
-## Linux ↔ Kubernetes Reference
+## Referência Rápida Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent | Notes |
+| Conceito Linux | Equivalente Kubernetes | Notas |
 |---|---|---|
-| Two server pools + DNS/VIP failover | Blue/Green Deployments + Service selector switch | Instant cutover by changing which Pods the Service selects |
-| Nginx `upstream` weights (10/90 split) | Canary with Ingress annotations or Gateway API HTTPRoute weights | Gradual traffic shift to the new version |
-| `apt upgrade` (in-place, no downtime) | `RollingUpdate` strategy with `maxSurge`/`maxUnavailable` | New Pods created before old ones removed |
-| `systemctl stop && systemctl start` | `Recreate` strategy | All old Pods killed before new Pods start — brief outage |
-| `apt-get dist-upgrade` (breaking changes) | API deprecation — `apiVersion` migration | Old API versions removed; manifests must be updated |
-| `dpkg --configure -a` (fix broken upgrades) | `kubectl convert` / manual manifest migration | Repair manifests that reference removed API versions |
-| Load balancer health checks | Service `readinessProbe` + selector labels | Only healthy, selected Pods receive traffic |
-| `/etc/nginx/upstream.conf` weights | `backendRefs[].weight` in HTTPRoute | Native weighted routing in Gateway API |
+| Dois pools de servidores + failover DNS/VIP | Blue/Green Deployments + troca de selector do Service | Cutover instantâneo alterando quais Pods o Service seleciona |
+| Pesos de `upstream` do Nginx (divisão 10/90) | Canary com annotations de Ingress ou pesos de HTTPRoute da Gateway API | Mudança gradual de tráfego para a nova versão |
+| `apt upgrade` (in-place, sem downtime) | Estratégia `RollingUpdate` com `maxSurge`/`maxUnavailable` | Novos Pods criados antes dos antigos serem removidos |
+| `systemctl stop && systemctl start` | Estratégia `Recreate` | Todos os Pods antigos terminados antes dos novos iniciarem — breve interrupção |
+| `apt-get dist-upgrade` (breaking changes) | Depreciação de API — migração de `apiVersion` | Versões antigas de API removidas; manifests devem ser atualizados |
+| `dpkg --configure -a` (corrigir upgrades quebrados) | `kubectl convert` / migração manual de manifests | Reparar manifests que referenciam versões de API removidas |
+| Health checks do load balancer | `readinessProbe` + labels de selector do Service | Apenas Pods saudáveis e selecionados recebem tráfego |
+| Pesos em `/etc/nginx/upstream.conf` | `backendRefs[].weight` no HTTPRoute | Roteamento ponderado nativo na Gateway API |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: Blue/Green — How to verify which version is active</summary>
+<summary>Dica 1: Blue/Green — Como verificar qual versão está ativa</summary>
 
-Check which Pods the Service is currently selecting:
+Verifique quais Pods o Service está selecionando atualmente:
 
 ```bash
 kubectl get endpoints webapp-svc -o yaml
 ```
 
-The `addresses` list shows the Pod IPs receiving traffic. Cross-reference with:
+A lista `addresses` mostra os IPs dos Pods recebendo tráfego. Cruze com:
 
 ```bash
 kubectl get pods -l app=webapp --show-labels -o wide
 ```
 
-To rollback to blue after switching to green:
+Para fazer rollback para blue após mudar para green:
 
 ```bash
 kubectl patch svc webapp-svc -p '{"spec":{"selector":{"version":"blue"}}}'
@@ -737,27 +737,27 @@ kubectl patch svc webapp-svc -p '{"spec":{"selector":{"version":"blue"}}}'
 </details>
 
 <details>
-<summary>Hint 2: NGINX Ingress not routing traffic on Kind</summary>
+<summary>Dica 2: NGINX Ingress não está roteando tráfego no Kind</summary>
 
-Kind requires a specific NGINX Ingress manifest that maps ports correctly. Make sure you used the Kind-specific manifest:
+Kind requer um manifest específico do NGINX Ingress que mapeia as portas corretamente. Certifique-se de usar o manifest específico para Kind:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
 ```
 
-If port 80 is not accessible on localhost, use port-forward:
+Se a porta 80 não estiver acessível no localhost, use port-forward:
 
 ```bash
 kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8080:80
 ```
 
-Then test with:
+Então teste com:
 
 ```bash
 curl -s -H "Host: myapp.local" http://localhost:8080
 ```
 
-Also verify both Ingress resources exist and share the same `host`:
+Também verifique se ambos os recursos Ingress existem e compartilham o mesmo `host`:
 
 ```bash
 kubectl get ingress
@@ -766,11 +766,11 @@ kubectl get ingress
 </details>
 
 <details>
-<summary>Hint 3: Canary weight not taking effect</summary>
+<summary>Dica 3: Peso canary não está tendo efeito</summary>
 
-The canary Ingress **must** use the same `host` and `path` as the main Ingress. If they differ, NGINX treats them as separate routes instead of applying the canary weight.
+O Ingress canary **deve** usar o mesmo `host` e `path` que o Ingress principal. Se eles diferirem, o NGINX os trata como rotas separadas em vez de aplicar o peso canary.
 
-Also ensure the `canary: "true"` annotation is present — without it, the `canary-weight` annotation is ignored:
+Também garanta que a annotation `canary: "true"` está presente — sem ela, a annotation `canary-weight` é ignorada:
 
 ```bash
 kubectl get ingress myapp-canary -o yaml | grep -A5 annotations
@@ -779,53 +779,53 @@ kubectl get ingress myapp-canary -o yaml | grep -A5 annotations
 </details>
 
 <details>
-<summary>Hint 4: Understanding maxSurge and maxUnavailable math</summary>
+<summary>Dica 4: Entendendo a matemática de maxSurge e maxUnavailable</summary>
 
-Given `replicas: 6`, `maxSurge: 2`, `maxUnavailable: 1`:
+Dado `replicas: 6`, `maxSurge: 2`, `maxUnavailable: 1`:
 
-- **Maximum Pods during rollout:** 6 + 2 = **8**
-- **Minimum available Pods:** 6 − 1 = **5**
+- **Máximo de Pods durante o rollout:** 6 + 2 = **8**
+- **Mínimo de Pods disponíveis:** 6 − 1 = **5**
 
-Kubernetes will:
-1. Create up to 2 new Pods (surge)
-2. Once new Pods are Ready, terminate up to 1 old Pod
-3. Repeat until all old Pods are replaced
+O Kubernetes irá:
+1. Criar até 2 novos Pods (surge)
+2. Uma vez que os novos Pods estejam Ready, terminar até 1 Pod antigo
+3. Repetir até que todos os Pods antigos sejam substituídos
 
-Setting `maxUnavailable: 0` means "never have fewer Pods than desired" — the safest but slowest option.
+Definir `maxUnavailable: 0` significa "nunca tenha menos Pods que o desejado" — a opção mais segura mas mais lenta.
 
 </details>
 
 <details>
-<summary>Hint 5: Gateway API Pods not starting</summary>
+<summary>Dica 5: Pods da Gateway API não estão iniciando</summary>
 
-If Contour Pods are not ready, check the namespace:
+Se os Pods do Contour não estiverem prontos, verifique o namespace:
 
 ```bash
 kubectl get pods -n projectcontour
 ```
 
-Gateway API CRDs must be installed before Contour:
+Os CRDs da Gateway API devem ser instalados antes do Contour:
 
 ```bash
 kubectl get crds | grep gateway
 ```
 
-You should see `gatewayclasses.gateway.networking.k8s.io`, `gateways.gateway.networking.k8s.io`, and `httproutes.gateway.networking.k8s.io`.
+Você deve ver `gatewayclasses.gateway.networking.k8s.io`, `gateways.gateway.networking.k8s.io` e `httproutes.gateway.networking.k8s.io`.
 
 </details>
 
 <details>
-<summary>Hint 6: kubectl-convert not found</summary>
+<summary>Dica 6: kubectl-convert não encontrado</summary>
 
-`kubectl-convert` is a separate plugin, not built into kubectl. Install it via:
+`kubectl-convert` é um plugin separado, não integrado ao kubectl. Instale-o via:
 
-**Krew (recommended):**
+**Krew (recomendado):**
 
 ```bash
 kubectl krew install convert
 ```
 
-**Direct download:**
+**Download direto:**
 
 ```bash
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl-convert"
@@ -833,11 +833,11 @@ chmod +x kubectl-convert
 sudo mv kubectl-convert /usr/local/bin/
 ```
 
-If you can't install it, manually convert manifests by referencing the [Kubernetes Deprecated API Migration Guide](https://kubernetes.io/docs/reference/using-api/deprecation-guide/).
+Se você não puder instalá-lo, converta manifests manualmente consultando o [Guia de Migração de API Depreciada do Kubernetes](https://kubernetes.io/docs/reference/using-api/deprecation-guide/).
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [Kubernetes Deployments — strategies](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy)
 - [Rolling Update tutorial](https://kubernetes.io/docs/tutorials/kubernetes-basics/update/update-intro/)
@@ -848,16 +848,16 @@ If you can't install it, manually convert manifests by referencing the [Kubernet
 - [kubectl-convert plugin](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-kubectl-convert-plugin)
 - [CKAD Curriculum — Deployment strategies](https://github.com/cncf/curriculum)
 
-## Break & Fix 🔧
+## Quebra & Conserta 🔧
 
-Try each scenario, diagnose the problem, and fix it.
+Tente cada cenário, diagnostique o problema e corrija-o.
 
-### Scenario 1 — Blue/Green switch didn't work
+### Cenário 1 — Troca Blue/Green não funcionou
 
-Apply this Service and both Deployments from Task 1:
+Aplique este Service e ambos os Deployments da Tarefa 1:
 
 ```yaml
-# Save as broken-bg-svc.yaml
+# Salve como broken-bg-svc.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -877,28 +877,28 @@ kubectl apply -f broken-bg-svc.yaml
 kubectl run curl-test --image=curlimages/curl --restart=Never --rm -it -- curl -s --max-time 5 http://broken-bg-svc
 ```
 
-**What you'll see:** The curl times out or returns a connection refused error.
+**O que você verá:** O curl dá timeout ou retorna um erro de connection refused.
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
 kubectl get endpoints broken-bg-svc
 kubectl describe svc broken-bg-svc
 ```
 
-The Endpoints list is empty — no Pods match the selector.
+A lista de Endpoints está vazia — nenhum Pod corresponde ao selector.
 
-**Root cause:** The Service selector uses `version: teal`, but neither Deployment has that label. Blue uses `version: blue`, green uses `version: green`.
+**Causa raiz:** O selector do Service usa `version: teal`, mas nenhum Deployment tem essa label. Blue usa `version: blue`, green usa `version: green`.
 
-**Fix:** Patch the selector to an actual version:
+**Correção:** Faça patch no selector para uma versão real:
 
 ```bash
 kubectl patch svc broken-bg-svc -p '{"spec":{"selector":{"version":"blue"}}}'
 ```
 
-**Linux analogy:** It's like configuring a VIP to point to a backend server pool that doesn't exist — no servers answer health checks, so the load balancer has nowhere to send traffic.
+**Analogia com Linux:** É como configurar um VIP para apontar para um pool de servidores backend que não existe — nenhum servidor responde os health checks, então o load balancer não tem para onde enviar o tráfego.
 
-**Clean up:**
+**Limpe:**
 
 ```bash
 kubectl delete svc broken-bg-svc
@@ -906,12 +906,12 @@ kubectl delete svc broken-bg-svc
 
 ---
 
-### Scenario 2 — Canary Ingress sends 100% to canary instead of 20%
+### Cenário 2 — Ingress Canary envia 100% para o canary em vez de 20%
 
-Apply the canary app and this Ingress:
+Aplique o app canary e este Ingress:
 
 ```yaml
-# Save as broken-canary-ingress.yaml
+# Salve como broken-canary-ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -942,25 +942,25 @@ for i in $(seq 1 10); do
 done
 ```
 
-**What you'll see:** 100% of responses are `CANARY v2`, not the expected 20%.
+**O que você verá:** 100% das respostas são `CANARY v2`, não os 20% esperados.
 
-**Diagnose:** Look at the annotations:
+**Diagnostique:** Observe as annotations:
 
 ```bash
 kubectl get ingress broken-canary -o yaml | grep -A5 annotations
 ```
 
-**Root cause:** The `nginx.ingress.kubernetes.io/canary: "true"` annotation is **missing**. Without it, the `canary-weight` annotation is ignored and the Ingress acts as a standalone route — sending all traffic matching `broken.local` directly to the canary backend.
+**Causa raiz:** A annotation `nginx.ingress.kubernetes.io/canary: "true"` está **faltando**. Sem ela, a annotation `canary-weight` é ignorada e o Ingress atua como uma rota standalone — enviando todo o tráfego que corresponde a `broken.local` diretamente para o backend canary.
 
-**Fix:** Add the missing canary annotation:
+**Correção:** Adicione a annotation canary que está faltando:
 
 ```bash
 kubectl annotate ingress broken-canary nginx.ingress.kubernetes.io/canary="true"
 ```
 
-But this still won't work correctly because there's no **main** Ingress for `broken.local`. The canary Ingress needs a corresponding stable Ingress to split traffic against.
+Mas isso ainda não funcionará corretamente porque não há um Ingress **principal** para `broken.local`. O Ingress canary precisa de um Ingress estável correspondente para dividir o tráfego.
 
-**Clean up:**
+**Limpe:**
 
 ```bash
 kubectl delete ingress broken-canary
@@ -968,12 +968,12 @@ kubectl delete ingress broken-canary
 
 ---
 
-### Scenario 3 — Rolling update stuck in progress
+### Cenário 3 — Rolling update preso em progresso
 
-Apply this Deployment:
+Aplique este Deployment:
 
 ```yaml
-# Save as broken-rolling.yaml
+# Salve como broken-rolling.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1014,23 +1014,23 @@ spec:
 kubectl apply -f broken-rolling.yaml
 kubectl rollout status deployment broken-rolling --timeout=60s
 
-# Trigger an update
+# Dispare uma atualização
 kubectl set image deployment/broken-rolling app=nginx:1.28
 kubectl rollout status deployment/broken-rolling --timeout=60s
 ```
 
-**What you'll see:** The rollout hangs. New Pods are created but never become Ready.
+**O que você verá:** O rollout trava. Novos Pods são criados mas nunca ficam Ready.
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
 kubectl get pods -l app=broken-rolling
 kubectl describe pod -l app=broken-rolling | grep -A5 "Readiness"
 ```
 
-**Root cause:** The `readinessProbe` checks port `8080` at path `/healthz`, but nginx listens on port `80` and doesn't have a `/healthz` endpoint. The new Pods never pass their readiness check, so with `maxUnavailable: 0`, Kubernetes cannot terminate any old Pods — the rollout is stuck.
+**Causa raiz:** A `readinessProbe` verifica a porta `8080` no path `/healthz`, mas o nginx escuta na porta `80` e não tem um endpoint `/healthz`. Os novos Pods nunca passam na verificação de readiness, então com `maxUnavailable: 0`, o Kubernetes não pode terminar nenhum Pod antigo — o rollout está preso.
 
-**Fix:** Correct the readiness probe to match the actual application:
+**Correção:** Corrija a readiness probe para corresponder à aplicação real:
 
 ```bash
 kubectl patch deployment broken-rolling --type=json -p '[
@@ -1039,9 +1039,9 @@ kubectl patch deployment broken-rolling --type=json -p '[
 ]'
 ```
 
-**Linux analogy:** It's like having a load balancer health check pinging the wrong port — the new servers never enter the pool, so the LB keeps all traffic on the old servers.
+**Analogia com Linux:** É como ter um health check do load balancer verificando a porta errada — os novos servidores nunca entram no pool, então o LB mantém todo o tráfego nos servidores antigos.
 
-**Clean up:**
+**Limpe:**
 
 ```bash
 kubectl delete deployment broken-rolling

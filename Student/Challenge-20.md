@@ -1,43 +1,43 @@
-# Challenge 20 — Supply Chain & Runtime Security
+# Desafio 20 — Supply Chain & Runtime Security
 
-[< Previous Challenge](Challenge-19.md) - **[Home](../README.md)**
+[< Desafio Anterior](Challenge-19.md) - **[Início](../README.md)**
 
-## Introduction
+## Introdução
 
-On a hardened Linux server, security is layered. You restrict which system calls a process can make with `seccomp-bpf`. You confine daemons to only the files and capabilities they need with `AppArmor` or `SELinux`. You scan packages for known CVEs with tools like `apt-get audit` or `yum updateinfo`. You verify package signatures with GPG before installing. You run intrusion detection with `OSSEC` or `AIDE` to catch unexpected file changes or process spawns. And you ship every `syslog` and `auditd` entry to a central SIEM for analysis.
+Em um servidor Linux hardened, a segurança é em camadas. Você restringe quais chamadas de sistema um processo pode fazer com `seccomp-bpf`. Você confina daemons apenas aos arquivos e capacidades que precisam com `AppArmor` ou `SELinux`. Você verifica pacotes em busca de CVEs conhecidas com ferramentas como `apt-get audit` ou `yum updateinfo`. Você verifica assinaturas de pacotes com GPG antes de instalar. Você executa detecção de intrusão com `OSSEC` ou `AIDE` para capturar mudanças inesperadas em arquivos ou spawns de processos. E você envia toda entrada de `syslog` e `auditd` para um SIEM central para análise.
 
-Kubernetes inherits all of these concerns — but the enforcement points move from the host into the cluster's API, the container runtime, and the supply chain pipeline. Instead of hardening one server, you're hardening an entire platform where workloads are ephemeral, images come from registries, and every API call is recorded in an audit log.
+O Kubernetes herda todas essas preocupações — mas os pontos de aplicação se movem do host para a API do cluster, o container runtime e o pipeline de supply chain. Em vez de proteger um servidor, você está protegendo uma plataforma inteira onde workloads são efêmeros, imagens vêm de registries, e toda chamada de API é registrada em um audit log.
 
-This **final challenge** brings together the remaining CKS (Certified Kubernetes Security Specialist) domains: **System Hardening**, **Minimize Microservice Vulnerabilities**, **Supply Chain Security**, and **Monitoring, Logging & Runtime Security**. You'll apply the same defense-in-depth philosophy you know from Linux — just with Kubernetes-native tools.
+Este **desafio final** reúne os domínios restantes do CKS (Certified Kubernetes Security Specialist): **System Hardening**, **Minimize Microservice Vulnerabilities**, **Supply Chain Security** e **Monitoring, Logging & Runtime Security**. Você aplicará a mesma filosofia de defesa em profundidade que conhece do Linux — apenas com ferramentas nativas do Kubernetes.
 
-| Linux Concept | Kubernetes Equivalent | Notes |
+| Conceito Linux | Equivalente Kubernetes | Notas |
 |---|---|---|
-| AppArmor / SELinux profiles | `appArmorProfile` in securityContext | Confine container processes to allowed file/network/capability access |
-| `seccomp-bpf` syscall filtering | `seccompProfile` in securityContext | Block dangerous syscalls like `unshare`, `mount`, `ptrace` |
-| `dpkg --list` / `rpm -qa` | SBOM generation with `syft` or `trivy` | Inventory every package in a container image |
-| `gpg --verify` package signatures | `cosign sign` / `cosign verify` | Cryptographic image signing and verification |
-| `apt-get audit` / Nessus scans | `trivy image` vulnerability scanning | Find CVEs in container images before deployment |
-| `shellcheck` for scripts | `kubesec scan` / `kube-linter lint` | Static analysis of Kubernetes manifests for security misconfigurations |
-| OSSEC / AIDE / auditd | Falco runtime threat detection | Detect suspicious syscalls, file access, network activity in containers |
-| CIS Benchmarks / `lynis audit` | Minimize host OS footprint, immutable containers | Reduce attack surface on nodes and in container images |
-| `/var/log/audit/audit.log` | Kubernetes API audit logs | Record who did what to which resource and when |
+| AppArmor / SELinux profiles | `appArmorProfile` in securityContext | Confina processos de containers ao acesso permitido de arquivos/rede/capabilities |
+| `seccomp-bpf` syscall filtering | `seccompProfile` in securityContext | Bloqueia syscalls perigosas como `unshare`, `mount`, `ptrace` |
+| `dpkg --list` / `rpm -qa` | Geração de SBOM com `syft` ou `trivy` | Inventaria cada pacote em uma imagem de container |
+| `gpg --verify` assinaturas de pacotes | `cosign sign` / `cosign verify` | Assinatura criptográfica de imagens e verificação |
+| `apt-get audit` / Nessus scans | `trivy image` vulnerability scanning | Encontra CVEs em imagens de container antes do deployment |
+| `shellcheck` para scripts | `kubesec scan` / `kube-linter lint` | Análise estática de manifestos Kubernetes para falhas de segurança |
+| OSSEC / AIDE / auditd | Falco runtime threat detection | Detecta syscalls suspeitas, acesso a arquivos, atividade de rede em containers |
+| CIS Benchmarks / `lynis audit` | Minimizar footprint do host OS, containers imutáveis | Reduz superfície de ataque em nodes e imagens de container |
+| `/var/log/audit/audit.log` | Kubernetes API audit logs | Registra quem fez o quê em qual recurso e quando |
 
-> **Cluster requirements:**
-> - **Tasks marked [VM]** require SSH access to a kubeadm cluster node (from Challenge 18). AppArmor and Falco operate at the kernel/node level.
-> - **Tasks marked [Kind]** run on your local Kind cluster — no cloud account needed.
+> **Requisitos do cluster:**
+> - **Tarefas marcadas com [VM]** requerem acesso SSH a um node de cluster kubeadm (do Desafio 18). AppArmor e Falco operam no nível do kernel/node.
+> - **Tarefas marcadas com [Kind]** rodam no seu cluster Kind local — nenhuma conta cloud necessária.
 >
 > ```bash
-> # If you need a fresh Kind cluster:
+> # Se você precisar de um cluster Kind novo:
 > kind create cluster --name fasthack
 > ```
 
-## Description
+## Descrição
 
-### Task 1 — AppArmor Profiles for Containers [VM]
+### Tarefa 1 — AppArmor Profiles para Containers [VM]
 
-AppArmor on Kubernetes works the same way as on a Linux server — you write a profile that restricts file access, capabilities, and network operations, then enforce it. The difference is that the profile is applied to container processes via the Pod's `securityContext`.
+AppArmor no Kubernetes funciona da mesma forma que em um servidor Linux — você escreve um profile que restringe acesso a arquivos, capabilities e operações de rede, e então o aplica. A diferença é que o profile é aplicado aos processos do container via o `securityContext` do Pod.
 
-**Step 1:** SSH into your kubeadm worker node and create an AppArmor profile that denies writes to `/etc`. Save as `/etc/apparmor.d/k8s-deny-etc-write`:
+**Passo 1:** Conecte via SSH no worker node do kubeadm e crie um profile AppArmor que nega escritas em `/etc`. Salve como `/etc/apparmor.d/k8s-deny-etc-write`:
 
 ```
 #include <tunables/global>
@@ -45,23 +45,23 @@ AppArmor on Kubernetes works the same way as on a Linux server — you write a p
 profile k8s-deny-etc-write flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
 
-  # Allow everything by default
+  # Permite tudo por padrão
   file,
 
-  # Deny writes to /etc
+  # Nega escritas em /etc
   deny /etc/** w,
   deny /etc/ w,
 }
 ```
 
-**Step 2:** Load and verify the profile:
+**Passo 2:** Carregue e verifique o profile:
 
 ```bash
 sudo apparmor_parser -r /etc/apparmor.d/k8s-deny-etc-write
 sudo aa-status | grep k8s-deny-etc-write
 ```
 
-**Step 3:** Create a Pod that uses this profile. On Kubernetes 1.30+, use the `securityContext` field. Save as `apparmor-pod.yaml`:
+**Passo 3:** Crie um Pod que usa este profile. No Kubernetes 1.30+, use o campo `securityContext`. Salve como `apparmor-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -86,44 +86,44 @@ spec:
           memory: 64Mi
 ```
 
-> **Note:** For clusters running Kubernetes < 1.30, use the annotation approach instead:
+> **Nota:** Para clusters rodando Kubernetes < 1.30, use a abordagem por annotation:
 > ```yaml
 > metadata:
 >   annotations:
 >     container.apparmor.security.beta.kubernetes.io/shell: localhost/k8s-deny-etc-write
 > ```
 
-**Step 4:** Apply and test — writes to `/etc` should be denied:
+**Passo 4:** Aplique e teste — escritas em `/etc` devem ser negadas:
 
 ```bash
 kubectl apply -f apparmor-pod.yaml
-kubectl exec apparmor-test -- touch /tmp/allowed          # Should succeed
-kubectl exec apparmor-test -- touch /etc/blocked           # Should be DENIED
+kubectl exec apparmor-test -- touch /tmp/allowed          # Deve ter sucesso
+kubectl exec apparmor-test -- touch /etc/blocked           # Deve ser NEGADO
 ```
 
-**Step 5:** Verify the AppArmor profile is active inside the container:
+**Passo 5:** Verifique que o profile AppArmor está ativo dentro do container:
 
 ```bash
 kubectl exec apparmor-test -- cat /proc/1/attr/current
 ```
 
-You should see `k8s-deny-etc-write (enforce)`.
+Você deve ver `k8s-deny-etc-write (enforce)`.
 
-### Task 2 — Custom Seccomp Profiles [VM/Kind]
+### Tarefa 2 — Custom Seccomp Profiles [VM/Kind]
 
-Seccomp (Secure Computing Mode) filters syscalls at the kernel level — like `seccomp-bpf` on Linux. You create a JSON profile that allowlists or blocklists specific system calls, then reference it from the Pod spec.
+Seccomp (Secure Computing Mode) filtra syscalls no nível do kernel — como `seccomp-bpf` no Linux. Você cria um profile JSON que permite ou bloqueia chamadas de sistema específicas, e então o referencia na spec do Pod.
 
-**Step 1:** Create a custom seccomp profile that blocks dangerous syscalls. On the node (VM) or Kind container, place it at the kubelet seccomp profile path:
+**Passo 1:** Crie um profile seccomp customizado que bloqueia syscalls perigosas. No node (VM) ou container Kind, coloque-o no caminho de profiles seccomp do kubelet:
 
 ```bash
-# For VM (kubeadm):
+# Para VM (kubeadm):
 sudo mkdir -p /var/lib/kubelet/seccomp/profiles
 
-# For Kind — exec into the control plane node:
+# Para Kind — entre no node do control plane:
 docker exec -it fasthack-control-plane mkdir -p /var/lib/kubelet/seccomp/profiles
 ```
 
-Create the profile file `block-dangerous.json`:
+Crie o arquivo de profile `block-dangerous.json`:
 
 ```json
 {
@@ -153,17 +153,17 @@ Create the profile file `block-dangerous.json`:
 }
 ```
 
-**Step 2:** Copy the profile to the correct location:
+**Passo 2:** Copie o profile para o local correto:
 
 ```bash
-# For VM:
+# Para VM:
 sudo cp block-dangerous.json /var/lib/kubelet/seccomp/profiles/
 
-# For Kind:
+# Para Kind:
 docker cp block-dangerous.json fasthack-control-plane:/var/lib/kubelet/seccomp/profiles/
 ```
 
-**Step 3:** Create a Pod that uses this seccomp profile. Save as `seccomp-pod.yaml`:
+**Passo 3:** Crie um Pod que usa este profile seccomp. Salve como `seccomp-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -188,19 +188,19 @@ spec:
           memory: 64Mi
 ```
 
-**Step 4:** Apply and verify the blocked syscalls:
+**Passo 4:** Aplique e verifique as syscalls bloqueadas:
 
 ```bash
 kubectl apply -f seccomp-pod.yaml
 
-# This should fail — unshare is blocked
+# Isto deve falhar — unshare está bloqueado
 kubectl exec seccomp-test -- unshare --user --pid --fork --mount-proc readlink /proc/self/ns/user
 
-# This should succeed — normal commands are allowed
+# Isto deve ter sucesso — comandos normais são permitidos
 kubectl exec seccomp-test -- ls /
 ```
 
-**Step 5:** Also create a Pod with `RuntimeDefault` seccomp profile (the recommended baseline):
+**Passo 5:** Também crie um Pod com profile seccomp `RuntimeDefault` (a baseline recomendada):
 
 ```yaml
 apiVersion: v1
@@ -221,87 +221,87 @@ spec:
           memory: 32Mi
 ```
 
-### Task 3 — Image Scanning with Trivy [Kind]
+### Tarefa 3 — Image Scanning com Trivy [Kind]
 
-Trivy scans container images for known CVEs — like running `apt-get audit` or a Nessus scan against every package in the image. It checks the OS packages, language-specific dependencies, and configuration files.
+Trivy escaneia imagens de container em busca de CVEs conhecidas — como executar `apt-get audit` ou um scan Nessus contra cada pacote na imagem. Ele verifica os pacotes do OS, dependências específicas de linguagem e arquivos de configuração.
 
-**Step 1:** Install Trivy:
+**Passo 1:** Instale o Trivy:
 
 ```bash
-# On Ubuntu/Debian:
+# No Ubuntu/Debian:
 sudo apt-get install -y wget apt-transport-https gnupg lsb-release
 sudo mkdir -p /etc/apt/keyrings
 wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo gpg --dearmor -o /etc/apt/keyrings/trivy.gpg
 echo "deb [signed-by=/etc/apt/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
 sudo apt-get update && sudo apt-get install -y trivy
 
-# Or direct binary:
+# Ou binário direto:
 curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 ```
 
-**Step 2:** Scan an image with known vulnerabilities:
+**Passo 2:** Escaneie uma imagem com vulnerabilidades conhecidas:
 
 ```bash
-# Scan nginx for all vulnerability severities
+# Escaneia nginx para todas as severidades de vulnerabilidade
 trivy image nginx:1.21
 
-# Filter to only HIGH and CRITICAL
+# Filtra apenas HIGH e CRITICAL
 trivy image --severity HIGH,CRITICAL nginx:1.21
 
-# Scan with JSON output for automation
+# Escaneia com saída JSON para automação
 trivy image -f json -o nginx-scan.json nginx:1.21
 ```
 
-**Step 3:** Scan a minimal image and compare:
+**Passo 3:** Escaneie uma imagem mínima e compare:
 
 ```bash
 trivy image nginx:1.27-alpine
 ```
 
-**Step 4:** Scan ignoring unfixed CVEs (only show actionable vulnerabilities):
+**Passo 4:** Escaneie ignorando CVEs sem correção (mostra apenas vulnerabilidades acionáveis):
 
 ```bash
 trivy image --ignore-unfixed nginx:1.21
 ```
 
-**Step 5:** Compare the vulnerability counts between `nginx:1.21`, `nginx:1.27`, and `nginx:1.27-alpine`. Note how newer and smaller images have fewer CVEs.
+**Passo 5:** Compare as contagens de vulnerabilidades entre `nginx:1.21`, `nginx:1.27` e `nginx:1.27-alpine`. Note como imagens mais novas e menores têm menos CVEs.
 
-### Task 4 — SBOM Generation [Kind]
+### Tarefa 4 — Geração de SBOM [Kind]
 
-A Software Bill of Materials (SBOM) is the container equivalent of `dpkg --list` — it inventories every package, library, and dependency inside an image. SBOMs are essential for vulnerability tracking, license compliance, and incident response.
+Um Software Bill of Materials (SBOM) é o equivalente em container do `dpkg --list` — ele inventaria cada pacote, biblioteca e dependência dentro de uma imagem. SBOMs são essenciais para rastreamento de vulnerabilidades, conformidade de licenças e resposta a incidentes.
 
-**Step 1:** Install syft:
+**Passo 1:** Instale o syft:
 
 ```bash
 curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 ```
 
-**Step 2:** Generate an SBOM with syft:
+**Passo 2:** Gere um SBOM com syft:
 
 ```bash
-# Default table output — human-readable
+# Saída em tabela padrão — legível por humanos
 syft nginx:1.27-alpine
 
-# CycloneDX JSON format (industry standard)
+# Formato CycloneDX JSON (padrão da indústria)
 syft nginx:1.27-alpine -o cyclonedx-json > nginx-sbom.cdx.json
 
-# SPDX JSON format
+# Formato SPDX JSON
 syft nginx:1.27-alpine -o spdx-json > nginx-sbom.spdx.json
 ```
 
-**Step 3:** Generate an SBOM using Trivy (alternative tool):
+**Passo 3:** Gere um SBOM usando Trivy (ferramenta alternativa):
 
 ```bash
 trivy image --format cyclonedx -o nginx-trivy-sbom.cdx.json nginx:1.27-alpine
 ```
 
-**Step 4:** Scan the SBOM for vulnerabilities (Trivy can scan SBOMs directly):
+**Passo 4:** Escaneie o SBOM em busca de vulnerabilidades (Trivy pode escanear SBOMs diretamente):
 
 ```bash
 trivy sbom nginx-sbom.cdx.json
 ```
 
-**Step 5:** Compare the package counts between a full image and an Alpine/distroless image:
+**Passo 5:** Compare as contagens de pacotes entre uma imagem completa e uma imagem Alpine/distroless:
 
 ```bash
 syft nginx:1.27 | wc -l
@@ -309,11 +309,11 @@ syft nginx:1.27-alpine | wc -l
 syft gcr.io/distroless/static-debian12 | wc -l
 ```
 
-### Task 5 — Sign and Verify Images with Cosign [Kind]
+### Tarefa 5 — Assinar e Verificar Imagens com Cosign [Kind]
 
-Cosign provides cryptographic signing for container images — like GPG-signing `.deb` packages so you can verify they haven't been tampered with.
+Cosign fornece assinatura criptográfica para imagens de container — como assinar pacotes `.deb` com GPG para que você possa verificar que não foram adulterados.
 
-**Step 1:** Install cosign:
+**Passo 1:** Instale o cosign:
 
 ```bash
 curl -LO "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
@@ -322,41 +322,41 @@ sudo mv cosign-linux-amd64 /usr/local/bin/cosign
 cosign version
 ```
 
-**Step 2:** Generate a key pair:
+**Passo 2:** Gere um par de chaves:
 
 ```bash
 cosign generate-key-pair
-# Creates cosign.key (private) and cosign.pub (public)
-# You'll be prompted for a password — remember it
+# Cria cosign.key (privada) e cosign.pub (pública)
+# Você será solicitado a criar uma senha — lembre-se dela
 ```
 
-**Step 3:** For this exercise, we'll use a local registry to push and sign an image:
+**Passo 3:** Para este exercício, usaremos um registry local para fazer push e assinar uma imagem:
 
 ```bash
-# Start a local registry (if not already running)
+# Inicie um registry local (se não estiver rodando)
 docker run -d -p 5000:5000 --name registry registry:2
 
-# Tag and push an image
+# Tag e push de uma imagem
 docker pull busybox:1.36
 docker tag busybox:1.36 localhost:5000/busybox:signed
 docker push localhost:5000/busybox:signed
 ```
 
-**Step 4:** Sign the image:
+**Passo 4:** Assine a imagem:
 
 ```bash
 cosign sign --key cosign.key localhost:5000/busybox:signed --allow-insecure-registry
 ```
 
-**Step 5:** Verify the signature:
+**Passo 5:** Verifique a assinatura:
 
 ```bash
 cosign verify --key cosign.pub localhost:5000/busybox:signed --allow-insecure-registry
 ```
 
-The output will show the signature payload with verified metadata. An unsigned or tampered image would fail verification.
+A saída mostrará o payload da assinatura com metadados verificados. Uma imagem não assinada ou adulterada falharia na verificação.
 
-**Step 6:** Try verifying an unsigned image — it should fail:
+**Passo 6:** Tente verificar uma imagem não assinada — deve falhar:
 
 ```bash
 docker tag busybox:1.36 localhost:5000/busybox:unsigned
@@ -364,15 +364,15 @@ docker push localhost:5000/busybox:unsigned
 cosign verify --key cosign.pub localhost:5000/busybox:unsigned --allow-insecure-registry
 ```
 
-### Task 6 — Static Analysis with Kubesec and KubeLinter [Kind]
+### Tarefa 6 — Análise Estática com Kubesec e KubeLinter [Kind]
 
-Static analysis tools scan your YAML manifests for security misconfigurations before you even deploy — like `shellcheck` for shell scripts or `lint` for code.
+Ferramentas de análise estática escaneiam seus manifestos YAML em busca de falhas de segurança antes mesmo de fazer deploy — como `shellcheck` para shell scripts ou `lint` para código.
 
-**Step 1:** Install kubesec and kube-linter:
+**Passo 1:** Instale kubesec e kube-linter:
 
 ```bash
-# kubesec — easiest via Docker
-# Or download binary:
+# kubesec — mais fácil via Docker
+# Ou baixe o binário:
 curl -LO https://github.com/controlplaneio/kubesec/releases/latest/download/kubesec_linux_amd64.tar.gz
 tar xzf kubesec_linux_amd64.tar.gz
 sudo mv kubesec /usr/local/bin/
@@ -383,7 +383,7 @@ chmod +x kube-linter-linux
 sudo mv kube-linter-linux /usr/local/bin/kube-linter
 ```
 
-**Step 2:** Create an intentionally insecure manifest. Save as `insecure-pod.yaml`:
+**Passo 2:** Crie um manifesto intencionalmente inseguro. Salve como `insecure-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -401,23 +401,23 @@ spec:
         - containerPort: 80
 ```
 
-**Step 3:** Scan with kubesec:
+**Passo 3:** Escaneie com kubesec:
 
 ```bash
 kubesec scan insecure-pod.yaml
 ```
 
-Review the JSON output — note the **score** (lower is worse), the **critical** and **advisory** findings. A privileged container running as root will score very poorly.
+Revise a saída JSON — note o **score** (menor é pior), os achados **critical** e **advisory**. Um container privilegiado rodando como root terá uma pontuação muito ruim.
 
-**Step 4:** Scan with kube-linter:
+**Passo 4:** Escaneie com kube-linter:
 
 ```bash
 kube-linter lint insecure-pod.yaml
 ```
 
-Note the specific checks that fail (e.g., `run-as-non-root`, `no-read-only-root-fs`, `unset-cpu-requirements`).
+Note as verificações específicas que falham (ex.: `run-as-non-root`, `no-read-only-root-fs`, `unset-cpu-requirements`).
 
-**Step 5:** Create a hardened version and re-scan. Save as `secure-pod.yaml`:
+**Passo 5:** Crie uma versão hardened e escaneie novamente. Salve como `secure-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -465,13 +465,13 @@ kubesec scan secure-pod.yaml
 kube-linter lint secure-pod.yaml
 ```
 
-Compare the scores — the hardened manifest should score significantly better.
+Compare as pontuações — o manifesto hardened deve pontuar significativamente melhor.
 
-### Task 7 — Runtime Threat Detection with Falco [VM]
+### Tarefa 7 — Detecção de Ameaças em Runtime com Falco [VM]
 
-Falco is the Kubernetes equivalent of `OSSEC` or `AIDE` — it monitors syscalls in real time and alerts when suspicious activity occurs (shell spawns in containers, sensitive file reads, unexpected network connections).
+Falco é o equivalente Kubernetes do `OSSEC` ou `AIDE` — ele monitora syscalls em tempo real e alerta quando atividade suspeita ocorre (spawns de shell em containers, leituras de arquivos sensíveis, conexões de rede inesperadas).
 
-**Step 1:** Install Falco on your kubeadm cluster using Helm:
+**Passo 1:** Instale o Falco no seu cluster kubeadm usando Helm:
 
 ```bash
 helm repo add falcosecurity https://falcosecurity.github.io/charts
@@ -484,53 +484,53 @@ helm install falco falcosecurity/falco \
   --set tty=true
 ```
 
-**Step 2:** Verify Falco is running:
+**Passo 2:** Verifique que o Falco está rodando:
 
 ```bash
 kubectl get pods -n falco -o wide
 kubectl wait --namespace falco --for=condition=ready pod --selector=app.kubernetes.io/name=falco --timeout=120s
 ```
 
-**Step 3:** Watch Falco logs in one terminal:
+**Passo 3:** Observe os logs do Falco em um terminal:
 
 ```bash
 kubectl logs -n falco -l app.kubernetes.io/name=falco -f --tail=50
 ```
 
-**Step 4:** In another terminal, trigger a detection — spawn a shell inside a container:
+**Passo 4:** Em outro terminal, dispare uma detecção — abra um shell dentro de um container:
 
 ```bash
-# Create a test Pod
+# Crie um Pod de teste
 kubectl run falco-test --image=nginx:1.27-alpine --restart=Never
 
-# Wait for it to be ready
+# Aguarde estar pronto
 kubectl wait --for=condition=ready pod/falco-test --timeout=60s
 
-# Spawn a shell — Falco should detect this!
+# Abra um shell — Falco deve detectar isso!
 kubectl exec -it falco-test -- /bin/sh -c "whoami && cat /etc/shadow"
 ```
 
-**Step 5:** Check Falco logs for the alert:
+**Passo 5:** Verifique os logs do Falco em busca do alerta:
 
 ```bash
 kubectl logs -n falco -l app.kubernetes.io/name=falco --tail=20 | grep -i "shell\|exec\|shadow"
 ```
 
-You should see alerts like:
+Você deve ver alertas como:
 - `Notice A shell was spawned in a container`
 - `Warning Sensitive file opened for reading (file=/etc/shadow)`
 
-**Step 6:** Examine Falco's default rules:
+**Passo 6:** Examine as regras padrão do Falco:
 
 ```bash
 kubectl get configmap -n falco falco-rules -o yaml | head -100
 ```
 
-### Task 8 — Container Immutability [Kind]
+### Tarefa 8 — Imutabilidade de Containers [Kind]
 
-An immutable container is the equivalent of mounting a filesystem read-only (`mount -o ro`) and removing all administrative tools (`rm /bin/sh`). If an attacker gets into a container, they can't modify files, install backdoors, or use a shell.
+Um container imutável é o equivalente de montar um filesystem como somente leitura (`mount -o ro`) e remover todas as ferramentas administrativas (`rm /bin/sh`). Se um atacante entrar em um container, ele não pode modificar arquivos, instalar backdoors ou usar um shell.
 
-**Step 1:** Create a Pod with `readOnlyRootFilesystem` and `emptyDir` for temp files. Save as `immutable-pod.yaml`:
+**Passo 1:** Crie um Pod com `readOnlyRootFilesystem` e `emptyDir` para arquivos temporários. Salve como `immutable-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -573,57 +573,57 @@ spec:
       emptyDir: {}
 ```
 
-**Step 2:** Apply and verify the filesystem is read-only:
+**Passo 2:** Aplique e verifique que o filesystem é somente leitura:
 
 ```bash
 kubectl apply -f immutable-pod.yaml
 
-# This should FAIL — filesystem is read-only
+# Isto deve FALHAR — filesystem é somente leitura
 kubectl exec immutable-app -- touch /usr/share/nginx/html/hacked.html
 
-# This should SUCCEED — /tmp is writable via emptyDir
+# Isto deve TER SUCESSO — /tmp é gravável via emptyDir
 kubectl exec immutable-app -- touch /tmp/allowed.txt
 ```
 
-**Step 3:** Demonstrate why distroless images improve security — they have no shell:
+**Passo 3:** Demonstre por que imagens distroless melhoram a segurança — elas não têm shell:
 
 ```bash
-# Create a Pod with a distroless image
+# Crie um Pod com uma imagem distroless
 kubectl run distroless-test --image=gcr.io/distroless/static-debian12 --restart=Never --command -- /bin/sleep 3600
 
-# This will fail because the image doesn't have sleep — that's the point!
-# Use a real distroless app image in practice
+# Isso vai falhar porque a imagem não tem sleep — esse é o ponto!
+# Use uma imagem distroless real de aplicação na prática
 
-# Try to exec into it — no shell available
+# Tente entrar com exec — nenhum shell disponível
 kubectl run distroless-demo --image=gcr.io/distroless/base-debian12 --restart=Never --command -- sleep 3600
 kubectl exec -it distroless-demo -- /bin/sh
 # Error: OCI runtime exec failed: exec failed: unable to start container process: exec: "/bin/sh": stat /bin/sh: no such file or directory
 ```
 
-**Step 4:** List the packages in distroless vs. regular images to see the attack surface difference:
+**Passo 4:** Liste os pacotes em imagens distroless vs. regulares para ver a diferença na superfície de ataque:
 
 ```bash
-# Regular Debian-based image
+# Imagem regular baseada em Debian
 syft nginx:1.27 | wc -l
 
-# Alpine-based
+# Baseada em Alpine
 syft nginx:1.27-alpine | wc -l
 
 # Distroless
 syft gcr.io/distroless/static-debian12 | wc -l
 ```
 
-### Task 9 — Kubernetes Audit Log Analysis [Kind]
+### Tarefa 9 — Análise de Audit Log do Kubernetes [Kind]
 
-Kubernetes audit logs record every API request — like `auditd` on Linux but for the cluster API. They tell you who created, modified, or deleted resources, and can reveal suspicious activity like unauthorized secret access or privilege escalation attempts.
+Os audit logs do Kubernetes registram cada requisição à API — como `auditd` no Linux mas para a API do cluster. Eles dizem quem criou, modificou ou deletou recursos, e podem revelar atividade suspeita como acesso não autorizado a secrets ou tentativas de escalação de privilégios.
 
-**Step 1:** Create an audit policy. Save as `audit-policy.yaml`:
+**Passo 1:** Crie uma política de auditoria. Salve como `audit-policy.yaml`:
 
 ```yaml
 apiVersion: audit.k8s.io/v1
 kind: Policy
 rules:
-  # Don't log requests to the healthz endpoints or API discovery
+  # Não registra requisições para endpoints healthz ou API discovery
   - level: None
     nonResourceURLs:
       - "/healthz*"
@@ -632,32 +632,32 @@ rules:
       - "/readyz*"
       - "/livez*"
 
-  # Log Secret access at Metadata level (don't log the actual secret data!)
+  # Registra acesso a Secrets no nível Metadata (não registra os dados reais do secret!)
   - level: Metadata
     resources:
       - group: ""
         resources: ["secrets"]
 
-  # Log RBAC changes at RequestResponse level
+  # Registra mudanças de RBAC no nível RequestResponse
   - level: RequestResponse
     resources:
       - group: "rbac.authorization.k8s.io"
         resources: ["clusterroles", "clusterrolebindings", "roles", "rolebindings"]
 
-  # Log Pod creation/deletion at Request level
+  # Registra criação/deleção de Pod no nível Request
   - level: Request
     resources:
       - group: ""
         resources: ["pods", "pods/exec", "pods/portforward"]
     verbs: ["create", "delete", "patch", "update"]
 
-  # Log everything else at Metadata level
+  # Registra todo o resto no nível Metadata
   - level: Metadata
     omitStages:
       - "RequestReceived"
 ```
 
-**Step 2:** For Kind, create a cluster with audit logging enabled. Save as `kind-audit.yaml`:
+**Passo 2:** Para Kind, crie um cluster com audit logging habilitado. Salve como `kind-audit.yaml`:
 
 ```yaml
 kind: Cluster
@@ -686,21 +686,21 @@ nodes:
 ```
 
 ```bash
-# Copy the audit policy into the Kind node first, then create the cluster
+# Copie a política de auditoria para o node Kind primeiro, depois crie o cluster
 kind create cluster --name audit-lab --config kind-audit.yaml
 
-# Copy the audit policy into the node
+# Copie a política de auditoria para o node
 docker cp audit-policy.yaml audit-lab-control-plane:/etc/kubernetes/audit-policy.yaml
 
-# The API server needs to be restarted to pick up the policy
-# For Kind, recreate the cluster with the policy pre-loaded:
+# O API server precisa ser reiniciado para aplicar a política
+# Para Kind, recrie o cluster com a política pré-carregada:
 kind delete cluster --name audit-lab
 
-# Create the policy file inside the node image by using an init container approach
-# Simplest method: mount the policy via Kind's extraMounts
+# Crie o arquivo de política dentro do node image usando uma abordagem de init container
+# Método mais simples: monte a política via extraMounts do Kind
 ```
 
-**Alternative approach — use extraMounts in Kind config:**
+**Abordagem alternativa — use extraMounts na configuração do Kind:**
 
 ```yaml
 kind: Cluster
@@ -739,29 +739,29 @@ mkdir -p audit-logs
 kind create cluster --name audit-lab --config kind-audit.yaml
 ```
 
-**Step 3:** Generate some audit events:
+**Passo 3:** Gere alguns eventos de auditoria:
 
 ```bash
-# Create a secret
+# Crie um secret
 kubectl create secret generic audit-test-secret --from-literal=password=supersecret
 
-# Create and delete a Pod
+# Crie e delete um Pod
 kubectl run audit-pod --image=busybox:1.36 --restart=Never --command -- sleep 30
 kubectl delete pod audit-pod
 
-# Exec into a Pod
+# Execute exec em um Pod
 kubectl run audit-exec --image=busybox:1.36 --restart=Never --command -- sleep 3600
 kubectl wait --for=condition=ready pod/audit-exec --timeout=60s
 kubectl exec audit-exec -- whoami
 ```
 
-**Step 4:** Analyze the audit log:
+**Passo 4:** Analise o audit log:
 
 ```bash
-# Read the audit log from the Kind node
+# Leia o audit log do node Kind
 docker exec audit-lab-control-plane cat /var/log/kubernetes/audit.log | head -50
 
-# Find who accessed secrets
+# Encontre quem acessou secrets
 docker exec audit-lab-control-plane cat /var/log/kubernetes/audit.log | \
   python3 -c "
 import sys, json
@@ -773,7 +773,7 @@ for line in sys.stdin:
     except: pass
 "
 
-# Find Pod exec events (potential container escape indicator)
+# Encontre eventos de Pod exec (indicador potencial de escape de container)
 docker exec audit-lab-control-plane cat /var/log/kubernetes/audit.log | \
   python3 -c "
 import sys, json
@@ -786,10 +786,10 @@ for line in sys.stdin:
 "
 ```
 
-**Step 5:** Identify suspicious patterns in the audit log:
+**Passo 5:** Identifique padrões suspeitos no audit log:
 
 ```bash
-# Count API calls per user — spot unusual activity
+# Conte chamadas de API por usuário — identifique atividade incomum
 docker exec audit-lab-control-plane cat /var/log/kubernetes/audit.log | \
   python3 -c "
 import sys, json
@@ -805,23 +805,23 @@ for user, count in users.most_common(10):
 "
 ```
 
-### Clean Up
+### Limpe
 
 ```bash
-# Task 1-2 resources
+# Recursos das Tarefas 1-2
 kubectl delete pod apparmor-test seccomp-test seccomp-default 2>/dev/null
 
-# Task 3-6 artifacts
+# Artefatos das Tarefas 3-6
 rm -f nginx-scan.json nginx-sbom.cdx.json nginx-sbom.spdx.json nginx-trivy-sbom.cdx.json
 rm -f cosign.key cosign.pub
 rm -f insecure-pod.yaml secure-pod.yaml
 
-# Task 7 resources
+# Recursos da Tarefa 7
 kubectl delete pod falco-test 2>/dev/null
 helm uninstall falco -n falco 2>/dev/null
 kubectl delete namespace falco 2>/dev/null
 
-# Task 8-9 resources
+# Recursos das Tarefas 8-9
 kubectl delete pod immutable-app distroless-test distroless-demo 2>/dev/null
 kubectl delete pod audit-exec 2>/dev/null
 kubectl delete secret audit-test-secret 2>/dev/null
@@ -829,49 +829,49 @@ kind delete cluster --name audit-lab 2>/dev/null
 rm -rf audit-logs
 ```
 
-## Success Criteria
+## Critérios de Sucesso
 
-- [ ] **Task 1:** You created and loaded an AppArmor profile, applied it to a Pod via `securityContext`, and verified that writes to `/etc` are denied.
-- [ ] **Task 2:** You created a custom seccomp profile that blocks `unshare`/`mount`/`ptrace`, applied it to a Pod, and verified the syscalls are blocked.
-- [ ] **Task 3:** You scanned container images with Trivy, filtered by severity, and can explain the difference in CVE counts between full, Alpine, and distroless images.
-- [ ] **Task 4:** You generated SBOMs in CycloneDX and SPDX formats using both syft and Trivy, and scanned an SBOM for vulnerabilities.
-- [ ] **Task 5:** You generated a cosign key pair, signed a container image, verified the signature, and demonstrated that unsigned images fail verification.
-- [ ] **Task 6:** You scanned manifests with kubesec and kube-linter, compared scores between insecure and hardened manifests.
-- [ ] **Task 7:** You installed Falco, triggered a shell spawn detection by exec'ing into a container, and found the alert in Falco logs.
-- [ ] **Task 8:** You deployed a Pod with `readOnlyRootFilesystem`, verified writes fail on the root filesystem but succeed on `emptyDir` mounts.
-- [ ] **Task 9:** You configured Kubernetes audit logging, generated audit events, and analyzed the log to find secret access and Pod exec events.
+- [ ] **Tarefa 1:** Você criou e carregou um profile AppArmor, aplicou-o a um Pod via `securityContext`, e verificou que escritas em `/etc` são negadas.
+- [ ] **Tarefa 2:** Você criou um profile seccomp customizado que bloqueia `unshare`/`mount`/`ptrace`, aplicou-o a um Pod, e verificou que as syscalls são bloqueadas.
+- [ ] **Tarefa 3:** Você escaneou imagens de container com Trivy, filtrou por severidade, e pode explicar a diferença nas contagens de CVEs entre imagens completas, Alpine e distroless.
+- [ ] **Tarefa 4:** Você gerou SBOMs nos formatos CycloneDX e SPDX usando tanto syft quanto Trivy, e escaneou um SBOM em busca de vulnerabilidades.
+- [ ] **Tarefa 5:** Você gerou um par de chaves cosign, assinou uma imagem de container, verificou a assinatura, e demonstrou que imagens não assinadas falham na verificação.
+- [ ] **Tarefa 6:** Você escaneou manifestos com kubesec e kube-linter, comparou pontuações entre manifestos inseguros e hardened.
+- [ ] **Tarefa 7:** Você instalou o Falco, disparou uma detecção de shell spawn executando exec em um container, e encontrou o alerta nos logs do Falco.
+- [ ] **Tarefa 8:** Você implantou um Pod com `readOnlyRootFilesystem`, verificou que escritas falham no filesystem root mas têm sucesso em mounts `emptyDir`.
+- [ ] **Tarefa 9:** Você configurou audit logging do Kubernetes, gerou eventos de auditoria, e analisou o log para encontrar acesso a secrets e eventos de Pod exec.
 
-## Linux ↔ Kubernetes Reference
+## Referência Rápida Linux ↔ Kubernetes
 
-| Linux Concept | Kubernetes Equivalent | Notes |
+| Conceito Linux | Equivalente Kubernetes | Notas |
 |---|---|---|
-| `apparmor_parser -r /etc/apparmor.d/profile` | `securityContext.appArmorProfile.type: Localhost` | Load profile on node, reference in Pod spec |
-| `seccomp-bpf` filter program | `securityContext.seccompProfile.type: Localhost` | JSON profile at `/var/lib/kubelet/seccomp/profiles/` |
-| `RuntimeDefault` seccomp = CRI default | `seccompProfile.type: RuntimeDefault` | Recommended baseline for all Pods |
-| `dpkg --list` / `rpm -qa` | `syft <image>` or `trivy image --format cyclonedx` | Generate SBOM of container contents |
-| `gpg --sign` / `gpg --verify` | `cosign sign --key` / `cosign verify --key` | Cryptographic image signing |
-| `apt-get audit` / Nessus | `trivy image --severity HIGH,CRITICAL` | CVE scanning with severity filtering |
-| `shellcheck myscript.sh` | `kubesec scan pod.yaml` / `kube-linter lint pod.yaml` | Static security analysis of manifests |
-| OSSEC / AIDE (file integrity) | Falco DaemonSet | Real-time syscall monitoring and alerting |
-| `mount -o ro /` | `readOnlyRootFilesystem: true` + `emptyDir` for temp | Prevent file modifications in containers |
-| `/var/log/audit/audit.log` | `--audit-log-path=/var/log/kubernetes/audit.log` | API server audit logging |
-| `ausearch -m execve -i` | Parse audit log JSON for `pods/exec` subresource | Find who exec'd into containers |
+| `apparmor_parser -r /etc/apparmor.d/profile` | `securityContext.appArmorProfile.type: Localhost` | Carregue o profile no node, referencie na spec do Pod |
+| `seccomp-bpf` filter program | `securityContext.seccompProfile.type: Localhost` | Profile JSON em `/var/lib/kubelet/seccomp/profiles/` |
+| `RuntimeDefault` seccomp = CRI default | `seccompProfile.type: RuntimeDefault` | Baseline recomendada para todos os Pods |
+| `dpkg --list` / `rpm -qa` | `syft <image>` ou `trivy image --format cyclonedx` | Gera SBOM do conteúdo do container |
+| `gpg --sign` / `gpg --verify` | `cosign sign --key` / `cosign verify --key` | Assinatura criptográfica de imagens |
+| `apt-get audit` / Nessus | `trivy image --severity HIGH,CRITICAL` | Scanning de CVEs com filtro por severidade |
+| `shellcheck myscript.sh` | `kubesec scan pod.yaml` / `kube-linter lint pod.yaml` | Análise estática de segurança de manifestos |
+| OSSEC / AIDE (file integrity) | Falco DaemonSet | Monitoramento e alerta de syscalls em tempo real |
+| `mount -o ro /` | `readOnlyRootFilesystem: true` + `emptyDir` para temp | Previne modificações de arquivos em containers |
+| `/var/log/audit/audit.log` | `--audit-log-path=/var/log/kubernetes/audit.log` | Audit logging do API server |
+| `ausearch -m execve -i` | Parse audit log JSON para subresource `pods/exec` | Encontra quem executou exec em containers |
 
-## Hints
+## Dicas
 
 <details>
-<summary>Hint 1: AppArmor profile not loading</summary>
+<summary>Dica 1: Profile AppArmor não carrega</summary>
 
-Make sure the profile is loaded on the **node where the Pod will be scheduled**, not just the control plane. On a kubeadm cluster, SSH into the worker node:
+Certifique-se de que o profile está carregado no **node onde o Pod será agendado**, não apenas no control plane. Em um cluster kubeadm, conecte via SSH no worker node:
 
 ```bash
 sudo apparmor_parser -r /etc/apparmor.d/k8s-deny-etc-write
 sudo aa-status | grep k8s-deny-etc-write
 ```
 
-If the Pod is stuck in `Blocked` status, the profile name in the Pod spec must **exactly** match the profile name in the file (the `profile <name>` line).
+Se o Pod estiver preso no status `Blocked`, o nome do profile na spec do Pod deve corresponder **exatamente** ao nome do profile no arquivo (a linha `profile <name>`).
 
-For Kubernetes < 1.30, use the annotation:
+Para Kubernetes < 1.30, use a annotation:
 ```yaml
 container.apparmor.security.beta.kubernetes.io/<container-name>: localhost/<profile-name>
 ```
@@ -879,18 +879,18 @@ container.apparmor.security.beta.kubernetes.io/<container-name>: localhost/<prof
 </details>
 
 <details>
-<summary>Hint 2: Seccomp profile path confusion</summary>
+<summary>Dica 2: Confusão com caminho do profile Seccomp</summary>
 
-The `localhostProfile` path in the Pod spec is **relative** to the kubelet's seccomp profile root directory: `/var/lib/kubelet/seccomp/`.
+O caminho `localhostProfile` na spec do Pod é **relativo** ao diretório raiz de profiles seccomp do kubelet: `/var/lib/kubelet/seccomp/`.
 
-So if your file is at `/var/lib/kubelet/seccomp/profiles/block-dangerous.json`, the Pod spec should have:
+Então se seu arquivo está em `/var/lib/kubelet/seccomp/profiles/block-dangerous.json`, a spec do Pod deve ter:
 ```yaml
 seccompProfile:
   type: Localhost
   localhostProfile: profiles/block-dangerous.json
 ```
 
-On Kind, copy the file into the container node:
+No Kind, copie o arquivo para o container node:
 ```bash
 docker cp block-dangerous.json fasthack-control-plane:/var/lib/kubelet/seccomp/profiles/
 ```
@@ -898,33 +898,33 @@ docker cp block-dangerous.json fasthack-control-plane:/var/lib/kubelet/seccomp/p
 </details>
 
 <details>
-<summary>Hint 3: Trivy not finding vulnerabilities</summary>
+<summary>Dica 3: Trivy não encontra vulnerabilidades</summary>
 
-Trivy downloads its vulnerability database on first run. If you're offline or behind a proxy, pre-download the DB:
+O Trivy baixa seu banco de dados de vulnerabilidades na primeira execução. Se você estiver offline ou atrás de um proxy, baixe o DB previamente:
 
 ```bash
 trivy image --download-db-only
 ```
 
-Use an **older image** like `nginx:1.21` to see more CVEs. Newer images have fewer known vulnerabilities. Use `--severity HIGH,CRITICAL` to focus on impactful issues.
+Use uma **imagem mais antiga** como `nginx:1.21` para ver mais CVEs. Imagens mais novas têm menos vulnerabilidades conhecidas. Use `--severity HIGH,CRITICAL` para focar em problemas impactantes.
 
 </details>
 
 <details>
-<summary>Hint 4: Cosign sign fails with registry errors</summary>
+<summary>Dica 4: Falha no cosign sign com erros de registry</summary>
 
-For a local registry without TLS, you must use `--allow-insecure-registry`:
+Para um registry local sem TLS, você deve usar `--allow-insecure-registry`:
 
 ```bash
 cosign sign --key cosign.key localhost:5000/busybox:signed --allow-insecure-registry
 ```
 
-Make sure the registry is running:
+Certifique-se de que o registry está rodando:
 ```bash
 docker ps | grep registry
 ```
 
-If not, start it:
+Se não estiver, inicie-o:
 ```bash
 docker run -d -p 5000:5000 --name registry registry:2
 ```
@@ -932,21 +932,21 @@ docker run -d -p 5000:5000 --name registry registry:2
 </details>
 
 <details>
-<summary>Hint 5: Falco not detecting shell spawns</summary>
+<summary>Dica 5: Falco não detecta shell spawns</summary>
 
-Check that Falco Pods are `Running` and the driver loaded successfully:
+Verifique que os Pods do Falco estão `Running` e que o driver carregou com sucesso:
 
 ```bash
 kubectl get pods -n falco
 kubectl logs -n falco -l app.kubernetes.io/name=falco | head -20
 ```
 
-If the eBPF driver fails to load, try the kernel module driver:
+Se o driver eBPF falhar ao carregar, tente o driver de kernel module:
 ```bash
 helm upgrade falco falcosecurity/falco -n falco --set driver.kind=kmod
 ```
 
-Falco rules for shell detection are in the default ruleset. Check with:
+As regras do Falco para detecção de shell estão no ruleset padrão. Verifique com:
 ```bash
 kubectl logs -n falco -l app.kubernetes.io/name=falco | grep -i "shell\|exec"
 ```
@@ -954,29 +954,29 @@ kubectl logs -n falco -l app.kubernetes.io/name=falco | grep -i "shell\|exec"
 </details>
 
 <details>
-<summary>Hint 6: Kind audit log cluster not starting</summary>
+<summary>Dica 6: Cluster Kind com audit log não inicia</summary>
 
-The audit policy file must exist on the host **before** creating the Kind cluster when using `extraMounts`. Create the file first:
+O arquivo de política de auditoria deve existir no host **antes** de criar o cluster Kind quando usando `extraMounts`. Crie o arquivo primeiro:
 
 ```bash
-# Save audit-policy.yaml locally
+# Salve audit-policy.yaml localmente
 mkdir -p audit-logs
 kind create cluster --name audit-lab --config kind-audit.yaml
 ```
 
-Verify the API server has the audit flags:
+Verifique que o API server tem as flags de auditoria:
 ```bash
 docker exec audit-lab-control-plane cat /etc/kubernetes/manifests/kube-apiserver.yaml | grep audit
 ```
 
-Check if audit logs are being written:
+Verifique se os audit logs estão sendo escritos:
 ```bash
 docker exec audit-lab-control-plane ls -la /var/log/kubernetes/
 ```
 
 </details>
 
-## Learning Resources
+## Recursos de Aprendizado
 
 - [Kubernetes AppArmor documentation](https://kubernetes.io/docs/tutorials/security/apparmor/)
 - [Kubernetes Seccomp tutorial](https://kubernetes.io/docs/tutorials/security/seccomp/)
@@ -990,16 +990,16 @@ docker exec audit-lab-control-plane ls -la /var/log/kubernetes/
 - [CKS Curriculum](https://github.com/cncf/curriculum)
 - [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/)
 
-## Break & Fix 🔧
+## Quebra & Conserta 🔧
 
-Try each scenario, diagnose the problem, and fix it.
+Tente cada cenário, diagnostique o problema e corrija-o.
 
-### Scenario 1 — Seccomp profile not being applied
+### Cenário 1 — Profile Seccomp não está sendo aplicado
 
-Apply this Pod:
+Aplique este Pod:
 
 ```yaml
-# Save as broken-seccomp.yaml
+# Salve como broken-seccomp.yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1024,34 +1024,34 @@ kubectl apply -f broken-seccomp.yaml
 kubectl get pod broken-seccomp
 ```
 
-**What you'll see:** The Pod is stuck in `CreateContainerError` or `Error` status.
+**O que você verá:** O Pod fica preso em status `CreateContainerError` ou `Error`.
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
 kubectl describe pod broken-seccomp | grep -A5 Events
 ```
 
-**Root cause:** The `localhostProfile` path is wrong. The profile was placed at `/var/lib/kubelet/seccomp/profiles/block-dangerous.json`, but the Pod spec references `block-dangerous.json` (without the `profiles/` prefix).
+**Causa raiz:** O caminho `localhostProfile` está errado. O profile foi colocado em `/var/lib/kubelet/seccomp/profiles/block-dangerous.json`, mas a spec do Pod referencia `block-dangerous.json` (sem o prefixo `profiles/`).
 
-**Fix:** Update the profile path:
+**Correção:** Atualize o caminho do profile:
 
 ```bash
 kubectl delete pod broken-seccomp
 ```
 
-Edit the Pod spec to use `localhostProfile: profiles/block-dangerous.json` and re-apply.
+Edite a spec do Pod para usar `localhostProfile: profiles/block-dangerous.json` e re-aplique.
 
-**Linux analogy:** It's like specifying the wrong path in an `LD_PRELOAD` — the library exists but the loader can't find it at the path you gave.
+**Analogia com Linux:** É como especificar o caminho errado em um `LD_PRELOAD` — a biblioteca existe mas o loader não consegue encontrá-la no caminho que você forneceu.
 
 ---
 
-### Scenario 2 — Immutable container crashing on startup
+### Cenário 2 — Container imutável crashando na inicialização
 
-Apply this Pod:
+Aplique este Pod:
 
 ```yaml
-# Save as broken-immutable.yaml
+# Salve como broken-immutable.yaml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1075,103 +1075,103 @@ kubectl apply -f broken-immutable.yaml
 kubectl get pod broken-immutable --watch
 ```
 
-**What you'll see:** The Pod enters `CrashLoopBackOff`. Nginx can't start.
+**O que você verá:** O Pod entra em `CrashLoopBackOff`. O Nginx não consegue iniciar.
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
 kubectl logs broken-immutable
 ```
 
-You'll see errors like: `nginx: [emerg] mkdir() "/var/cache/nginx/client_temp" failed (30: Read-only file system)`.
+Você verá erros como: `nginx: [emerg] mkdir() "/var/cache/nginx/client_temp" failed (30: Read-only file system)`.
 
-**Root cause:** Nginx needs to write to `/var/cache/nginx`, `/var/run`, and `/tmp` at startup. With `readOnlyRootFilesystem: true`, those paths are read-only.
+**Causa raiz:** O Nginx precisa escrever em `/var/cache/nginx`, `/var/run` e `/tmp` na inicialização. Com `readOnlyRootFilesystem: true`, esses caminhos são somente leitura.
 
-**Fix:** Add `emptyDir` volumes for the writable paths:
+**Correção:** Adicione volumes `emptyDir` para os caminhos graváveis:
 
 ```bash
 kubectl delete pod broken-immutable
 ```
 
-Add `volumeMounts` for `/tmp`, `/var/cache/nginx`, and `/var/run` backed by `emptyDir` volumes (see Task 8 for the correct manifest).
+Adicione `volumeMounts` para `/tmp`, `/var/cache/nginx` e `/var/run` com volumes `emptyDir` (veja a Tarefa 8 para o manifesto correto).
 
-**Linux analogy:** It's like mounting a filesystem read-only (`mount -o ro /`) and then wondering why `nginx` can't create its PID file in `/var/run/`.
+**Analogia com Linux:** É como montar um filesystem somente leitura (`mount -o ro /`) e depois se perguntar por que o `nginx` não consegue criar seu arquivo PID em `/var/run/`.
 
 ---
 
-### Scenario 3 — Falco not detecting anything
+### Cenário 3 — Falco não detecta nada
 
-Falco is installed and running but no alerts appear even after exec'ing into containers.
+O Falco está instalado e rodando mas nenhum alerta aparece mesmo após exec em containers.
 
 ```bash
 kubectl exec -it falco-test -- /bin/sh -c "whoami"
 kubectl logs -n falco -l app.kubernetes.io/name=falco --tail=10
 ```
 
-**What you'll see:** No shell-related alerts in the logs.
+**O que você verá:** Nenhum alerta relacionado a shell nos logs.
 
-**Diagnose:**
+**Diagnostique:**
 
 ```bash
-# Check if Falco driver loaded
+# Verifique se o driver do Falco carregou
 kubectl logs -n falco -l app.kubernetes.io/name=falco | grep -i "driver\|error\|fail"
 
-# Check if rules are loaded
+# Verifique se as regras estão carregadas
 kubectl logs -n falco -l app.kubernetes.io/name=falco | grep -i "rule"
 ```
 
-**Root cause (possible):** The eBPF driver failed to load due to missing kernel headers or an unsupported kernel version. Falco starts but can't intercept syscalls.
+**Causa raiz (possível):** O driver eBPF falhou ao carregar devido a headers de kernel ausentes ou uma versão de kernel não suportada. O Falco inicia mas não consegue interceptar syscalls.
 
-**Fix:** Switch to the kernel module driver or ensure kernel headers are installed:
+**Correção:** Mude para o driver de kernel module ou garanta que os headers do kernel estão instalados:
 
 ```bash
-# Switch driver
+# Mude o driver
 helm upgrade falco falcosecurity/falco -n falco --set driver.kind=kmod
 
-# Or on the node:
+# Ou no node:
 sudo apt-get install -y linux-headers-$(uname -r)
 ```
 
-After fixing, restart Falco and retry the exec test.
+Após corrigir, reinicie o Falco e tente novamente o teste de exec.
 
-**Linux analogy:** It's like installing OSSEC but forgetting to load the kernel auditing module — the tool runs but can't see any events.
+**Analogia com Linux:** É como instalar o OSSEC mas esquecer de carregar o módulo de auditoria do kernel — a ferramenta roda mas não consegue ver nenhum evento.
 
 ---
 
-## 🎉 Congratulations — You've Completed the FastHack Kubernetes Hackathon!
+## 🎉 Parabéns — Você Completou o FastHack Kubernetes Hackathon!
 
-You've made it through all **20 challenges** — from your first Pod to supply chain security. Here's what you've accomplished:
+Você passou por todos os **20 desafios** — do seu primeiro Pod até supply chain security. Aqui está o que você realizou:
 
-### Your Journey — All 20 Challenges
+### Sua Jornada — Todos os 20 Desafios
 
-| # | Challenge | Key Skills |
+| # | Desafio | Habilidades Principais |
 |---|---|---|
-| 01 | Core Concepts | Pods, kubectl, cluster architecture |
-| 02 | Namespaces & Labels | Organization, label selectors, resource isolation |
-| 03 | Deployments & ReplicaSets | Declarative workloads, scaling, self-healing |
-| 04 | Rollouts & Rollbacks | Update strategies, revision history, undo |
+| 01 | Core Concepts | Pods, kubectl, arquitetura do cluster |
+| 02 | Namespaces & Labels | Organização, label selectors, isolamento de recursos |
+| 03 | Deployments & ReplicaSets | Workloads declarativos, scaling, auto-recuperação |
+| 04 | Rollouts & Rollbacks | Estratégias de atualização, histórico de revisões, undo |
 | 05 | Services & Networking | ClusterIP, NodePort, LoadBalancer, DNS |
-| 06 | ConfigMaps & Secrets | Configuration injection, environment variables, volumes |
-| 07 | Storage & Persistence | PVs, PVCs, StorageClasses, dynamic provisioning |
+| 06 | ConfigMaps & Secrets | Injeção de configuração, variáveis de ambiente, volumes |
+| 07 | Storage & Persistence | PVs, PVCs, StorageClasses, provisionamento dinâmico |
 | 08 | Scheduling & Node Affinity | nodeSelector, affinity, taints, tolerations |
-| 09 | Pod Security | SecurityContext, Pod Security Standards, RBAC basics |
-| 10 | Ingress & Traffic Management | Ingress controllers, path/host routing, TLS |
-| 11 | StatefulSets & Headless Services | Ordered deployment, stable network IDs, persistent storage |
-| 12 | DaemonSets, Jobs & CronJobs | Node-level workloads, batch processing, scheduled tasks |
+| 09 | Pod Security | SecurityContext, Pod Security Standards, básico de RBAC |
+| 10 | Ingress & Traffic Management | Ingress controllers, roteamento por path/host, TLS |
+| 11 | StatefulSets & Headless Services | Deployment ordenado, IDs de rede estáveis, storage persistente |
+| 12 | DaemonSets, Jobs & CronJobs | Workloads em nível de node, processamento em lote, tarefas agendadas |
 | 13 | Resource Management | Requests, limits, LimitRanges, ResourceQuotas |
-| 14 | Health Checks & Observability | Liveness, readiness, startup probes, monitoring |
-| 15 | RBAC Deep Dive | Roles, ClusterRoles, ServiceAccounts, least privilege |
-| 16 | Troubleshooting & Debugging | Pod/node/network diagnostics, log analysis |
-| 17 | Advanced Deployment Strategies | Blue/green, canary, rolling update tuning, API deprecation |
-| 18 | Cluster Setup with kubeadm | Bootstrap production clusters, etcd, certificates |
-| 19 | Network Policies & Service Mesh | L3/L4 network segmentation, zero-trust networking |
+| 14 | Health Checks & Observability | Liveness, readiness, startup probes, monitoramento |
+| 15 | RBAC Deep Dive | Roles, ClusterRoles, ServiceAccounts, menor privilégio |
+| 16 | Troubleshooting & Debugging | Diagnósticos de Pod/node/rede, análise de logs |
+| 17 | Advanced Deployment Strategies | Blue/green, canary, ajuste de rolling update, depreciação de API |
+| 18 | Cluster Setup com kubeadm | Bootstrap de clusters de produção, etcd, certificados |
+| 19 | Network Policies & Service Mesh | Segmentação de rede L3/L4, zero-trust networking |
 | 20 | Supply Chain & Runtime Security | AppArmor, seccomp, Trivy, Falco, cosign, audit logs |
 
-### Certification Readiness Assessment
+### Avaliação de Prontidão para Certificação
 
-**CKA (Certified Kubernetes Administrator) — Domains Covered:**
+**CKA (Certified Kubernetes Administrator) — Domínios Cobertos:**
 
-| CKA Domain | Weight | Challenges |
+| Domínio CKA | Peso | Desafios |
 |---|---|---|
 | Cluster Architecture, Installation & Configuration | 25% | Ch01, Ch18 |
 | Workloads & Scheduling | 15% | Ch03, Ch04, Ch08, Ch12 |
@@ -1179,9 +1179,9 @@ You've made it through all **20 challenges** — from your first Pod to supply c
 | Storage | 10% | Ch07, Ch11 |
 | Troubleshooting | 30% | Ch14, Ch16 |
 
-**CKAD (Certified Kubernetes Application Developer) — Domains Covered:**
+**CKAD (Certified Kubernetes Application Developer) — Domínios Cobertos:**
 
-| CKAD Domain | Weight | Challenges |
+| Domínio CKAD | Peso | Desafios |
 |---|---|---|
 | Application Design and Build | 20% | Ch03, Ch04, Ch11, Ch12 |
 | Application Deployment | 20% | Ch04, Ch17 |
@@ -1189,9 +1189,9 @@ You've made it through all **20 challenges** — from your first Pod to supply c
 | Application Environment, Configuration and Security | 25% | Ch02, Ch06, Ch08, Ch09, Ch13 |
 | Services & Networking | 20% | Ch05, Ch10 |
 
-**CKS (Certified Kubernetes Security Specialist) — Domains Covered:**
+**CKS (Certified Kubernetes Security Specialist) — Domínios Cobertos:**
 
-| CKS Domain | Weight | Challenges |
+| Domínio CKS | Peso | Desafios |
 |---|---|---|
 | Cluster Setup | 10% | Ch18, Ch19 |
 | Cluster Hardening | 15% | Ch09, Ch15 |
@@ -1200,27 +1200,27 @@ You've made it through all **20 challenges** — from your first Pod to supply c
 | Supply Chain Security | 20% | Ch20 (Tasks 3-6) |
 | Monitoring, Logging & Runtime Security | 20% | Ch14, Ch20 (Tasks 7, 9) |
 
-### Recommended Next Steps
+### Próximos Passos Recomendados
 
-1. **Practice Exams:**
-   - [Killer.sh](https://killer.sh/) — The exam simulator used by the Linux Foundation (included with exam purchase)
-   - [KillerCoda CKA/CKAD/CKS Scenarios](https://killercoda.com/) — Free browser-based labs
+1. **Exames Práticos:**
+   - [Killer.sh](https://killer.sh/) — O simulador de exame usado pela Linux Foundation (incluído na compra do exame)
+   - [KillerCoda CKA/CKAD/CKS Scenarios](https://killercoda.com/) — Labs gratuitos no navegador
 
-2. **Official Training:**
+2. **Treinamento Oficial:**
    - [Linux Foundation — CKA Course (LFS258)](https://training.linuxfoundation.org/training/kubernetes-fundamentals/)
    - [Linux Foundation — CKAD Course (LFD259)](https://training.linuxfoundation.org/training/kubernetes-for-developers/)
    - [Linux Foundation — CKS Course (LFS260)](https://training.linuxfoundation.org/training/kubernetes-security-essentials-lfs260/)
 
-3. **Register for Exams:**
+3. **Registre-se para os Exames:**
    - [CKA Exam](https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/)
    - [CKAD Exam](https://training.linuxfoundation.org/certification/certified-kubernetes-application-developer-ckad/)
    - [CKS Exam](https://training.linuxfoundation.org/certification/certified-kubernetes-security-specialist/)
 
-4. **Continue Learning:**
-   - Visit **[k8shackathon.com](https://k8shackathon.com)** for updates, additional challenges, and community resources
-   - Join the [Kubernetes Slack](https://slack.k8s.io/) — channels: `#cka-prep`, `#ckad-prep`, `#cks-prep`
-   - Read the [Kubernetes Documentation](https://kubernetes.io/docs/home/) — the official docs are allowed during the exam
+4. **Continue Aprendendo:**
+   - Visite **[k8shackathon.com](https://k8shackathon.com)** para atualizações, desafios adicionais e recursos da comunidade
+   - Participe do [Kubernetes Slack](https://slack.k8s.io/) — canais: `#cka-prep`, `#ckad-prep`, `#cks-prep`
+   - Leia a [Documentação do Kubernetes](https://kubernetes.io/docs/home/) — a documentação oficial é permitida durante o exame
 
-> **Remember:** The exams are performance-based. You'll have a terminal with `kubectl` access and must solve real tasks under time pressure. The hands-on skills you've built in these 20 challenges are exactly what you need. Practice speed, learn `kubectl` shortcuts, and bookmark key documentation pages.
+> **Lembre-se:** Os exames são baseados em desempenho. Você terá um terminal com acesso ao `kubectl` e deve resolver tarefas reais sob pressão de tempo. As habilidades práticas que você construiu nestes 20 desafios são exatamente o que você precisa. Pratique velocidade, aprenda atalhos do `kubectl` e salve páginas-chave da documentação nos favoritos.
 >
-> **You're ready. Go get certified! 🚀**
+> **Você está pronto. Vá buscar sua certificação! 🚀**
