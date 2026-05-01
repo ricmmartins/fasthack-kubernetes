@@ -1,33 +1,33 @@
-# Solution 07 — Volumes and Persistence
+# Solução 07 — Volumes e Persistência
 
-[< Back to Challenge](../Student/Challenge-07.md) | **[Home](README.md)**
+[< Voltar para o Desafio](../Student/Challenge-07.md) | **[Home](README.md)**
 
-## Prerequisites
+## Pré-requisitos
 
-Students should have a running Kind cluster. The cluster from Challenge 06 (with Ingress config) works fine — it includes the `standard` StorageClass by default.
+Os alunos devem ter um cluster Kind em execução. O cluster do Desafio 06 (com configuração de Ingress) funciona bem — ele inclui a StorageClass `standard` por padrão.
 
 ```bash
-# Verify the cluster is running and has the default StorageClass
+# Verifique se o cluster está em execução e tem a StorageClass padrão
 kubectl get nodes
 kubectl get storageclass
 ```
 
-Expected StorageClass output:
+Saída esperada da StorageClass:
 
 ```
 NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
 standard (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  1h
 ```
 
-> **Coach tip:** Kind automatically installs the `rancher.io/local-path` provisioner and marks the `standard` StorageClass as default. This is what enables dynamic provisioning in Tasks 3 and 4.
+> **Dica do Coach:** O Kind instala automaticamente o provisioner `rancher.io/local-path` e marca a StorageClass `standard` como padrão. É isso que habilita o provisionamento dinâmico nas Tarefas 3 e 4.
 
 ---
 
-## Task 1: Prove Container Storage Is Ephemeral
+## Tarefa 1: Prove que o Armazenamento do Container é Efêmero
 
-### Step-by-step
+### Passo a passo
 
-Save as `ephemeral-demo.yaml`:
+Salve como `ephemeral-demo.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -42,107 +42,107 @@ spec:
 ```
 
 ```bash
-# Create the Pod
+# Crie o Pod
 kubectl apply -f ephemeral-demo.yaml
 kubectl wait --for=condition=ready pod/ephemeral-demo --timeout=60s
 ```
 
 ```bash
-# Read the file — it exists
+# Leia o arquivo — ele existe
 kubectl exec ephemeral-demo -- cat /data/message.txt
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 hello from ephemeral storage
 ```
 
 ```bash
-# Delete the Pod
+# Delete o Pod
 kubectl delete pod ephemeral-demo
 ```
 
 ```bash
-# Recreate the same Pod
+# Recrie o mesmo Pod
 kubectl apply -f ephemeral-demo.yaml
 kubectl wait --for=condition=ready pod/ephemeral-demo --timeout=60s
 ```
 
 ```bash
-# Try to read the file again — it's gone
+# Tente ler o arquivo novamente — ele desapareceu
 kubectl exec ephemeral-demo -- cat /data/message.txt
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 hello from ephemeral storage
 ```
 
-> **Wait — the file is still there?** Yes! The command in the Pod spec *recreates* the file on every start (`echo ... > /data/message.txt`). To properly demonstrate ephemeral storage, we need to write data *after* Pod creation and then check if it survives.
+> **Espere — o arquivo ainda está lá?** Sim! O comando na spec do Pod *recria* o arquivo a cada início (`echo ... > /data/message.txt`). Para demonstrar corretamente o armazenamento efêmero, precisamos escrever dados *após* a criação do Pod e verificar se sobrevivem.
 
-**Correct demonstration:**
+**Demonstração correta:**
 
 ```bash
-# Delete the Pod if it exists
+# Delete o Pod se existir
 kubectl delete pod ephemeral-demo --ignore-not-found
 
-# Create the Pod (this time with just sleep, no file writing)
+# Crie o Pod (desta vez apenas com sleep, sem escrita de arquivo)
 kubectl apply -f ephemeral-demo.yaml
 kubectl wait --for=condition=ready pod/ephemeral-demo --timeout=60s
 
-# Manually write data into the running container
+# Escreva dados manualmente no container em execução
 kubectl exec ephemeral-demo -- sh -c "echo 'data written at runtime' > /tmp/runtime.txt"
 
-# Confirm it exists
+# Confirme que existe
 kubectl exec ephemeral-demo -- cat /tmp/runtime.txt
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 data written at runtime
 ```
 
 ```bash
-# Delete and recreate
+# Delete e recrie
 kubectl delete pod ephemeral-demo
 kubectl apply -f ephemeral-demo.yaml
 kubectl wait --for=condition=ready pod/ephemeral-demo --timeout=60s
 
-# The runtime file is gone
+# O arquivo de runtime não existe mais
 kubectl exec ephemeral-demo -- cat /tmp/runtime.txt
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 cat: can't open '/tmp/runtime.txt': No such file or directory
 command terminated with exit code 1
 ```
 
-### Verification
+### Verificação
 
-- The file created at runtime (`/tmp/runtime.txt`) is gone after Pod deletion and recreation
-- The file written by the Pod's command (`/data/message.txt`) gets recreated because it's part of the container start command — but it's *new* data, not the *old* data
+- O arquivo criado em tempo de execução (`/tmp/runtime.txt`) desapareceu após a exclusão e recriação do Pod
+- O arquivo escrito pelo comando do Pod (`/data/message.txt`) é recriado porque faz parte do comando de inicialização do container — mas são dados *novos*, não os *antigos*
 
-> **Coach tip:** This is an important distinction. Help students understand: the writable layer is destroyed when the container is removed. The `command` in the spec runs fresh each time. Real-world data (database files, uploads, logs) that aren't recreated by the startup command will be lost.
+> **Dica do Coach:** Esta é uma distinção importante. Ajude os alunos a entender: a camada de escrita é destruída quando o container é removido. O `command` na spec é executado novamente a cada vez. Dados reais (arquivos de banco de dados, uploads, logs) que não são recriados pelo comando de inicialização serão perdidos.
 
 ```bash
-# Cleanup
+# Limpeza
 kubectl delete pod ephemeral-demo
 ```
 
 ---
 
-## Task 2: Manual PersistentVolume and PersistentVolumeClaim
+## Tarefa 2: PersistentVolume e PersistentVolumeClaim Manuais
 
-### Step-by-step
+### Passo a passo
 
-**2a. Create the PersistentVolume**
+**2a. Crie o PersistentVolume**
 
-Save as `manual-pv.yaml`:
+Salve como `manual-pv.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -160,9 +160,9 @@ spec:
     type: DirectoryOrCreate
 ```
 
-**2b. Create the PersistentVolumeClaim**
+**2b. Crie o PersistentVolumeClaim**
 
-Save as `manual-pvc.yaml`:
+Salve como `manual-pvc.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -178,11 +178,11 @@ spec:
   storageClassName: ""
 ```
 
-> **Important:** `storageClassName: ""` (empty string) prevents dynamic provisioning and forces static binding to the manually created PV.
+> **Importante:** `storageClassName: ""` (string vazia) evita o provisionamento dinâmico e força a vinculação estática ao PV criado manualmente.
 
-**2c. Create a Pod that uses the PVC**
+**2c. Crie um Pod que usa o PVC**
 
-Save as `pvc-demo.yaml`:
+Salve como `pvc-demo.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -204,14 +204,14 @@ spec:
 ```
 
 ```bash
-# Apply in order: PV → PVC → Pod
+# Aplique na ordem: PV → PVC → Pod
 kubectl apply -f manual-pv.yaml
 kubectl apply -f manual-pvc.yaml
 kubectl apply -f pvc-demo.yaml
 kubectl wait --for=condition=ready pod/pvc-demo --timeout=60s
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 persistentvolume/manual-pv created
@@ -219,14 +219,14 @@ persistentvolumeclaim/manual-pvc created
 pod/pvc-demo created
 ```
 
-### Verification
+### Verificação
 
 ```bash
-# Check PV and PVC are Bound
+# Verifique se PV e PVC estão Bound
 kubectl get pv,pvc
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                         CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                STORAGECLASS   AGE
@@ -237,48 +237,48 @@ persistentvolumeclaim/manual-pvc   Bound    manual-pv   256Mi      RWO          
 ```
 
 ```bash
-# Verify data exists
+# Verifique se os dados existem
 kubectl exec pvc-demo -- cat /data/message.txt
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 persistent data
 ```
 
 ```bash
-# Delete the Pod (NOT the PVC)
+# Delete o Pod (NÃO o PVC)
 kubectl delete pod pvc-demo
 
-# Recreate the Pod
+# Recrie o Pod
 kubectl apply -f pvc-demo.yaml
 kubectl wait --for=condition=ready pod/pvc-demo --timeout=60s
 
-# Data survives!
+# Os dados sobrevivem!
 kubectl exec pvc-demo -- cat /data/message.txt
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 persistent data
 ```
 
 ```bash
-# Inspect the PV details
+# Inspecione os detalhes do PV
 kubectl describe pv manual-pv
 ```
 
-Look for:
-- `Source.Path: /tmp/k8s-manual-pv` — the actual directory on the Kind node
+Procure por:
+- `Source.Path: /tmp/k8s-manual-pv` — o diretório real no nó Kind
 - `Status: Bound`
 - `Claim: default/manual-pvc`
 
-> **Coach tip:** `hostPath` volumes store data on the node's filesystem. In Kind, the "node" is a Docker container. Students can verify with: `docker exec -it fasthack-control-plane ls -la /tmp/k8s-manual-pv/`
+> **Dica do Coach:** Volumes `hostPath` armazenam dados no sistema de arquivos do nó. No Kind, o "nó" é um container Docker. Os alunos podem verificar com: `docker exec -it fasthack-control-plane ls -la /tmp/k8s-manual-pv/`
 
 ```bash
-# Cleanup
+# Limpeza
 kubectl delete pod pvc-demo
 kubectl delete pvc manual-pvc
 kubectl delete pv manual-pv
@@ -286,13 +286,13 @@ kubectl delete pv manual-pv
 
 ---
 
-## Task 3: StatefulSet with volumeClaimTemplates
+## Tarefa 3: StatefulSet com volumeClaimTemplates
 
-### Step-by-step
+### Passo a passo
 
-**3a. Create the headless Service**
+**3a. Crie o Service headless**
 
-Save as `redis-headless-svc.yaml`:
+Salve como `redis-headless-svc.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -307,9 +307,9 @@ spec:
     - port: 6379
 ```
 
-**3b. Create the StatefulSet**
+**3b. Crie o StatefulSet**
 
-Save as `redis-statefulset.yaml`:
+Salve como `redis-statefulset.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -345,14 +345,14 @@ spec:
             storage: 128Mi
 ```
 
-> **Important:** The headless Service must be created **before** the StatefulSet, because the StatefulSet references it via `serviceName`.
+> **Importante:** O Service headless deve ser criado **antes** do StatefulSet, porque o StatefulSet o referencia via `serviceName`.
 
 ```bash
 kubectl apply -f redis-headless-svc.yaml
 kubectl apply -f redis-statefulset.yaml
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 service/redis created
@@ -360,11 +360,11 @@ statefulset.apps/redis created
 ```
 
 ```bash
-# Watch Pods come up IN ORDER (redis-0, then redis-1)
+# Observe os Pods iniciando EM ORDEM (redis-0, depois redis-1)
 kubectl get pods -l app=redis -w
 ```
 
-Expected output (over ~30 seconds):
+Saída esperada (ao longo de ~30 segundos):
 
 ```
 NAME      READY   STATUS              RESTARTS   AGE
@@ -375,16 +375,16 @@ redis-1   0/1     ContainerCreating   0          1s
 redis-1   1/1     Running             0          4s
 ```
 
-> Press `Ctrl+C` to stop watching.
+> Pressione `Ctrl+C` para parar de acompanhar.
 
-### Verification
+### Verificação
 
 ```bash
-# Check PVCs — one per replica
+# Verifique os PVCs — um por réplica
 kubectl get pvc
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
@@ -392,101 +392,101 @@ redis-data-redis-0     Bound    pvc-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx   128Mi
 redis-data-redis-1     Bound    pvc-yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy   128Mi      RWO            standard       25s
 ```
 
-> **Key point:** Each PVC name follows the pattern `<volumeClaimTemplate-name>-<statefulset-name>-<ordinal>`. This is automatic.
+> **Ponto-chave:** Cada nome de PVC segue o padrão `<nome-do-volumeClaimTemplate>-<nome-do-statefulset>-<ordinal>`. Isso é automático.
 
 ```bash
-# Write data to redis-0
+# Escreva dados no redis-0
 kubectl exec redis-0 -- redis-cli SET mykey "hello from redis-0"
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 OK
 ```
 
 ```bash
-# Read it back
+# Leia de volta
 kubectl exec redis-0 -- redis-cli GET mykey
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 "hello from redis-0"
 ```
 
 ```bash
-# Delete redis-0 — the StatefulSet controller will recreate it
+# Delete redis-0 — o controller do StatefulSet irá recriá-lo
 kubectl delete pod redis-0
 
-# Wait for it to come back
+# Aguarde ele voltar
 kubectl wait --for=condition=ready pod/redis-0 --timeout=60s
 ```
 
 ```bash
-# Data survives because the PVC persists!
+# Os dados sobrevivem porque o PVC persiste!
 kubectl exec redis-0 -- redis-cli GET mykey
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 "hello from redis-0"
 ```
 
 ```bash
-# Verify redis-1 has INDEPENDENT storage (no data from redis-0)
+# Verifique que redis-1 tem armazenamento INDEPENDENTE (sem dados do redis-0)
 kubectl exec redis-1 -- redis-cli GET mykey
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 (nil)
 ```
 
 ```bash
-# Show stable DNS names via the headless Service
+# Mostre nomes DNS estáveis via Service headless
 kubectl run tmp-dns --rm -it --restart=Never --image=busybox:stable -- nslookup redis-0.redis
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Name:      redis-0.redis.default.svc.cluster.local
 Address:   10.244.x.x
 ```
 
-> **Coach tip:** Explain why StatefulSets exist: Deployments treat all replicas as interchangeable — they share the same PVC. StatefulSets give each replica a unique identity (stable hostname, own PVC). This is essential for databases, message queues, and any workload where each instance owns distinct data.
+> **Dica do Coach:** Explique por que StatefulSets existem: Deployments tratam todas as réplicas como intercambiáveis — elas compartilham o mesmo PVC. StatefulSets dão a cada réplica uma identidade única (hostname estável, PVC próprio). Isso é essencial para bancos de dados, filas de mensagens e qualquer carga de trabalho onde cada instância possui dados distintos.
 
 ```bash
-# Cleanup (PVCs are NOT deleted when the StatefulSet is deleted!)
+# Limpeza (PVCs NÃO são deletados quando o StatefulSet é deletado!)
 kubectl delete statefulset redis
 kubectl delete svc redis
-kubectl get pvc  # PVCs still exist — this is by design
+kubectl get pvc  # PVCs ainda existem — isso é por design
 kubectl delete pvc redis-data-redis-0 redis-data-redis-1
 ```
 
 ---
 
-## Task 4: Dynamic Provisioning with StorageClass
+## Tarefa 4: Provisionamento Dinâmico com StorageClass
 
-### Step-by-step
+### Passo a passo
 
 ```bash
-# First, see what StorageClasses are available
+# Primeiro, veja quais StorageClasses estão disponíveis
 kubectl get storageclass
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
 standard (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  2h
 ```
 
-Save as `dynamic-pvc.yaml`:
+Salve como `dynamic-pvc.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -502,7 +502,7 @@ spec:
   storageClassName: standard
 ```
 
-Save as `dynamic-demo.yaml`:
+Salve como `dynamic-demo.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -528,33 +528,33 @@ kubectl apply -f dynamic-pvc.yaml
 ```
 
 ```bash
-# Check PVC status — it will be Pending (WaitForFirstConsumer)
+# Verifique o status do PVC — estará em Pending (WaitForFirstConsumer)
 kubectl get pvc dynamic-pvc
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME          STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 dynamic-pvc   Pending                                      standard       5s
 ```
 
-> **Coach tip:** This is expected! The `standard` StorageClass uses `volumeBindingMode: WaitForFirstConsumer`, meaning the PV is NOT created until a Pod actually references the PVC. This avoids scheduling conflicts on multi-node clusters.
+> **Dica do Coach:** Isso é esperado! A StorageClass `standard` usa `volumeBindingMode: WaitForFirstConsumer`, significando que o PV NÃO é criado até que um Pod realmente referencie o PVC. Isso evita conflitos de agendamento em clusters multi-nó.
 
 ```bash
-# Now create the Pod — this triggers PV provisioning
+# Agora crie o Pod — isso dispara o provisionamento do PV
 kubectl apply -f dynamic-demo.yaml
 kubectl wait --for=condition=ready pod/dynamic-demo --timeout=60s
 ```
 
-### Verification
+### Verificação
 
 ```bash
-# PVC is now Bound and a PV was created automatically
+# O PVC agora está Bound e um PV foi criado automaticamente
 kubectl get pv
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                 STORAGECLASS   AGE
@@ -565,7 +565,7 @@ pvc-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx   128Mi      RWO            Delete     
 kubectl get pvc dynamic-pvc
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME          STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
@@ -573,45 +573,45 @@ dynamic-pvc   Bound    pvc-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx   128Mi      RWO
 ```
 
 ```bash
-# Verify the data was written
+# Verifique se os dados foram escritos
 kubectl exec dynamic-demo -- cat /data/hello.txt
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 dynamically provisioned!
 ```
 
 ```bash
-# Show where Kind stores the data on the node
+# Mostre onde o Kind armazena os dados no nó
 kubectl get pv -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.hostPath.path}{"\n"}{end}'
 ```
 
-Expected output: shows the path under `/var/local-path-provisioner/` on the Kind node.
+Saída esperada: mostra o caminho sob `/var/local-path-provisioner/` no nó Kind.
 
 ```bash
-# Optional: peek inside the Kind node container
+# Opcional: espie dentro do container do nó Kind
 docker exec -it fasthack-control-plane ls -la /var/local-path-provisioner/
 ```
 
-> **Coach tip:** Compare Task 2 (manual PV/PVC) vs Task 4 (dynamic). Manual: you create both PV and PVC. Dynamic: you only create the PVC and the StorageClass provisioner creates the PV automatically. In production, dynamic provisioning is the norm — nobody manually creates PVs for every application.
+> **Dica do Coach:** Compare Tarefa 2 (PV/PVC manual) vs Tarefa 4 (dinâmico). Manual: você cria ambos PV e PVC. Dinâmico: você só cria o PVC e o provisioner da StorageClass cria o PV automaticamente. Em produção, provisionamento dinâmico é a norma — ninguém cria PVs manualmente para cada aplicação.
 
 ```bash
-# Cleanup
+# Limpeza
 kubectl delete pod dynamic-demo
 kubectl delete pvc dynamic-pvc
-# The PV is auto-deleted because reclaimPolicy is Delete
-kubectl get pv  # should be gone
+# O PV é auto-deletado porque reclaimPolicy é Delete
+kubectl get pv  # deve ter desaparecido
 ```
 
 ---
 
-## Task 5: emptyDir Sidecar Pattern
+## Tarefa 5: Padrão Sidecar com emptyDir
 
-### Step-by-step
+### Passo a passo
 
-Save as `sidecar-demo.yaml`:
+Salve como `sidecar-demo.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -642,14 +642,14 @@ kubectl apply -f sidecar-demo.yaml
 kubectl wait --for=condition=ready pod/sidecar-demo --timeout=60s
 ```
 
-### Verification
+### Verificação
 
 ```bash
-# See live timestamps from the producer via the consumer's tail -f
+# Veja timestamps ao vivo do producer via o tail -f do consumer
 kubectl logs sidecar-demo -c consumer --tail=5
 ```
 
-Expected output (timestamps will vary):
+Saída esperada (timestamps irão variar):
 
 ```
 Mon Jun 16 14:00:00 UTC 2025
@@ -660,65 +660,64 @@ Mon Jun 16 14:00:20 UTC 2025
 ```
 
 ```bash
-# Follow the logs live (Ctrl+C to stop)
+# Acompanhe os logs ao vivo (Ctrl+C para parar)
 kubectl logs sidecar-demo -c consumer -f
 ```
 
-New timestamps should appear every 5 seconds.
+Novos timestamps devem aparecer a cada 5 segundos.
 
 ```bash
-# Verify both containers see the same file
+# Verifique que ambos os containers veem o mesmo arquivo
 kubectl exec sidecar-demo -c producer -- wc -l /shared/log.txt
 kubectl exec sidecar-demo -c consumer -- wc -l /shared/log.txt
 ```
 
-Both should show the same line count (growing over time).
+Ambos devem mostrar a mesma contagem de linhas (crescendo ao longo do tempo).
 
 ```bash
-# Prove emptyDir is ephemeral — delete and recreate
+# Prove que emptyDir é efêmero — delete e recrie
 kubectl delete pod sidecar-demo
 kubectl apply -f sidecar-demo.yaml
 kubectl wait --for=condition=ready pod/sidecar-demo --timeout=60s
 
-# The consumer starts with fresh data — old logs are gone
+# O consumer começa com dados novos — logs antigos desapareceram
 kubectl logs sidecar-demo -c consumer --tail=3
 ```
 
-Expected output: only 1-3 new timestamps — no old data carried over.
+Saída esperada: apenas 1-3 novos timestamps — nenhum dado antigo mantido.
 
-> **Coach tip:** `emptyDir` is the Kubernetes equivalent of a shared `/tmp` directory between processes. It's perfect for:
-> - Sidecar log collectors (like this demo)
-> - Cache directories shared between init containers and app containers
-> - Scratch space for computation
+> **Dica do Coach:** `emptyDir` é o equivalente Kubernetes de um diretório `/tmp` compartilhado entre processos. É perfeito para:
+> - Coletores de log sidecar (como esta demo)
+> - Diretórios de cache compartilhados entre init containers e containers da app
+> - Espaço temporário para computação
 >
-> It is NOT suitable for data that must survive Pod deletion — use a PVC for that.
+> NÃO é adequado para dados que devem sobreviver à exclusão do Pod — use um PVC para isso.
 
 ```bash
-# Cleanup
+# Limpeza
 kubectl delete pod sidecar-demo
 ```
 
 ---
 
-## Common Issues
+## Problemas Comuns
 
-| Problem | Likely Cause | Fix |
+| Problema | Causa Provável | Correção |
 |---------|-------------|-----|
-| PVC stuck in `Pending` | `storageClassName` doesn't match any StorageClass | Use `standard` (Kind default) or `""` for manual binding |
-| PVC stuck in `Pending` (dynamic) | `WaitForFirstConsumer` — no Pod created yet | Create a Pod that references the PVC |
-| PVC stuck in `Pending` (manual) | PV capacity < PVC request, or accessModes mismatch | Check `kubectl describe pvc <name>` Events section |
-| Pod stuck in `ContainerCreating` | PVC `claimName` references a non-existent PVC | `kubectl describe pod <name>` — look for "persistentvolumeclaim not found" |
-| StatefulSet Pods don't start | Headless Service not created before StatefulSet | Create the headless Service (`clusterIP: None`) first |
-| StatefulSet Pods start but data lost | Using `emptyDir` instead of `volumeClaimTemplates` | Replace `emptyDir` with `volumeClaimTemplates` in the StatefulSet spec |
-| `redis-cli` command not found | Wrong Redis image | Use `redis:7-alpine` which includes `redis-cli` |
-| PV not auto-deleted after PVC deletion | `reclaimPolicy: Retain` on manually created PV | Manually delete the PV: `kubectl delete pv manual-pv` |
-| `local-path-provisioner` not working | Pod not in kube-system namespace | `kubectl -n local-path-storage get pods` (Kind puts it in its own namespace) |
+| PVC preso em `Pending` | `storageClassName` não corresponde a nenhuma StorageClass | Use `standard` (padrão do Kind) ou `""` para vinculação manual |
+| PVC preso em `Pending` (dinâmico) | `WaitForFirstConsumer` — nenhum Pod criado ainda | Crie um Pod que referencie o PVC |
+| PVC preso em `Pending` (manual) | Capacidade do PV < request do PVC, ou accessModes incompatíveis | Verifique `kubectl describe pvc <name>` seção Events |
+| Pod preso em `ContainerCreating` | `claimName` do PVC referencia um PVC inexistente | `kubectl describe pod <name>` — procure "persistentvolumeclaim not found" |
+| Pods do StatefulSet não iniciam | Service headless não criado antes do StatefulSet | Crie o Service headless (`clusterIP: None`) primeiro |
+| Pods do StatefulSet iniciam mas dados são perdidos | Usando `emptyDir` em vez de `volumeClaimTemplates` | Substitua `emptyDir` por `volumeClaimTemplates` na spec do StatefulSet |
+| Comando `redis-cli` não encontrado | Imagem Redis errada | Use `redis:7-alpine` que inclui `redis-cli` |
+| PV não auto-deletado após exclusão do PVC | `reclaimPolicy: Retain` no PV criado manualmente | Delete manualmente o PV: `kubectl delete pv manual-pv` |
+| `local-path-provisioner` não funciona | Pod não está no namespace kube-system | `kubectl -n local-path-storage get pods` (Kind o coloca em seu próprio namespace) |
 
-> **Coach coaching tips for this challenge:**
+> **Dicas de coaching para este desafio:**
 >
-> 1. **The fstab analogy works great here:** PV = the block device (`/dev/sdb1`), PVC = the mount request (`mount /dev/sdb1 /mnt/data`), StorageClass = the LVM volume group configuration that auto-creates logical volumes on demand.
+> 1. **A analogia do fstab funciona muito bem aqui:** PV = o dispositivo de bloco (`/dev/sdb1`), PVC = a requisição de montagem (`mount /dev/sdb1 /mnt/data`), StorageClass = a configuração do volume group LVM que auto-cria volumes lógicos sob demanda.
 >
-> 2. **Students often confuse StatefulSet PVC behavior:** When you delete a StatefulSet, the PVCs are intentionally NOT deleted. This is a safety feature — you don't lose database data just because you scaled down or redeployed. Students must manually delete PVCs if they want to reclaim storage.
+> 2. **Alunos frequentemente confundem o comportamento de PVC do StatefulSet:** Quando você deleta um StatefulSet, os PVCs intencionalmente NÃO são deletados. Isso é um recurso de segurança — você não perde dados do banco de dados apenas porque fez scale down ou redeployment. Os alunos devem deletar PVCs manualmente se quiserem recuperar o armazenamento.
 >
-> 3. **Key question to ask students:** "When would you use `emptyDir` vs a PVC?" Answer: `emptyDir` for temporary/cache/scratch data that can be regenerated. PVC for data that must survive Pod restarts (databases, uploads, state).
-
+> 3. **Pergunta-chave para os alunos:** "Quando você usaria `emptyDir` vs um PVC?" Resposta: `emptyDir` para dados temporários/cache/scratch que podem ser regenerados. PVC para dados que devem sobreviver reinícios do Pod (bancos de dados, uploads, estado).

@@ -1,20 +1,20 @@
-# Solution 08 — ConfigMaps and Secrets
+# Solução 08 — ConfigMaps e Secrets
 
-[< Back to Challenge](../Student/Challenge-08.md) | **[Home](README.md)**
+[< Voltar para o Desafio](../Student/Challenge-08.md) | **[Home](README.md)**
 
-## Notes for Coaches
+## Notas para os Coaches
 
-This challenge is conceptually straightforward but the hot-reload behavior (Task 6) is the "aha moment." Make sure students actually **wait** and observe the volume-mounted file change while the env var stays frozen. That contrast is the most valuable takeaway.
+Este desafio é conceitualmente simples, mas o comportamento de hot-reload (Tarefa 6) é o "momento aha". Certifique-se de que os alunos realmente **esperem** e observem a mudança do arquivo montado via volume enquanto a variável de ambiente permanece congelada. Esse contraste é o aprendizado mais valioso.
 
-Estimated time: **30 minutes**
+Tempo estimado: **30 minutos**
 
 ---
 
-## Task 1: Create ConfigMaps (Literal + From File)
+## Tarefa 1: Criar ConfigMaps (Literal + De Arquivo)
 
-### Step-by-step
+### Passo a passo
 
-**1a — ConfigMap from literal values:**
+**1a — ConfigMap a partir de valores literais:**
 
 ```bash
 kubectl create configmap app-config \
@@ -22,7 +22,7 @@ kubectl create configmap app-config \
   --from-literal=APP_MODE=production
 ```
 
-**1b — Create the config file and build a ConfigMap from it:**
+**1b — Crie o arquivo de configuração e construa um ConfigMap a partir dele:**
 
 ```bash
 cat <<'EOF' > nginx-custom.conf
@@ -43,13 +43,13 @@ EOF
 kubectl create configmap nginx-config --from-file=default.conf=nginx-custom.conf
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl get configmap app-config -o yaml
 ```
 
-Expected output (key section):
+Saída esperada (seção principal):
 
 ```yaml
 data:
@@ -61,17 +61,17 @@ data:
 kubectl get configmap nginx-config -o yaml
 ```
 
-Expected: the `data` section has a key named `default.conf` whose value is the full nginx config file content.
+Esperado: a seção `data` tem uma chave chamada `default.conf` cujo valor é o conteúdo completo do arquivo de configuração do nginx.
 
-> **Coach tip:** Point out that `--from-file=default.conf=nginx-custom.conf` sets the key name to `default.conf`. Without the `key=` prefix the key defaults to the local filename (`nginx-custom.conf`). This is a common gotcha.
+> **Dica do Coach:** Destaque que `--from-file=default.conf=nginx-custom.conf` define o nome da chave como `default.conf`. Sem o prefixo `key=`, a chave assume o nome do arquivo local (`nginx-custom.conf`). Esse é um erro comum.
 
 ---
 
-## Task 2: Mount ConfigMap as a Volume
+## Tarefa 2: Montar ConfigMap como um Volume
 
-### Step-by-step
+### Passo a passo
 
-Save `nginx-with-config.yaml`:
+Salve `nginx-with-config.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -98,33 +98,33 @@ kubectl apply -f nginx-with-config.yaml
 kubectl wait --for=condition=Ready pod/nginx-configured --timeout=60s
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl exec nginx-configured -- cat /etc/nginx/conf.d/default.conf
 ```
 
-Expected: the full nginx config file is printed.
+Esperado: o arquivo completo de configuração do nginx é exibido.
 
 ```bash
 kubectl exec nginx-configured -- wget -qO- http://localhost/health
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 OK
 ```
 
-> **Coach tip:** Explain that mounting a ConfigMap to a directory **replaces the entire directory contents**. If the student needs to keep existing files in that directory they must use `subPath` — but warn them that `subPath` mounts do not receive auto-updates.
+> **Dica do Coach:** Explique que montar um ConfigMap em um diretório **substitui todo o conteúdo do diretório**. Se o aluno precisar manter arquivos existentes naquele diretório, deve usar `subPath` — mas avise que montagens `subPath` não recebem atualizações automáticas.
 
 ---
 
-## Task 3: Use ConfigMap as Environment Variables
+## Tarefa 3: Usar ConfigMap como Variáveis de Ambiente
 
-### Step-by-step
+### Passo a passo
 
-Save `env-demo.yaml`:
+Salve `env-demo.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -147,21 +147,21 @@ kubectl wait --for=condition=Ready pod/env-demo --timeout=60s
 kubectl logs env-demo
 ```
 
-### Verification
+### Verificação
 
-Expected output:
+Saída esperada:
 
 ```
 Color=blue Mode=production
 ```
 
-> **Coach tip:** Explain the difference between `envFrom` (injects ALL keys as env vars) and `env[].valueFrom.configMapKeyRef` (injects a single key, optionally renaming it). Ask students: "When would you use one vs the other?"
+> **Dica do Coach:** Explique a diferença entre `envFrom` (injeta TODAS as chaves como variáveis de ambiente) e `env[].valueFrom.configMapKeyRef` (injeta uma única chave, opcionalmente renomeando-a). Pergunte aos alunos: "Quando vocês usariam uma vs a outra?"
 
 ---
 
-## Task 4: Create a Secret and Mount It
+## Tarefa 4: Criar um Secret e Montá-lo
 
-### Step-by-step
+### Passo a passo
 
 ```bash
 kubectl create secret generic db-creds \
@@ -169,7 +169,7 @@ kubectl create secret generic db-creds \
   --from-literal=DB_PASSWORD='S3cur3P@ss!'
 ```
 
-Save `secret-pod.yaml`:
+Salve `secret-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -197,46 +197,46 @@ kubectl apply -f secret-pod.yaml
 kubectl wait --for=condition=Ready pod/secret-pod --timeout=60s
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl logs secret-pod
 ```
 
-Expected: you see file listing with `-r--------` permissions (0400) and the content `admin`.
+Esperado: você vê a listagem de arquivos com permissões `-r--------` (0400) e o conteúdo `admin`.
 
 ```bash
 kubectl exec secret-pod -- ls -la /etc/credentials/
 ```
 
-Expected output includes:
+Saída esperada inclui:
 
 ```
 -r--------    1 root     root             5 ...  DB_PASSWORD
 -r--------    1 root     root             5 ...  DB_USER
 ```
 
-> **Coach tip:** Emphasize `defaultMode: 0400` — this is the Kubernetes equivalent of `chmod 400`. Each key becomes a separate file. The `readOnly: true` on the volumeMount is an additional layer of protection.
+> **Dica do Coach:** Enfatize `defaultMode: 0400` — este é o equivalente Kubernetes do `chmod 400`. Cada chave se torna um arquivo separado. O `readOnly: true` no volumeMount é uma camada adicional de proteção.
 
 ---
 
-## Task 5: Base64 Is NOT Encryption
+## Tarefa 5: Base64 NÃO É Criptografia
 
-### Step-by-step
+### Passo a passo
 
 ```bash
 kubectl get secret db-creds -o jsonpath='{.data.DB_PASSWORD}' | base64 -d
 ```
 
-### Verification
+### Verificação
 
-Expected output:
+Saída esperada:
 
 ```
 S3cur3P@ss!
 ```
 
-Also demonstrate `stringData` vs `data`. Save `manual-secret.yaml`:
+Também demonstre `stringData` vs `data`. Salve `manual-secret.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -253,25 +253,25 @@ kubectl apply -f manual-secret.yaml
 kubectl get secret manual-secret -o jsonpath='{.data.API_KEY}' | base64 -d
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 my-super-secret-key
 ```
 
-> **Coach tip:** This is the most important security discussion in this challenge. Ask students: "If base64 is not encryption, how do we actually protect Secrets?" Expected answers: RBAC (restrict `get secret`), encryption at rest in etcd, external secret managers (Sealed Secrets, external-secrets-operator), never committing Secret manifests to version control.
+> **Dica do Coach:** Esta é a discussão de segurança mais importante deste desafio. Pergunte aos alunos: "Se base64 não é criptografia, como realmente protegemos os Secrets?" Respostas esperadas: RBAC (restringir `get secret`), criptografia em repouso no etcd, gerenciadores de secrets externos (Sealed Secrets, external-secrets-operator), nunca commitar manifestos de Secret no controle de versão.
 
 ---
 
-## Task 6: Hot-Reload — Volume Update vs Env Var Freeze
+## Tarefa 6: Hot-Reload — Atualização via Volume vs Variável de Ambiente Congelada
 
-This is the key learning moment of the challenge.
+Este é o momento-chave de aprendizado do desafio.
 
-### Step-by-step
+### Passo a passo
 
-**6a — Create the watcher Pod:**
+**6a — Crie o Pod observador:**
 
-Save `watch-config.yaml`:
+Salve `watch-config.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -297,43 +297,43 @@ kubectl apply -f watch-config.yaml
 kubectl wait --for=condition=Ready pod/watch-config --timeout=60s
 ```
 
-**6b — Verify current value:**
+**6b — Verifique o valor atual:**
 
 ```bash
 kubectl logs watch-config --tail=3
 ```
 
-Expected: prints `blue` repeatedly.
+Esperado: imprime `blue` repetidamente.
 
-**6c — Update the ConfigMap:**
+**6c — Atualize o ConfigMap:**
 
 ```bash
 kubectl patch configmap app-config -p '{"data":{"APP_COLOR":"red"}}'
 ```
 
-**6d — Watch the volume-mounted file update (wait 30–60 seconds):**
+**6d — Observe o arquivo montado via volume sendo atualizado (aguarde 30–60 segundos):**
 
 ```bash
 kubectl logs watch-config -f
 ```
 
-Expected: after 30–60 seconds the output changes from `blue` to `red` — **without restarting the Pod**.
+Esperado: após 30–60 segundos a saída muda de `blue` para `red` — **sem reiniciar o Pod**.
 
-**6e — Check the environment variable Pod — it does NOT update:**
+**6e — Verifique o Pod com variável de ambiente — ele NÃO atualiza:**
 
 ```bash
 kubectl exec env-demo -- sh -c 'echo $APP_COLOR'
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 blue
 ```
 
-The env var is still `blue` because environment variables are frozen at container start.
+A variável de ambiente ainda é `blue` porque variáveis de ambiente são congeladas no início do container.
 
-**6f — Restart to pick up new env vars:**
+**6f — Reinicie para capturar as novas variáveis de ambiente:**
 
 ```bash
 kubectl delete pod env-demo
@@ -342,37 +342,37 @@ kubectl wait --for=condition=Ready pod/env-demo --timeout=60s
 kubectl logs env-demo
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Color=red Mode=production
 ```
 
-### Verification
+### Verificação
 
-| Test | Expected Result |
-|------|----------------|
-| `kubectl logs watch-config --tail=1` | `red` (auto-updated) |
-| `kubectl exec env-demo -- sh -c 'echo $APP_COLOR'` | `red` (after Pod restart) |
+| Teste | Resultado Esperado |
+|-------|-------------------|
+| `kubectl logs watch-config --tail=1` | `red` (atualizado automaticamente) |
+| `kubectl exec env-demo -- sh -c 'echo $APP_COLOR'` | `red` (após reinício do Pod) |
 
-> **Coach tip:** Ask the student: "If you use a Deployment, how would you trigger a rollout when a ConfigMap changes?" Answer: annotate the Pod template with a hash of the ConfigMap data, or use a tool like Reloader. Kubernetes does NOT automatically restart Deployments when referenced ConfigMaps change.
-
----
-
-## Common Issues
-
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| Pod stuck in `ContainerCreating` | Referenced ConfigMap/Secret doesn't exist | Create the missing resource, or add `optional: true` to the volume spec |
-| Secret apply fails with "illegal base64" | Used `data:` field with plain text instead of base64 | Use `stringData:` instead, or base64-encode the value first |
-| Env var doesn't update after ConfigMap change | Env vars are frozen at container start | Restart the Pod (delete + recreate, or `kubectl rollout restart deployment`) |
-| Volume-mounted file doesn't update | Using `subPath` mount | `subPath` mounts don't receive auto-updates; use a full-directory mount instead |
-| ConfigMap file key has wrong name | Didn't use `key=` prefix in `--from-file` | Use `--from-file=desired-key=local-filename` |
-| Volume mount hides existing files in the directory | ConfigMap volume replaces entire directory | Use `subPath` for individual files (trade-off: no auto-update) |
+> **Dica do Coach:** Pergunte ao aluno: "Se você usar um Deployment, como dispararia um rollout quando um ConfigMap mudar?" Resposta: anotar o template do Pod com um hash dos dados do ConfigMap, ou usar uma ferramenta como o Reloader. O Kubernetes NÃO reinicia automaticamente Deployments quando ConfigMaps referenciados mudam.
 
 ---
 
-## Clean Up
+## Problemas Comuns
+
+| Problema | Causa | Correção |
+|----------|-------|----------|
+| Pod preso em `ContainerCreating` | ConfigMap/Secret referenciado não existe | Crie o recurso faltante, ou adicione `optional: true` na spec do volume |
+| Falha ao aplicar Secret com "illegal base64" | Usou campo `data:` com texto puro ao invés de base64 | Use `stringData:` ao invés, ou codifique o valor em base64 primeiro |
+| Variável de ambiente não atualiza após mudança no ConfigMap | Variáveis de ambiente são congeladas no início do container | Reinicie o Pod (delete + recrie, ou `kubectl rollout restart deployment`) |
+| Arquivo montado via volume não atualiza | Usando montagem `subPath` | Montagens `subPath` não recebem atualizações automáticas; use montagem de diretório completo |
+| Chave do arquivo ConfigMap com nome errado | Não usou prefixo `key=` no `--from-file` | Use `--from-file=chave-desejada=nome-arquivo-local` |
+| Montagem de volume oculta arquivos existentes no diretório | Volume de ConfigMap substitui o diretório inteiro | Use `subPath` para arquivos individuais (trade-off: sem atualização automática) |
+
+---
+
+## Limpeza
 
 ```bash
 kubectl delete pod nginx-configured env-demo secret-pod watch-config 2>/dev/null

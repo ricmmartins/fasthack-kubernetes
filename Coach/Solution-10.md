@@ -1,26 +1,26 @@
-# Solution 10 — Autoscaling
+# Solução 10 — Autoscaling
 
-[< Back to Challenge](../Student/Challenge-10.md) | **[Home](README.md)**
+[< Voltar para o Desafio](../Student/Challenge-10.md) | **[Home](README.md)**
 
-## Notes for Coaches
+## Notas para os Coaches
 
-The main blocker in this challenge is Metrics Server on Kind. If `kubectl top` shows errors, don't let students spin — walk them through the `--kubelet-insecure-tls` patch immediately. The actual HPA demo is straightforward once metrics are flowing.
+O principal bloqueio neste desafio é o Metrics Server no Kind. Se `kubectl top` mostrar erros, não deixe os alunos travados — guie-os pelo patch `--kubelet-insecure-tls` imediatamente. A demo real do HPA é simples uma vez que as métricas estejam fluindo.
 
-The load test takes 1–2 minutes for scale-up and ~5 minutes for scale-down (stabilization window). Reduce the stabilization window to 60s in Task 6 if time is tight.
+O teste de carga leva 1–2 minutos para scale-up e ~5 minutos para scale-down (janela de estabilização). Reduza a janela de estabilização para 60s na Tarefa 6 se o tempo estiver curto.
 
-Estimated time: **45 minutes**
+Tempo estimado: **45 minutos**
 
 ---
 
-## Task 1: Install Metrics Server on Kind
+## Tarefa 1: Instalar Metrics Server no Kind
 
-### Step-by-step
+### Passo a passo
 
 ```bash
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 ```
 
-Kind uses self-signed kubelet certificates, so Metrics Server will fail TLS verification by default. Patch it to skip TLS verification:
+O Kind usa certificados kubelet auto-assinados, então o Metrics Server falhará na verificação TLS por padrão. Aplique o patch para pular a verificação TLS:
 
 ```bash
 kubectl patch -n kube-system deployment metrics-server \
@@ -28,21 +28,21 @@ kubectl patch -n kube-system deployment metrics-server \
   -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
 ```
 
-Wait for the rollout to complete:
+Aguarde o rollout completar:
 
 ```bash
 kubectl -n kube-system rollout status deployment metrics-server --timeout=120s
 ```
 
-### Verification
+### Verificação
 
-Wait 30–60 seconds after rollout completes for the first metrics scrape, then:
+Aguarde 30–60 segundos após o rollout completar para a primeira coleta de métricas, então:
 
 ```bash
 kubectl top nodes
 ```
 
-Expected output (values will vary):
+Saída esperada (valores irão variar):
 
 ```
 NAME                     CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
@@ -53,21 +53,21 @@ fasthack-control-plane   150m         7%     800Mi           20%
 kubectl top pods -A
 ```
 
-Expected: a table showing CPU and memory usage for system pods (coredns, etcd, etc.). If you see `error: metrics not available yet`, wait another 30 seconds and retry.
+Esperado: uma tabela mostrando uso de CPU e memória para pods do sistema (coredns, etcd, etc.). Se você vir `error: metrics not available yet`, aguarde mais 30 segundos e tente novamente.
 
-> **Coach tip:** If Metrics Server pods are crash-looping, check logs:
+> **Dica do Coach:** Se os pods do Metrics Server estão em crash-loop, verifique os logs:
 > ```bash
 > kubectl -n kube-system logs -l k8s-app=metrics-server --tail=20
 > ```
-> The most common error is `x509: cannot validate certificate` — which means the `--kubelet-insecure-tls` patch wasn't applied or the rollout hasn't completed.
+> O erro mais comum é `x509: cannot validate certificate` — o que significa que o patch `--kubelet-insecure-tls` não foi aplicado ou o rollout não completou.
 
 ---
 
-## Task 2: Deploy CPU-Intensive Application
+## Tarefa 2: Deploy de Aplicação CPU-Intensiva
 
-### Step-by-step
+### Passo a passo
 
-Save `php-apache.yaml`:
+Salve `php-apache.yaml`:
 
 ```yaml
 apiVersion: apps/v1
@@ -112,13 +112,13 @@ kubectl apply -f php-apache.yaml
 kubectl rollout status deployment php-apache --timeout=120s
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl get deployment php-apache
 ```
 
-Expected:
+Esperado:
 
 ```
 NAME         READY   UP-TO-DATE   AVAILABLE   AGE
@@ -129,15 +129,15 @@ php-apache   1/1     1            1           ...
 kubectl get svc php-apache
 ```
 
-Expected: a ClusterIP service on port 80.
+Esperado: um Service ClusterIP na porta 80.
 
-> **Coach tip:** The `resources.requests.cpu: 200m` is **critical** — without it, the HPA cannot calculate a utilization percentage and will show `<unknown>`. This is the #1 cause of "my HPA doesn't work" issues.
+> **Dica do Coach:** O `resources.requests.cpu: 200m` é **crítico** — sem ele, o HPA não consegue calcular uma porcentagem de utilização e mostrará `<unknown>`. Esta é a causa #1 de problemas "meu HPA não funciona".
 
 ---
 
-## Task 3: Create HPA Targeting 50% CPU
+## Tarefa 3: Criar HPA com Alvo de 50% de CPU
 
-### Step-by-step
+### Passo a passo
 
 ```bash
 kubectl autoscale deployment php-apache \
@@ -146,36 +146,36 @@ kubectl autoscale deployment php-apache \
   --max=10
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl get hpa php-apache
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME         REFERENCE               TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
 php-apache   Deployment/php-apache   0%/50%    1         10        1          30s
 ```
 
-If you see `<unknown>/50%`, Metrics Server either isn't running or the Pod lacks CPU requests. Wait 60 seconds and check again — it can take one scrape interval for metrics to appear.
+Se você vir `<unknown>/50%`, o Metrics Server não está em execução ou o Pod não tem requests de CPU. Aguarde 60 segundos e verifique novamente — pode levar um intervalo de coleta para as métricas aparecerem.
 
 ```bash
 kubectl describe hpa php-apache
 ```
 
-Expected: under Conditions, `ScalingActive` should show `True` with reason `ValidMetricFound`.
+Esperado: em Conditions, `ScalingActive` deve mostrar `True` com razão `ValidMetricFound`.
 
-> **Coach tip:** The imperative `kubectl autoscale` command creates an `autoscaling/v2` HPA resource. Students will create the declarative YAML equivalent in Task 6.
+> **Dica do Coach:** O comando imperativo `kubectl autoscale` cria um recurso HPA `autoscaling/v2`. Os alunos criarão o equivalente YAML declarativo na Tarefa 6.
 
 ---
 
-## Task 4: Generate Load and Observe Scale-Up
+## Tarefa 4: Gerar Carga e Observar Scale-Up
 
-### Step-by-step
+### Passo a passo
 
-Start the load generator:
+Inicie o gerador de carga:
 
 ```bash
 kubectl run load-generator \
@@ -184,20 +184,20 @@ kubectl run load-generator \
   -- /bin/sh -c "while true; do wget -q -O- http://php-apache; done"
 ```
 
-Watch the HPA in a separate terminal (or use `--watch`):
+Observe o HPA em um terminal separado (ou use `--watch`):
 
 ```bash
 kubectl get hpa php-apache --watch
 ```
 
-### Verification
+### Verificação
 
-Within 1–2 minutes you should see:
+Em 1–2 minutos você deve ver:
 
-1. **CPU target rises** above 50% (e.g., `250%/50%`)
-2. **Replica count increases** (e.g., from 1 → 4 → 7 → 10)
+1. **Alvo de CPU sobe** acima de 50% (ex: `250%/50%`)
+2. **Contagem de réplicas aumenta** (ex: de 1 → 4 → 7 → 10)
 
-Example progression:
+Progressão de exemplo:
 
 ```
 NAME         REFERENCE               TARGETS    MINPODS   MAXPODS   REPLICAS   AGE
@@ -207,15 +207,15 @@ php-apache   Deployment/php-apache   250%/50%   1         10        5          3
 php-apache   Deployment/php-apache   48%/50%    1         10        7          4m
 ```
 
-Also watch Pods being created:
+Observe também os Pods sendo criados:
 
 ```bash
 kubectl get pods -l app=php-apache
 ```
 
-Expected: multiple pods in `Running` state.
+Esperado: múltiplos pods em estado `Running`.
 
-> **Coach tip:** If load isn't driving CPU high enough, run multiple load generators:
+> **Dica do Coach:** Se a carga não está elevando CPU o suficiente, execute múltiplos geradores de carga:
 > ```bash
 > for i in 1 2 3; do
 >   kubectl run load-generator-$i \
@@ -227,52 +227,52 @@ Expected: multiple pods in `Running` state.
 
 ---
 
-## Task 5: Stop Load and Observe Scale-Down
+## Tarefa 5: Parar Carga e Observar Scale-Down
 
-### Step-by-step
+### Passo a passo
 
 ```bash
 kubectl delete pod load-generator
-# If you started multiple:
+# Se você iniciou múltiplos:
 # kubectl delete pod load-generator-1 load-generator-2 load-generator-3
 ```
 
-Keep watching the HPA:
+Continue observando o HPA:
 
 ```bash
 kubectl get hpa php-apache --watch
 ```
 
-### Verification
+### Verificação
 
-1. CPU target drops to `0%/50%` within 1–2 minutes.
-2. Replica count stays elevated for approximately **5 minutes** (the default stabilization window).
-3. After the stabilization window, replicas gradually scale down back to `1`.
+1. O alvo de CPU cai para `0%/50%` em 1–2 minutos.
+2. A contagem de réplicas permanece elevada por aproximadamente **5 minutos** (a janela de estabilização padrão).
+3. Após a janela de estabilização, as réplicas gradualmente fazem scale-down de volta para `1`.
 
-Example progression:
+Progressão de exemplo:
 
 ```
 NAME         REFERENCE               TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
 php-apache   Deployment/php-apache   0%/50%    1         10        7          10m
-...wait ~5 minutes...
+...aguarde ~5 minutos...
 php-apache   Deployment/php-apache   0%/50%    1         10        1          16m
 ```
 
-> **Coach tip:** If students are impatient, explain the stabilization window and skip ahead to Task 6 where they'll reduce it to 60 seconds. The default 5-minute cooldown exists to prevent flapping in production.
+> **Dica do Coach:** Se os alunos estão impacientes, explique a janela de estabilização e pule para a Tarefa 6 onde eles reduzirão para 60 segundos. O cooldown padrão de 5 minutos existe para prevenir oscilações em produção.
 
 ---
 
-## Task 6: Declarative HPA with `autoscaling/v2`
+## Tarefa 6: HPA Declarativo com `autoscaling/v2`
 
-### Step-by-step
+### Passo a passo
 
-First, delete the imperative HPA:
+Primeiro, delete o HPA imperativo:
 
 ```bash
 kubectl delete hpa php-apache
 ```
 
-Save `php-apache-hpa.yaml`:
+Salve `php-apache-hpa.yaml`:
 
 ```yaml
 apiVersion: autoscaling/v2
@@ -302,19 +302,19 @@ spec:
 kubectl apply -f php-apache-hpa.yaml
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl get hpa php-apache
 ```
 
-Expected: same as Task 3, but now the HPA was created from a YAML manifest.
+Esperado: mesmo que Tarefa 3, mas agora o HPA foi criado a partir de um manifesto YAML.
 
 ```bash
 kubectl get hpa php-apache -o yaml | grep -A3 behavior
 ```
 
-Expected:
+Esperado:
 
 ```yaml
   behavior:
@@ -322,57 +322,57 @@ Expected:
       stabilizationWindowSeconds: 60
 ```
 
-> **Coach tip:** Walk through the key differences between the imperative and declarative approaches:
+> **Dica do Coach:** Percorra as principais diferenças entre as abordagens imperativa e declarativa:
 >
-> | Feature | `kubectl autoscale` | `autoscaling/v2` YAML |
-> |---------|--------------------|-----------------------|
-> | API version | Creates `autoscaling/v2` | Explicitly declares `autoscaling/v2` |
-> | Custom behavior | Not configurable | Full control over scale-up/down policies |
-> | Multiple metrics | CPU only | CPU, memory, custom, external metrics |
-> | GitOps-friendly | No | Yes — stored in version control |
+> | Característica | `kubectl autoscale` | YAML `autoscaling/v2` |
+> |----------------|--------------------|-----------------------|
+> | Versão da API | Cria `autoscaling/v2` | Declara explicitamente `autoscaling/v2` |
+> | Comportamento personalizado | Não configurável | Controle total sobre políticas de scale-up/down |
+> | Múltiplas métricas | Apenas CPU | CPU, memória, métricas customizadas, externas |
+> | Compatível com GitOps | Não | Sim — armazenado no controle de versão |
 
 ---
 
-## Task 7: VPA Concept (Discussion Only)
+## Tarefa 7: Conceito VPA (Apenas Discussão)
 
-> No hands-on commands — this is a discussion topic.
+> Sem comandos práticos — este é um tópico de discussão.
 
-### Key Points for Coaches
+### Pontos-Chave para os Coaches
 
-Ask the student: "When would horizontal scaling NOT work?"
+Pergunte ao aluno: "Quando o escalonamento horizontal NÃO funcionaria?"
 
-Expected answers:
-- **Stateful singletons** — a database that can't be sharded
-- **Batch jobs** — a single process that needs more CPU/RAM
-- **Unknown right-sizing** — new apps where you don't know the correct resource requests
+Respostas esperadas:
+- **Singletons stateful** — um banco de dados que não pode ser sharded
+- **Jobs em lote** — um único processo que precisa de mais CPU/RAM
+- **Dimensionamento desconhecido** — novas aplicações onde você não sabe os requests de recursos corretos
 
-VPA modes:
+Modos do VPA:
 
-| Mode | Behavior | Analogy |
-|------|----------|---------|
-| `Off` | Recommends but doesn't change | `htop` — you see the data, you decide |
-| `Initial` | Sets resources at Pod creation | `ulimit` in `/etc/profile.d/` — applies on login |
-| `Auto` | Evicts and recreates Pods with new resources | Live VM resize with reboot |
+| Modo | Comportamento | Analogia |
+|------|--------------|----------|
+| `Off` | Recomenda mas não altera | `htop` — você vê os dados, você decide |
+| `Initial` | Define recursos na criação do Pod | `ulimit` em `/etc/profile.d/` — aplica no login |
+| `Auto` | Despeja e recria Pods com novos recursos | Resize de VM ao vivo com reboot |
 
-> **Coach tip:** VPA and HPA should NOT both target CPU on the same Deployment — they will fight each other. You can use VPA for memory and HPA for CPU on the same workload.
+> **Dica do Coach:** VPA e HPA NÃO devem ambos ter como alvo a CPU no mesmo Deployment — eles entrarão em conflito. Você pode usar VPA para memória e HPA para CPU na mesma carga de trabalho.
 
 ---
 
-## Task 8: KEDA Concept (Discussion Only)
+## Tarefa 8: Conceito KEDA (Apenas Discussão)
 
-> No hands-on commands — this is a discussion topic.
+> Sem comandos práticos — este é um tópico de discussão.
 
-### Key Points for Coaches
+### Pontos-Chave para os Coaches
 
-Ask the student: "What if you want to scale based on something other than CPU or memory?"
+Pergunte ao aluno: "E se você quiser escalar baseado em algo diferente de CPU ou memória?"
 
-Examples:
-- **Message queue depth** — scale workers when RabbitMQ/Kafka messages pile up
-- **Cron schedule** — scale to 5 replicas during business hours, 0 at night
-- **HTTP request rate** — scale based on requests per second from Prometheus
-- **Database connections** — scale based on active connection count
+Exemplos:
+- **Profundidade da fila de mensagens** — escalar workers quando mensagens RabbitMQ/Kafka acumulam
+- **Agendamento cron** — escalar para 5 réplicas durante horário comercial, 0 à noite
+- **Taxa de requisições HTTP** — escalar baseado em requisições por segundo do Prometheus
+- **Conexões de banco de dados** — escalar baseado na contagem de conexões ativas
 
-Walk through the KEDA cron ScaledObject from the challenge:
+Percorra o ScaledObject cron do KEDA do desafio:
 
 ```yaml
 apiVersion: keda.sh/v1alpha1
@@ -393,30 +393,30 @@ spec:
         desiredReplicas: "5"
 ```
 
-Key KEDA features vs HPA:
-- **Scale to zero** — HPA min is 1; KEDA can scale to 0
-- **60+ trigger types** — Prometheus, Kafka, RabbitMQ, Azure Queue, cron, HTTP, etc.
-- **ScaledJobs** — create Kubernetes Jobs on demand (not just scale Deployments)
+Principais funcionalidades do KEDA vs HPA:
+- **Escalar para zero** — o mínimo do HPA é 1; KEDA pode escalar para 0
+- **60+ tipos de triggers** — Prometheus, Kafka, RabbitMQ, Azure Queue, cron, HTTP, etc.
+- **ScaledJobs** — criar Kubernetes Jobs sob demanda (não apenas escalar Deployments)
 
-> **Coach tip:** KEDA actually creates and manages HPA objects under the hood. It's an extension of HPA, not a replacement.
-
----
-
-## Common Issues
-
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| `kubectl top` returns "metrics not available yet" | Metrics Server hasn't completed first scrape | Wait 60 seconds after rollout completes and retry |
-| Metrics Server crash-loops with `x509` error | Kind's self-signed kubelet certs | Apply the `--kubelet-insecure-tls` patch and wait for rollout |
-| HPA shows `<unknown>/50%` | Missing `resources.requests.cpu` on Pod | Add `resources.requests.cpu: 200m` to the container spec |
-| HPA doesn't scale up under load | Load generator hitting wrong Service name | Verify `kubectl get svc php-apache` exists and load generator uses `http://php-apache` |
-| Scale-down takes 5+ minutes | Default stabilization window is 300s | Expected behavior; use `behavior.scaleDown.stabilizationWindowSeconds: 60` for labs |
-| Load generator Pod in `CrashLoopBackOff` | Used `--restart=Never` but the wget loop has no error handling | Delete and recreate; check `kubectl logs load-generator` for DNS errors |
-| HPA maxes out at `maxReplicas` but CPU is still high | Need more headroom or the app is CPU-bound | Increase `maxReplicas` or increase `resources.requests.cpu` so each replica handles more |
+> **Dica do Coach:** KEDA na verdade cria e gerencia objetos HPA por baixo dos panos. É uma extensão do HPA, não um substituto.
 
 ---
 
-## Clean Up
+## Problemas Comuns
+
+| Problema | Causa | Correção |
+|----------|-------|----------|
+| `kubectl top` retorna "metrics not available yet" | Metrics Server não completou a primeira coleta | Aguarde 60 segundos após o rollout completar e tente novamente |
+| Metrics Server em crash-loop com erro `x509` | Certificados kubelet auto-assinados do Kind | Aplique o patch `--kubelet-insecure-tls` e aguarde o rollout |
+| HPA mostra `<unknown>/50%` | Faltando `resources.requests.cpu` no Pod | Adicione `resources.requests.cpu: 200m` na spec do container |
+| HPA não escala sob carga | Gerador de carga acessando nome de Service errado | Verifique que `kubectl get svc php-apache` existe e o gerador usa `http://php-apache` |
+| Scale-down leva 5+ minutos | Janela de estabilização padrão é 300s | Comportamento esperado; use `behavior.scaleDown.stabilizationWindowSeconds: 60` para labs |
+| Pod do gerador de carga em `CrashLoopBackOff` | Usou `--restart=Never` mas o loop de wget não tem tratamento de erro | Delete e recrie; verifique `kubectl logs load-generator` para erros de DNS |
+| HPA atinge máximo em `maxReplicas` mas CPU ainda está alta | Precisa de mais margem ou a app é CPU-bound | Aumente `maxReplicas` ou aumente `resources.requests.cpu` para que cada réplica processe mais |
+
+---
+
+## Limpeza
 
 ```bash
 kubectl delete -f php-apache.yaml 2>/dev/null

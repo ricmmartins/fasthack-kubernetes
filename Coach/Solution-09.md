@@ -1,27 +1,27 @@
-# Solution 09 — RBAC and Security
+# Solução 09 — RBAC e Segurança
 
-[< Back to Challenge](../Student/Challenge-09.md) | **[Home](README.md)**
+[< Voltar para o Desafio](../Student/Challenge-09.md) | **[Home](README.md)**
 
-## Notes for Coaches
+## Notas para os Coaches
 
-This is one of the more conceptually dense challenges. The Linux analogy works very well here — lean on it. The key message: RBAC is just users, groups, and permissions with different names; PSA is SELinux enforcement levels.
+Este é um dos desafios conceitualmente mais densos. A analogia com Linux funciona muito bem aqui — apoie-se nela. A mensagem-chave: RBAC são apenas usuários, grupos e permissões com nomes diferentes; PSA são níveis de enforcement do SELinux.
 
-**Important:** PodSecurityPolicy (PSP) was **removed** in Kubernetes v1.25. If students mention PSP, redirect them to Pod Security Admission (PSA). User Namespaces are GA in v1.36 but not required for this challenge.
+**Importante:** PodSecurityPolicy (PSP) foi **removida** no Kubernetes v1.25. Se os alunos mencionarem PSP, redirecione-os para Pod Security Admission (PSA). User Namespaces estão GA no v1.36 mas não são necessários para este desafio.
 
-Estimated time: **60 minutes**
+Tempo estimado: **60 minutos**
 
 ---
 
-## Task 1: Create a ServiceAccount
+## Tarefa 1: Criar uma ServiceAccount
 
-### Step-by-step
+### Passo a passo
 
 ```bash
 kubectl create namespace secure-ns
 kubectl create serviceaccount app-reader -n secure-ns
 ```
 
-Save `reader-pod.yaml`:
+Salve `reader-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -42,25 +42,25 @@ kubectl apply -f reader-pod.yaml
 kubectl wait --for=condition=Ready pod/reader-pod -n secure-ns --timeout=120s
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl get pod reader-pod -n secure-ns -o jsonpath='{.spec.serviceAccountName}'
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 app-reader
 ```
 
-Verify the projected token is mounted:
+Verifique se o token projetado está montado:
 
 ```bash
 kubectl exec -n secure-ns reader-pod -- ls /var/run/secrets/kubernetes.io/serviceaccount/
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 ca.crt
@@ -68,15 +68,15 @@ namespace
 token
 ```
 
-> **Coach tip:** Explain that since Kubernetes v1.24, the token at this path is a **bound, time-limited** projected token — not a static long-lived secret like in older versions. The kubelet automatically rotates it.
+> **Dica do Coach:** Explique que desde o Kubernetes v1.24, o token neste caminho é um token projetado **vinculado e com tempo limitado** — não um secret estático de longa duração como em versões anteriores. O kubelet o rotaciona automaticamente.
 
 ---
 
-## Task 2: Create a Role and RoleBinding (Namespace-Scoped)
+## Tarefa 2: Criar uma Role e RoleBinding (Escopo de Namespace)
 
-### Step-by-step
+### Passo a passo
 
-Save `pod-reader-role.yaml`:
+Salve `pod-reader-role.yaml`:
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -90,7 +90,7 @@ rules:
   verbs: ["get", "list", "watch"]
 ```
 
-Save `pod-reader-binding.yaml`:
+Salve `pod-reader-binding.yaml`:
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -113,42 +113,42 @@ kubectl apply -f pod-reader-role.yaml
 kubectl apply -f pod-reader-binding.yaml
 ```
 
-### Verification
+### Verificação
 
-**Test: list Pods (should succeed):**
+**Teste: listar Pods (deve ter sucesso):**
 
 ```bash
 kubectl exec -n secure-ns reader-pod -- kubectl get pods -n secure-ns
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME         READY   STATUS    RESTARTS   AGE
 reader-pod   1/1     Running   0          ...
 ```
 
-**Test: list Secrets (should FAIL):**
+**Teste: listar Secrets (deve FALHAR):**
 
 ```bash
 kubectl exec -n secure-ns reader-pod -- kubectl get secrets -n secure-ns
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 Error from server (Forbidden): secrets is forbidden: User "system:serviceaccount:secure-ns:app-reader" cannot list resource "secrets" in API group "" in the namespace "secure-ns"
 ```
 
-> **Coach tip:** The `apiGroups: [""]` refers to the **core** API group (Pods, Services, Secrets, ConfigMaps). Deployments live in the `apps` group. If a student forgets to include the right apiGroup, the rule won't match.
+> **Dica do Coach:** O `apiGroups: [""]` refere-se ao grupo de API **core** (Pods, Services, Secrets, ConfigMaps). Deployments estão no grupo `apps`. Se um aluno esquecer de incluir o apiGroup correto, a regra não corresponderá.
 
 ---
 
-## Task 3: Create a ClusterRole and ClusterRoleBinding (Cluster-Scoped)
+## Tarefa 3: Criar um ClusterRole e ClusterRoleBinding (Escopo de Cluster)
 
-### Step-by-step
+### Passo a passo
 
-Save `node-viewer-clusterrole.yaml`:
+Salve `node-viewer-clusterrole.yaml`:
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -161,7 +161,7 @@ rules:
   verbs: ["get", "list"]
 ```
 
-Save `node-viewer-binding.yaml`:
+Salve `node-viewer-binding.yaml`:
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -183,48 +183,48 @@ kubectl apply -f node-viewer-clusterrole.yaml
 kubectl apply -f node-viewer-binding.yaml
 ```
 
-### Verification
+### Verificação
 
 ```bash
 kubectl exec -n secure-ns reader-pod -- kubectl get nodes
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 NAME                     STATUS   ROLES           AGE   VERSION
 fasthack-control-plane   Ready    control-plane   ...   v1.36.x
 ```
 
-> **Coach tip:** Emphasize the difference: a **Role + RoleBinding** grants permissions in a single namespace (like per-directory file permissions). A **ClusterRole + ClusterRoleBinding** grants permissions cluster-wide (like root access). Nodes are a cluster-scoped resource — they don't live in any namespace — so you must use a ClusterRole.
+> **Dica do Coach:** Enfatize a diferença: uma **Role + RoleBinding** concede permissões em um único namespace (como permissões de arquivo por diretório). Um **ClusterRole + ClusterRoleBinding** concede permissões em todo o cluster (como acesso root). Nodes são um recurso com escopo de cluster — eles não existem em nenhum namespace — então você deve usar um ClusterRole.
 
 ---
 
-## Task 4: Verify Permissions with `kubectl auth can-i`
+## Tarefa 4: Verificar Permissões com `kubectl auth can-i`
 
-### Step-by-step
+### Passo a passo
 
 ```bash
-# Should be: yes
+# Deve ser: yes
 kubectl auth can-i list pods -n secure-ns \
   --as=system:serviceaccount:secure-ns:app-reader
 
-# Should be: no
+# Deve ser: no
 kubectl auth can-i delete pods -n secure-ns \
   --as=system:serviceaccount:secure-ns:app-reader
 
-# Should be: yes (from the ClusterRoleBinding)
+# Deve ser: yes (do ClusterRoleBinding)
 kubectl auth can-i list nodes \
   --as=system:serviceaccount:secure-ns:app-reader
 
-# Should be: no
+# Deve ser: no
 kubectl auth can-i list secrets -n secure-ns \
   --as=system:serviceaccount:secure-ns:app-reader
 ```
 
-### Verification
+### Verificação
 
-Expected outputs in order:
+Saídas esperadas em ordem:
 
 ```
 yes
@@ -233,24 +233,24 @@ yes
 no
 ```
 
-**List ALL permissions for the ServiceAccount:**
+**Liste TODAS as permissões para a ServiceAccount:**
 
 ```bash
 kubectl auth can-i --list -n secure-ns \
   --as=system:serviceaccount:secure-ns:app-reader
 ```
 
-Expected: a table showing the allowed verbs and resources, including `get`, `list`, `watch` on `pods` in `secure-ns` and `get`, `list` on `nodes` cluster-wide.
+Esperado: uma tabela mostrando os verbos e recursos permitidos, incluindo `get`, `list`, `watch` em `pods` no `secure-ns` e `get`, `list` em `nodes` em todo o cluster.
 
-> **Coach tip:** `kubectl auth can-i` is the Kubernetes equivalent of `sudo -l`. It's the first tool to reach for when debugging "Forbidden" errors.
+> **Dica do Coach:** `kubectl auth can-i` é o equivalente Kubernetes do `sudo -l`. É a primeira ferramenta a usar ao debugar erros "Forbidden".
 
 ---
 
-## Task 5: Pod Security Admission (PSA) Labels
+## Tarefa 5: Labels de Pod Security Admission (PSA)
 
-### Step-by-step
+### Passo a passo
 
-**5a — Create namespace with `restricted` enforcement:**
+**5a — Crie namespace com enforcement `restricted`:**
 
 ```bash
 kubectl create namespace psa-restricted
@@ -260,9 +260,9 @@ kubectl label namespace psa-restricted \
   pod-security.kubernetes.io/audit=restricted
 ```
 
-**5b — Attempt to deploy a privileged Pod (should be REJECTED):**
+**5b — Tente fazer deploy de um Pod privilegiado (deve ser REJEITADO):**
 
-Save `privileged-pod.yaml`:
+Salve `privileged-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -283,15 +283,15 @@ spec:
 kubectl apply -f privileged-pod.yaml
 ```
 
-### Verification
+### Verificação
 
-Expected error output:
+Saída de erro esperada:
 
 ```
 Error from server (Forbidden): error when creating "privileged-pod.yaml": pods "bad-pod" is forbidden: violates PodSecurity "restricted:latest": privileged (container "shell" must not set securityContext.privileged=true), ...
 ```
 
-**5c — Create a `baseline` namespace with `restricted` warnings:**
+**5c — Crie um namespace `baseline` com warnings `restricted`:**
 
 ```bash
 kubectl create namespace psa-baseline
@@ -300,27 +300,27 @@ kubectl label namespace psa-baseline \
   pod-security.kubernetes.io/warn=restricted
 ```
 
-**5d — Deploy a non-privileged Pod in the baseline namespace (should succeed with warnings):**
+**5d — Faça deploy de um Pod não privilegiado no namespace baseline (deve ter sucesso com warnings):**
 
 ```bash
 kubectl run test-baseline --image=busybox:1.37 -n psa-baseline -- sleep 3600
 ```
 
-Expected: the Pod is created, but you see **warnings** (not errors) about restricted violations. Something like:
+Esperado: o Pod é criado, mas você verá **warnings** (não erros) sobre violações do restricted. Algo como:
 
 ```
 Warning: would violate PodSecurity "restricted:latest": allowPrivilegeEscalation != false (container "test-baseline" must set securityContext.allowPrivilegeEscalation=false), ...
 ```
 
-> **Coach tip:** This is the progressive adoption pattern — `enforce=baseline` blocks the worst offenders, while `warn=restricted` shows students what they still need to fix for full compliance. This is analogous to running SELinux in permissive mode to gather violations before switching to enforcing.
+> **Dica do Coach:** Este é o padrão de adoção progressiva — `enforce=baseline` bloqueia os piores ofensores, enquanto `warn=restricted` mostra aos alunos o que ainda precisam corrigir para conformidade total. Isso é análogo a executar o SELinux em modo permissivo para coletar violações antes de mudar para enforcing.
 
 ---
 
-## Task 6: SecurityContext (Hardened Pod)
+## Tarefa 6: SecurityContext (Pod Hardened)
 
-### Step-by-step
+### Passo a passo
 
-Save `hardened-pod.yaml`:
+Salve `hardened-pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -352,40 +352,40 @@ kubectl apply -f hardened-pod.yaml
 kubectl wait --for=condition=Ready pod/hardened-pod -n psa-restricted --timeout=60s
 ```
 
-### Verification
+### Verificação
 
-**Verify UID:**
+**Verifique o UID:**
 
 ```bash
 kubectl exec -n psa-restricted hardened-pod -- id
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 uid=1000 gid=1000 groups=1000
 ```
 
-**Verify read-only root filesystem:**
+**Verifique o sistema de arquivos raiz somente-leitura:**
 
 ```bash
 kubectl exec -n psa-restricted hardened-pod -- touch /test-file
 ```
 
-Expected output:
+Saída esperada:
 
 ```
 touch: /test-file: Read-only file system
 command terminated with exit code 1
 ```
 
-**Verify capabilities are dropped:**
+**Verifique que as capabilities foram removidas:**
 
 ```bash
 kubectl exec -n psa-restricted hardened-pod -- cat /proc/1/status | grep -i cap
 ```
 
-Expected: all capability bitmasks should be `0000000000000000` (or all zeros), indicating all capabilities are dropped.
+Esperado: todas as bitmasks de capability devem ser `0000000000000000` (todos zeros), indicando que todas as capabilities foram removidas.
 
 ```
 CapInh: 0000000000000000
@@ -395,34 +395,34 @@ CapBnd: 0000000000000000
 CapAmb: 0000000000000000
 ```
 
-> **Coach tip:** Walk through each SecurityContext field and its Linux equivalent:
+> **Dica do Coach:** Percorra cada campo do SecurityContext e seu equivalente Linux:
 >
-> | Field | Linux Equivalent |
-> |-------|-----------------|
-> | `runAsNonRoot: true` | Refuse to start if UID is 0 |
+> | Campo | Equivalente Linux |
+> |-------|------------------|
+> | `runAsNonRoot: true` | Recusa iniciar se UID for 0 |
 > | `runAsUser: 1000` | `runuser -u uid1000 -- ...` |
 > | `readOnlyRootFilesystem: true` | `mount -o ro /` |
 > | `capabilities.drop: ["ALL"]` | `capsh --drop=all` |
-> | `allowPrivilegeEscalation: false` | `prctl(PR_SET_NO_NEW_PRIVS, 1)` — blocks setuid/setgid |
-> | `seccompProfile.type: RuntimeDefault` | Default seccomp filter (blocks dangerous syscalls) |
+> | `allowPrivilegeEscalation: false` | `prctl(PR_SET_NO_NEW_PRIVS, 1)` — bloqueia setuid/setgid |
+> | `seccompProfile.type: RuntimeDefault` | Filtro seccomp padrão (bloqueia syscalls perigosas) |
 
 ---
 
-## Common Issues
+## Problemas Comuns
 
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| `Forbidden` when running kubectl inside Pod | ServiceAccount has no RoleBinding | Create a RoleBinding that binds the appropriate Role to the ServiceAccount |
-| `auth can-i` says `yes` but Pod still can't access | The `--as` flag uses format `system:serviceaccount:NAMESPACE:NAME` — check for typos | Verify exact format: `--as=system:serviceaccount:secure-ns:app-reader` |
-| Privileged Pod is not rejected | Namespace doesn't have PSA labels | Check with `kubectl get namespace psa-restricted --show-labels` |
-| Pod fails with "container has runAsNonRoot and image will run as root" | Image defaults to root but Pod spec requires non-root | Add `runAsUser: 1000` to the securityContext |
-| PSA error lists multiple violations | The `restricted` profile requires MANY fields to be set | You need ALL of: `runAsNonRoot`, `allowPrivilegeEscalation: false`, `capabilities.drop: ["ALL"]`, and `seccompProfile` |
-| ClusterRoleBinding doesn't work | Forgot `namespace` field in the `subjects` section | ServiceAccount subjects in ClusterRoleBindings MUST specify the namespace |
-| RBAC rule matches wrong resources | Wrong `apiGroups` value | Core resources (Pods, Services, Secrets) use `""`, Deployments use `"apps"`, RBAC resources use `"rbac.authorization.k8s.io"` |
+| Problema | Causa | Correção |
+|----------|-------|----------|
+| `Forbidden` ao executar kubectl dentro do Pod | ServiceAccount não tem RoleBinding | Crie um RoleBinding que vincule a Role apropriada à ServiceAccount |
+| `auth can-i` diz `yes` mas Pod ainda não consegue acessar | A flag `--as` usa formato `system:serviceaccount:NAMESPACE:NAME` — verifique erros de digitação | Verifique o formato exato: `--as=system:serviceaccount:secure-ns:app-reader` |
+| Pod privilegiado não é rejeitado | Namespace não tem labels PSA | Verifique com `kubectl get namespace psa-restricted --show-labels` |
+| Pod falha com "container has runAsNonRoot and image will run as root" | Imagem padrão é root mas spec do Pod exige non-root | Adicione `runAsUser: 1000` ao securityContext |
+| Erro PSA lista múltiplas violações | O profile `restricted` exige MUITOS campos | Você precisa de TODOS: `runAsNonRoot`, `allowPrivilegeEscalation: false`, `capabilities.drop: ["ALL"]`, e `seccompProfile` |
+| ClusterRoleBinding não funciona | Esqueceu campo `namespace` na seção `subjects` | Subjects de ServiceAccount em ClusterRoleBindings DEVEM especificar o namespace |
+| Regra RBAC corresponde a recursos errados | Valor `apiGroups` incorreto | Recursos core (Pods, Services, Secrets) usam `""`, Deployments usam `"apps"`, recursos RBAC usam `"rbac.authorization.k8s.io"` |
 
 ---
 
-## Clean Up
+## Limpeza
 
 ```bash
 kubectl delete namespace secure-ns psa-restricted psa-baseline psa-lockdown 2>/dev/null
