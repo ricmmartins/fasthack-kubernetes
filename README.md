@@ -28,21 +28,29 @@ Este hackathon preenche a lacuna entre a administração tradicional de sistemas
 Este hackathon é o próximo passo natural após o [Linux FUNdamentals Hackathon](https://linuxhackathon.com/):
 
 ```mermaid
-flowchart TD
-    A["🐧 Linux FUNdamentals\n20 desafios hands-on\nlinuxhackathon.com"]
-    B["☸️ Kubernetes Hackathon\n20 desafios hands-on\nk8shackathon.com"]
-    C["🤖 AI for Infrastructure\nAI + Cloud\nai4infra.com"]
-    D["📖 From Server to Cluster\nO PORQUÊ por trás do QUÊ\nfromservertocluster.com"]
+flowchart TB
+    subgraph journey["🚀 Trilha de Aprendizado Progressiva"]
+        direction LR
+        A["🐧 <b>Linux FUNdamentals</b><br/>20 desafios hands-on<br/><i>linuxhackathon.com</i>"] ==> B["☸️ <b>Kubernetes Hackathon</b><br/>20 desafios hands-on<br/><i>k8shackathon.com</i>"] ==> C["🤖 <b>AI for Infrastructure</b><br/>AI + Cloud<br/><i>ai4infra.com</i>"]
+    end
 
-    A ==> B ==> C
     A -.->|leitura complementar| D
     B -.->|leitura complementar| D
     C -.->|leitura complementar| D
 
-    style A fill:#1565C0,stroke:#0D47A1,color:#fff
-    style B fill:#2E7D32,stroke:#1B5E20,color:#fff
-    style C fill:#1565C0,stroke:#0D47A1,color:#fff
-    style D fill:#1565C0,stroke:#0D47A1,color:#fff
+    D["📖 <b>From Server to Cluster</b><br/>O PORQUÊ por trás do QUÊ<br/><i>fromservertocluster.com</i>"]
+
+    classDef challenge fill:#2b5ea7,stroke:#1e4a8a,color:#fff,stroke-width:2px
+    classDef hackathon fill:#1a7f37,stroke:#116329,color:#fff,stroke-width:3px
+
+    class A,C challenge
+    class B hackathon
+    class D challenge
+
+    click A "https://linuxhackathon.com" _blank
+    click B "https://k8shackathon.com" _blank
+    click C "https://ai4infra.com" _blank
+    click D "https://fromservertocluster.com" _blank
 ```
 
 ## Objetivos de Aprendizado
