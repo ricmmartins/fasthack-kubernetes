@@ -40,7 +40,7 @@ flowchart TD
     C -.->|leitura complementar| D
 
     style A fill:#1565C0,stroke:#0D47A1,color:#fff
-    style B fill:#1565C0,stroke:#0D47A1,color:#fff
+    style B fill:#2E7D32,stroke:#1B5E20,color:#fff
     style C fill:#1565C0,stroke:#0D47A1,color:#fff
     style D fill:#2E7D32,stroke:#1B5E20,color:#fff
 ```
