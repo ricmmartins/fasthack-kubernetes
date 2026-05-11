@@ -10,13 +10,13 @@
 [![CKA](https://img.shields.io/badge/CKA-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
 [![CKAD](https://img.shields.io/badge/CKAD-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
 [![CKS](https://img.shields.io/badge/CKS-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ricmmartins/fasthack-kubernetes?quickstart=1)
+[![Open in GitHub Codespaces](https://img.shields.io/badge/Codespaces-Open%20Lab-181717?logo=github&logoColor=white)](https://codespaces.new/ricmmartins/fasthack-kubernetes?quickstart=1)
 
 ## 🖥️ One-Click Lab Environment
 
 **No setup needed!** Click the button below to get a full Kubernetes lab running in your browser in ~3 minutes:
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ricmmartins/fasthack-kubernetes?quickstart=1)
+[![Open in GitHub Codespaces](https://img.shields.io/badge/Open_in_GitHub_Codespaces-181717?style=for-the-badge&logo=github&logoColor=white)](https://codespaces.new/ricmmartins/fasthack-kubernetes?quickstart=1)
 
 Your Codespace comes pre-configured with:
 - ☸️ **kubectl** — Kubernetes CLI
