@@ -10,8 +10,24 @@
 [![CKA](https://img.shields.io/badge/CKA-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
 [![CKAD](https://img.shields.io/badge/CKAD-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
 [![CKS](https://img.shields.io/badge/CKS-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
+[![Open in GitHub Codespaces](https://img.shields.io/badge/Codespaces-Abrir%20Lab-181717?logo=github&logoColor=white)](https://codespaces.new/ricmmartins/fasthack-kubernetes?ref=pt-br&quickstart=1)
 
 🇺🇸 **Este hackathon também está disponível em Inglês!** Confira o branch [`en-us`](https://github.com/ricmmartins/fasthack-kubernetes/tree/en-us) para a versão em inglês de todos os desafios, guias do coach e documentação.
+
+## 🖥️ Ambiente de Lab com Um Clique
+
+**Sem instalação necessária!** Clique no botão abaixo para ter um lab Kubernetes completo rodando no seu navegador em ~3 minutos:
+
+[![Abrir no GitHub Codespaces](https://img.shields.io/badge/Abrir_no_GitHub_Codespaces-181717?style=for-the-badge&logo=github&logoColor=white)](https://codespaces.new/ricmmartins/fasthack-kubernetes?ref=pt-br&quickstart=1)
+
+Seu Codespace vem pré-configurado com:
+- ☸️ **kubectl** — CLI do Kubernetes
+- 🐳 **Docker** — Runtime de containers (Docker-in-Docker)
+- 📦 **Kind** — Cluster local com 1 control-plane + 2 worker nodes prontos
+- ⎈ **Helm** — Gerenciador de pacotes do Kubernetes
+- 🖥️ **k9s** — Interface terminal para Kubernetes
+
+> 💡 Contas GitHub Free oferecem **60 horas/mês** de Codespaces — mais que suficiente para completar todos os desafios. Nenhuma conta de nuvem ou cartão de crédito necessários.
 
 ## Introdução
 
@@ -161,6 +177,10 @@ Este hackathon cobre **100% dos domínios dos exames CKA, CKAD e CKS**:
 | Namespaces / cgroups | Container Runtime / Pods | Isolamento |
 
 ## Pré-requisitos
+
+> 🚀 **Opção sem instalação:** [Abra este repo no GitHub Codespaces](#️-ambiente-de-lab-com-um-clique) e pule todos os pré-requisitos abaixo — tudo já está instalado e um cluster está pronto para uso.
+
+Se preferir rodar localmente:
 
 - **Completar o [Linux FUNdamentals Hackathon](https://linuxhackathon.com/)** ou ter experiência equivalente em Linux (processos, rede, armazenamento, permissões, shell scripting)
 - **Docker ou Podman** instalado e funcionando (`docker ps` ou `podman ps` deve funcionar)

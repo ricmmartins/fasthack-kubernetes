@@ -2,6 +2,8 @@
 
 [< Desafio Anterior](Challenge-02.md) | **[Início](../README.md)** | [Próximo Desafio >](Challenge-04.md)
 
+> 💻 **Usando Codespaces?** Seu cluster já está rodando! Execute `kubectl get nodes` para verificar — você deve ver 3 nós (1 control-plane + 2 workers). Você pode pular as etapas de instalação e ir direto para a exploração do cluster.
+
 ## Introdução
 
 Configurar seu próprio cluster Kubernetes é como construir um data center Linux completo — mas em vez de montar servidores físicos, você inicia containers que *agem* como servidores.
