@@ -19,11 +19,11 @@
 [![Open in GitHub Codespaces](https://img.shields.io/badge/Open_in_GitHub_Codespaces-181717?style=for-the-badge&logo=github&logoColor=white)](https://codespaces.new/ricmmartins/fasthack-kubernetes?quickstart=1)
 
 Your Codespace comes pre-configured with:
-- ☸️ **kubectl** — Kubernetes CLI
-- 🐳 **Docker** — Container runtime (Docker-in-Docker)
-- 📦 **Kind** — Local cluster with 1 control-plane + 2 worker nodes ready
-- ⎈ **Helm** — Kubernetes package manager
-- 🖥️ **k9s** — Terminal UI for Kubernetes
+- **kubectl** — Kubernetes CLI
+- **Docker** — Container runtime (Docker-in-Docker)
+- **Kind** — Local cluster with 1 control-plane + 2 worker nodes ready
+- **Helm** — Kubernetes package manager
+- **k9s** — Terminal UI for Kubernetes
 
 > 💡 GitHub Free accounts get **60 hours/month** of Codespaces — more than enough to complete all challenges. No cloud account or credit card required.
 
@@ -254,7 +254,7 @@ Contributions in the form of bug reports, feature requests, and PRs are always w
 - 🤖 [AI for Infrastructure Professionals](https://ai4infra.com/) — AI workloads on infrastructure you build
 - ☁️ [Azure Governance Made Simple](https://book.azgovernance.com/) — Cloud governance handbook
 
-## 🌐 Portuguese Content
+## Portuguese Content
 
 🇧🇷 **This hackathon is also available in Brazilian Portuguese!**
 Check out the [`pt-br`](https://github.com/ricmmartins/fasthack-kubernetes/tree/pt-br) branch for the full translated version of all challenges, coach guides, and documentation.
