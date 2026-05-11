@@ -54,19 +54,22 @@ flowchart TB
     B -.->|leitura complementar| D
     C -.->|leitura complementar| D
 
+    B -.->|aprofundamento Azure| E
+
     D["📖 <b>From Server to Cluster</b><br/>O PORQUÊ por trás do QUÊ<br/><i>fromservertocluster.com</i>"]
+    E["☁️ <b>AKS Learning</b><br/>Do zero à produção no AKS<br/><i>aks-learning.github.io</i>"]
 
     classDef challenge fill:#2b5ea7,stroke:#1e4a8a,color:#fff,stroke-width:2px
     classDef hackathon fill:#1a7f37,stroke:#116329,color:#fff,stroke-width:3px
 
-    class A,C challenge
+    class A,C,D,E challenge
     class B hackathon
-    class D challenge
 
     click A "https://linuxhackathon.com" _blank
     click B "https://k8shackathon.com" _blank
     click C "https://ai4infra.com" _blank
     click D "https://fromservertocluster.com" _blank
+    click E "https://aks-learning.github.io" _blank
 ```
 
 ## Objetivos de Aprendizado
