@@ -2,6 +2,8 @@
 
 [< Previous Challenge](Challenge-02.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-04.md)
 
+> 💻 **Using Codespaces?** Your cluster is already running! Run `kubectl get nodes` to verify — you should see 3 nodes (1 control-plane + 2 workers). You can skip the installation steps and jump straight to exploring the cluster.
+
 ## Introduction
 
 Setting up your own Kubernetes cluster is like building a complete Linux server farm — but instead of racking physical servers, you spin up containers that *act* as servers.

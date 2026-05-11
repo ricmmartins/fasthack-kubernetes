@@ -10,6 +10,22 @@
 [![CKA](https://img.shields.io/badge/CKA-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
 [![CKAD](https://img.shields.io/badge/CKAD-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
 [![CKS](https://img.shields.io/badge/CKS-100%25%20Coverage-326CE5?logo=kubernetes&logoColor=white)]()
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ricmmartins/fasthack-kubernetes?quickstart=1)
+
+## 🖥️ One-Click Lab Environment
+
+**No setup needed!** Click the button below to get a full Kubernetes lab running in your browser in ~3 minutes:
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/ricmmartins/fasthack-kubernetes?quickstart=1)
+
+Your Codespace comes pre-configured with:
+- ☸️ **kubectl** — Kubernetes CLI
+- 🐳 **Docker** — Container runtime (Docker-in-Docker)
+- 📦 **Kind** — Local cluster with 1 control-plane + 2 worker nodes ready
+- ⎈ **Helm** — Kubernetes package manager
+- 🖥️ **k9s** — Terminal UI for Kubernetes
+
+> 💡 GitHub Free accounts get **60 hours/month** of Codespaces — more than enough to complete all challenges. No cloud account or credit card required.
 
 ## Introduction
 
@@ -159,6 +175,10 @@ This hackathon covers **100% of CKA, CKAD, and CKS exam domains**:
 | Namespaces / cgroups | Container Runtime / Pods | Isolation |
 
 ## Prerequisites
+
+> 🚀 **Zero-setup option:** [Open this repo in GitHub Codespaces](#️-one-click-lab-environment) and skip all prerequisites below — everything is pre-installed and a cluster is ready to use.
+
+If you prefer to run locally:
 
 - **Complete the [Linux FUNdamentals Hackathon](https://linuxhackathon.com/)** or have equivalent Linux experience (processes, networking, storage, permissions, shell scripting)
 - **Docker or Podman** installed and running (`docker ps` or `podman ps` should work)

@@ -2,6 +2,8 @@
 
 [< Previous Challenge](../README.md) | **[Home](../README.md)** | [Next Challenge >](Challenge-02.md)
 
+> 💻 **No local setup?** [Open this repo in GitHub Codespaces](https://codespaces.new/ricmmartins/fasthack-kubernetes?quickstart=1) — Docker, kubectl, Kind, and Helm are pre-installed and a cluster is ready to use. Free for 60h/month.
+
 ## Introduction
 
 Before you can understand Kubernetes, you need to understand what it manages: **containers**.
